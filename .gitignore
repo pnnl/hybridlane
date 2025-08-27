@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Rust-generated files
+target/
+*.so
+*.dll
+
+# Virtual environments
+.venv
+
+# Sphinx documentation
+docs/_build
+
+# IDE stuff
+.vscode/
+
+# Code coverage analysis
+.coverage

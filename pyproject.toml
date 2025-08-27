@@ -1,0 +1,36 @@
+[project]
+name = "hybridlane"
+version = "0.1.0"
+description = "A frontend library for hybrid CV-DV computation based on Pennylane."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pennylane>=0.41.1",
+    "pydantic>=2.9.2",
+]
+
+[project.optional-dependencies]
+bq = [
+    "bosonic-qiskit>=14.0",
+    "sparse>=0.17.0",
+]
+
+[project.entry-points."pennylane.plugins"]
+"hybrid.bosonicqiskit" = "hybridlane.devices:BosonicQiskitDevice"
+
+[build-system]
+requires = ["uv_build>=0.8.13,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "furo>=2024.8.6",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.0",
+    "sphinx>=8.1.3",
+    "sphinx-autoapi>=3.6.0",
+    "sphinx-autobuild>=2024.10.3",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-math-dollar>=1.2.1",
+]
