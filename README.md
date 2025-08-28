@@ -49,4 +49,4 @@ The available extra flags are:
 
 - ``bq``: Adds support for the ``hybrid.bosonicqiskit`` device.
 
-For more detailed instructions, see the documentation.
+For more detailed instructions, see the [documentation](docs/source/getting-started.rst).

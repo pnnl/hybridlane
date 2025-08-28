@@ -64,21 +64,23 @@ For more detailed instructions, see :doc:`getting-started`.
 
 
 .. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-   :hidden:
+    :maxdepth: 2
+    :caption: Using Hybridlane
+    :hidden:
 
-   getting-started
+    introduction
+    getting-started
+    static-analysis
 
 .. toctree::
-   :maxdepth: 1
-   :caption: API Reference
-   :hidden:
+    :maxdepth: 1
+    :caption: API Reference
+    :hidden:
 
-   hqml <_autoapi/hybridlane/index>
-   hqml.devices <_autoapi/hybridlane/devices/index>
-   hqml.measurements <_autoapi/hybridlane/measurements/index>
-   hqml.ops <_autoapi/hybridlane/ops/index>
-   hqml.sa <_autoapi/hybridlane/sa/index>
+    hqml <_autoapi/hybridlane/index>
+    hqml.devices <_autoapi/hybridlane/devices/index>
+    hqml.measurements <_autoapi/hybridlane/measurements/index>
+    hqml.ops <_autoapi/hybridlane/ops/index>
+    hqml.sa <_autoapi/hybridlane/sa/index>
 ..    _autoapi/hybridlane/util/index
 ..    api/hybridlane/transforms/index

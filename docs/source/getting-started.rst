@@ -32,15 +32,28 @@ python package manager. Next, clone the package from Github and create the virtu
 
 This should take care of installing all the developer dependencies for you and build the package.
 
-The documentation is automatically produced by Sphinx. To enable hot-reloading of the documentation, run
+Documentation
+-------------
+
+The documentation is automatically produced by Sphinx using comments in the code. To build the documentation, run
+
+.. code-block:: bash
+    
+    cd docs
+    uv run make html
+
+To enable hot-reloading (live updating) of the documentation, run
 
 .. code-block:: bash
 
     cd docs
-    uv run sphinx-autobuild source _build --watch ../src --ignore "source/api/**/*.rst" --re-ignore ".*__pycache__.*"
+    uv run sphinx-autobuild source _build/html --watch ../src --ignore "source/api/**/*.rst" --re-ignore ".*__pycache__.*"
 
 and open your browser to `http://localhost:8000 <http://localhost:8000>`_. For users unfamiliar with the Sphinx reStructured Text
 format, there is a nice cheatsheet `here <https://sphinx-tutorial.readthedocs.io/cheatsheet/>`_.
+
+Testing
+-------
 
 Tests can be run by pytest, optionally producing a coverage report
 
