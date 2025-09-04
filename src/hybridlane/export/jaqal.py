@@ -26,7 +26,7 @@ class JaqalInstruction:
     
     def to_jaqal(self) -> str:
         """Convert to Jaqal syntax."""
-        # Handle comment lines
+        # Handle comment lines (including multiline)
         if self.gate_name.startswith("//"):
             return self.gate_name
         
@@ -64,14 +64,33 @@ class HybridlaneToJaqalTranslator:
             "CNOT": self._cnot_to_jaqal,
             "CZ": self._cz_to_jaqal,
             
+            # PennyLane CV operations (placeholders - not supported on trapped ions)
+            "Displacement": self._cv_placeholder,
+            "Squeezing": self._cv_placeholder,
+            "Rotation": self._cv_placeholder,
+            "Beamsplitter": self._cv_placeholder,
+            "TwoModeSqueezing": self._cv_placeholder,
+            "QuadraticPhase": self._cv_placeholder,
+            "ControlledAddition": self._cv_placeholder,
+            "ControlledPhase": self._cv_placeholder,
+            "Kerr": self._cv_placeholder,
+            "CrossKerr": self._cv_placeholder,
+            "CubicPhase": self._cv_placeholder,
+            "InterferometerUnitary": self._cv_placeholder,
+            "GaussianState": self._cv_placeholder,
+            "FockState": self._cv_placeholder,
+            "FockStateVector": self._cv_placeholder,
+            "FockDensityMatrix": self._cv_placeholder,
+            "CoherentState": self._cv_placeholder,
+            "SqueezedState": self._cv_placeholder,
+            "DisplacedSqueezedState": self._cv_placeholder,
+            "ThermalState": self._cv_placeholder,
+            "CatState": self._cv_placeholder,
+            
             # Hybridlane CV operations (placeholders - support coming soon)
             "FockStateProjector": self._cv_placeholder,
             "Fourier": self._cv_placeholder,
             "ModeSwap": self._cv_placeholder,
-            "NumberOperator": self._cv_placeholder,
-            "QuadOperator": self._cv_placeholder,
-            "QuadP": self._cv_placeholder,
-            "QuadX": self._cv_placeholder,
             "TwoModeSum": self._cv_placeholder,
             
             # Hybridlane hybrid CV-DV operations (placeholders - support coming soon)
@@ -82,7 +101,6 @@ class HybridlaneToJaqalTranslator:
             "ConditionalRotation": self._hybrid_placeholder,
             "ConditionalTwoModeSqueezing": self._hybrid_placeholder,
             "ConditionalTwoModeSum": self._hybrid_placeholder,
-            "Hybrid": self._hybrid_placeholder,
             "JaynesCummings": self._hybrid_placeholder,
             "Rabi": self._hybrid_placeholder,
             "SelectiveNumberArbitraryPhase": self._hybrid_placeholder,
@@ -184,7 +202,12 @@ class HybridlaneToJaqalTranslator:
             raise NotImplementedError(f"Gate '{op_name}' not yet supported for Jaqal export")
     
     def translate_circuit(self, tape: qml.tape.QuantumTape) -> str:
-        """Translate a PennyLane tape to Jaqal program."""
+        """Translate a PennyLane tape to Jaqal program.
+        
+        Note: Jaqal only supports computational basis measurements.
+        Non-computational basis measurements would require diagonalization
+        circuits, which is left for future work.
+        """
         self.instructions = []
         
         # Determine number of qubits
@@ -199,12 +222,29 @@ class HybridlaneToJaqalTranslator:
             jaqal_ops = self.translate_operation(op)
             self.instructions.extend(jaqal_ops)
         
-        # Add measurements if needed
+        # Handle measurements
         if tape.measurements:
+            measurement_comment = self._analyze_measurements(tape.measurements)
+            if measurement_comment:
+                self.instructions.append(JaqalInstruction(measurement_comment, [], []))
+            # Always add measure_all for any measurement
             self.instructions.append(JaqalInstruction(JaqalGateType.MEASURE.value, [], []))
         
         # Generate Jaqal code
         return self.generate_jaqal_code()
+    
+    def _analyze_measurements(self, measurements) -> str:
+        """Analyze measurements and return appropriate comment if needed."""
+        comments = []
+        for m in measurements:
+            if hasattr(m, 'obs'):
+                obs = m.obs
+                # Check if measurement is not in computational basis
+                if obs and obs.name not in ["PauliZ", "Identity", "Projector"]:
+                    comments.append(f"// Note: {obs.name} measurement requires basis rotation (not implemented)")
+        if comments:
+            return "\n".join(comments)
+        return ""
     
     def generate_jaqal_code(self) -> str:
         """Generate the final Jaqal code."""
@@ -222,7 +262,13 @@ class HybridlaneToJaqalTranslator:
         # Main circuit block
         lines.append("{")
         for instruction in self.instructions:
-            lines.append(f"    {instruction.to_jaqal()}")
+            jaqal_str = instruction.to_jaqal()
+            # Handle multiline comments
+            if "\n" in jaqal_str:
+                for line in jaqal_str.split("\n"):
+                    lines.append(f"    {line}")
+            else:
+                lines.append(f"    {jaqal_str}")
         lines.append("}")
         
         return "\n".join(lines)

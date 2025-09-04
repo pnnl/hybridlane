@@ -71,6 +71,7 @@ For more detailed instructions, see :doc:`getting-started`.
     introduction
     getting-started
     static-analysis
+    jaqal-export
 
 .. toctree::
     :maxdepth: 1
