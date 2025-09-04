@@ -36,8 +36,8 @@ class TestHybridlaneOpsJaqalExport:
         with qml.tape.QuantumTape() as tape:
             # Mix of standard and hybrid operations
             qml.Hadamard(wires=0)
-            hqml.ConditionalDisplacement(1.0, 0, wires=[1, 0])  # 2 wires: 1 mode, 1 qubit
-            hqml.JaynesCummings(0.5, 0.3, wires=[2, 1])  # 2 wires: 1 qubit, 1 mode; 2 params
+            hqml.ConditionalDisplacement(1.0, 0, wires=[1, 0])  # 2 wires: mode 1, qubit 0
+            hqml.JaynesCummings(0.5, 0.3, wires=[2, 1])  # 2 wires: mode 2, qubit 1; 2 params
             qml.CNOT(wires=[0, 1])
             qml.probs(wires=[0, 1])
         
@@ -67,8 +67,8 @@ class TestHybridlaneOpsJaqalExport:
             hqml.Fourier(wires=2)
             
             # Hybrid operations
-            hqml.Rabi(1.5, wires=[0, 2])  # 2 wires: 1 qubit, 1 mode
-            hqml.ConditionalRotation(0.7, wires=[1, 2])  # 2 wires: 1 param (theta)
+            hqml.Rabi(1.5, wires=[2, 0])  # 2 wires: mode 2, qubit 0
+            hqml.ConditionalRotation(0.7, wires=[2, 1])  # 2 wires: mode 2, qubit 1; 1 param (theta)
             
             # More standard gates
             qml.CZ(wires=[0, 1])
@@ -91,9 +91,9 @@ class TestHybridlaneOpsJaqalExport:
         """Test selective qubit/number operations."""
         # Use a tape directly to avoid device restrictions
         with qml.tape.QuantumTape() as tape:
-            hqml.SelectiveQubitRotation(0.5, 0.2, 1, wires=[0, 1])  # theta, phi, n, wires
-            hqml.SelectiveNumberArbitraryPhase(1.0, 2, wires=[1, 2])  # phi, n, wires
-            hqml.AntiJaynesCummings(0.3, 0.2, wires=[0, 2])  # theta, phi, wires
+            hqml.SelectiveQubitRotation(0.5, 0.2, 1, wires=[0, 1])  # theta, phi, n, wires: mode 0, qubit 1
+            hqml.SelectiveNumberArbitraryPhase(1.0, 2, wires=[2, 1])  # phi, n, wires: mode 2, qubit 1
+            hqml.AntiJaynesCummings(0.3, 0.2, wires=[2, 0])  # theta, phi, wires: mode 2, qubit 0
             qml.expval(qml.PauliZ(0))
         
         jaqal_code = to_jaqal(tape)
@@ -107,10 +107,10 @@ class TestHybridlaneOpsJaqalExport:
         """Test various conditional operations."""
         # Use a tape directly to avoid device restrictions
         with qml.tape.QuantumTape() as tape:
-            hqml.ConditionalBeamsplitter(0.5, 0.2, wires=[0, 1, 2])  # theta, phi, wires (3 wires: 1 qubit, 2 modes)
-            hqml.ConditionalTwoModeSqueezing(0.3, 0.1, wires=[0, 2, 3])  # r, phi, wires (3 wires)
-            hqml.ConditionalTwoModeSum(0.7, wires=[0, 1, 2])  # lambda, wires (3 wires)
-            hqml.ConditionalParity(wires=[0, 1])  # wires (2 wires)
+            hqml.ConditionalBeamsplitter(0.5, 0.2, wires=[1, 2, 0])  # theta, phi, wires (3 wires: modes 1,2, qubit 0)
+            hqml.ConditionalTwoModeSqueezing(0.3, 0.1, wires=[2, 3, 0])  # r, phi, wires (3 wires: modes 2,3, qubit 0)
+            hqml.ConditionalTwoModeSum(0.7, wires=[1, 2, 0])  # lambda, wires (3 wires: modes 1,2, qubit 0)
+            hqml.ConditionalParity(wires=[1, 0])  # wires (2 wires: mode 1, qubit 0)
             qml.probs(wires=[0, 1, 2, 3])
         
         jaqal_code = to_jaqal(tape)

@@ -3,11 +3,6 @@ Jaqal Export
 
 This module provides functionality to export hybridlane/PennyLane quantum circuits to Jaqal (Just Another Quantum Assembly Language) format, which is used for trapped-ion quantum computers.
 
-Installation
-------------
-
-The export module is included with hybridlane. No additional installation is required.
-
 Basic Usage
 -----------
 
@@ -82,6 +77,8 @@ Hybridlane's CV and hybrid CV-DV operations generate placeholder comments indica
 - ConditionalRotation, ConditionalParity
 - ConditionalTwoModeSqueezing, ConditionalTwoModeSum
 - Rabi, SelectiveQubitRotation, SelectiveNumberArbitraryPhase
+
+Note: Hybrid gates follow the convention [qumode_wire, qubit_wire] for 2-wire operations, or [qumode_wire(s), qubit_wire] for multi-wire operations.
 
 Output Format
 -------------

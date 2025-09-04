@@ -35,9 +35,3 @@ dev = [
     "sphinx-math-dollar>=1.2.1",
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["test"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "-v"

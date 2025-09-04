@@ -18,35 +18,35 @@ def hybrid_cv_dv_example():
     print("=" * 60)
     print("\nThis circuit mixes standard DV gates with CV and hybrid operations.")
     print("CV and hybrid operations will show as placeholders in Jaqal.\n")
-    print("Wire convention: wires 0-1 are qubits, wires 2-4 are qumodes (cavities)\n")
+    print("Wire convention: wires 0-1 are qumodes (cavities), wires 2-3 are qubits\n")
     
     # Use a tape to avoid device restrictions
     with qml.tape.QuantumTape() as tape:
         # Standard quantum gates on qubits (fully supported)
-        qml.Hadamard(wires=0)
-        qml.RY(0.5, wires=1)
+        qml.Hadamard(wires=2)
+        qml.RY(0.5, wires=3)
         
         # CV operations on qumodes (placeholders)
-        hqml.TwoModeSum(1.0, wires=[2, 3])  # CV operation on modes 2,3
-        hqml.ModeSwap(wires=[3, 4])  # Swap modes 3,4
-        hqml.Fourier(wires=2)  # Fourier on mode 2
+        hqml.TwoModeSum(1.0, wires=[0, 1])  # CV operation on modes 0,1
+        hqml.ModeSwap(wires=[0, 1])  # Swap modes 0,1
+        hqml.Fourier(wires=0)  # Fourier on mode 0
         
         # Hybrid CV-DV operations (placeholders)
-        # Note: Hybrid gates typically have convention [qubit_wire, qumode_wire]
-        hqml.JaynesCummings(0.8, 0.3, wires=[0, 2])  # Qubit 0 interacts with mode 2
-        hqml.ConditionalDisplacement(1.5, 0.2, wires=[1, 3])  # Qubit 1 controls displacement on mode 3
-        hqml.Rabi(2.0, wires=[1, 4])  # Qubit 1 interacts with mode 4
+        # Note: Hybrid gates have convention [qumode_wire, qubit_wire]
+        hqml.JaynesCummings(0.8, 0.3, wires=[0, 2])  # Mode 0 interacts with qubit 2
+        hqml.ConditionalDisplacement(1.5, 0.2, wires=[1, 3])  # Mode 1 with qubit 3 control
+        hqml.Rabi(2.0, wires=[0, 3])  # Mode 0 interacts with qubit 3
         
         # More standard gates on qubits
-        qml.CNOT(wires=[0, 1])
-        qml.CZ(wires=[1, 0])
+        qml.CNOT(wires=[2, 3])
+        qml.CZ(wires=[3, 2])
         
         # Additional hybrid operations
-        hqml.ConditionalRotation(0.7, wires=[0, 2])  # Qubit 0 controls rotation on mode 2
-        hqml.ConditionalBeamsplitter(0.5, 0.2, wires=[1, 3, 4])  # Qubit 1 controls BS on modes 3,4
+        hqml.ConditionalRotation(0.7, wires=[0, 2])  # Mode 0 with qubit 2 control
+        hqml.ConditionalBeamsplitter(0.5, 0.2, wires=[0, 1, 3])  # Modes 0,1 with qubit 3 control
         
         # Measure only the qubits (Jaqal only supports qubit measurements)
-        qml.probs(wires=[0, 1])
+        qml.probs(wires=[2, 3])
     
     # Export to Jaqal
     jaqal_code = to_jaqal(tape)
@@ -60,27 +60,27 @@ def selective_operations_example():
     print("Selective Operations Example")
     print("=" * 60)
     print("\nThese operations perform qubit rotations based on cavity state.")
-    print("Wire convention: wire 0 is a qubit, wires 1-3 are qumodes\n")
+    print("Wire convention: wires 0-2 are qumodes, wire 3 is a qubit\n")
     
     with qml.tape.QuantumTape() as tape:
         # Prepare initial qubit state
-        qml.RX(0.3, wires=0)  # Rotate qubit 0
+        qml.RX(0.3, wires=3)  # Rotate qubit 3
         
         # Selective operations: qubit rotation based on qumode Fock state
-        # Format: [qubit_wire, qumode_wire]
-        hqml.SelectiveQubitRotation(0.5, 0.2, n=1, wires=[0, 1])  # Rotate qubit 0 if mode 1 in n=1
-        hqml.SelectiveNumberArbitraryPhase(1.0, n=2, wires=[0, 2])  # Phase qubit 0 if mode 2 in n=2
+        # Format: [qumode_wire, qubit_wire]
+        hqml.SelectiveQubitRotation(0.5, 0.2, n=1, wires=[0, 3])  # Rotate qubit 3 if mode 0 in n=1
+        hqml.SelectiveNumberArbitraryPhase(1.0, n=2, wires=[1, 3])  # Phase qubit 3 if mode 1 in n=2
         
-        # Anti-Jaynes-Cummings (Blue sideband) - qubit 0 with mode 1
-        hqml.AntiJaynesCummings(0.4, 0.1, wires=[0, 1])
+        # Anti-Jaynes-Cummings (Blue sideband) - mode 0 with qubit 3
+        hqml.AntiJaynesCummings(0.4, 0.1, wires=[0, 3])
         
         # Conditional operations
-        hqml.ConditionalParity(wires=[0, 1])  # Qubit 0 controls parity on mode 1
-        hqml.ConditionalTwoModeSum(0.8, wires=[0, 2, 3])  # Qubit 0 controls sum on modes 2,3
-        hqml.ConditionalTwoModeSqueezing(0.3, 0.1, wires=[0, 2, 3])  # Qubit 0 controls squeezing
+        hqml.ConditionalParity(wires=[0, 3])  # Mode 0 with qubit 3 control
+        hqml.ConditionalTwoModeSum(0.8, wires=[0, 1, 3])  # Modes 0,1 with qubit 3 control
+        hqml.ConditionalTwoModeSqueezing(0.3, 0.1, wires=[1, 2, 3])  # Modes 1,2 with qubit 3 control
         
         # Measure the qubit
-        qml.expval(qml.PauliZ(0))
+        qml.expval(qml.PauliZ(3))
     
     jaqal_code = to_jaqal(tape)
     print(jaqal_code)
