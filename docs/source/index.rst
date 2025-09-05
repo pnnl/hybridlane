@@ -176,6 +176,7 @@ hybridlane is developed by PNNL with contributions from the open-source communit
     introduction
     getting-started
     static-analysis
+    jaqal-export
 
 .. toctree::
     :maxdepth: 1

@@ -34,3 +34,4 @@ dev = [
     "sphinx-copybutton>=0.5.2",
     "sphinx-math-dollar>=1.2.1",
 ]
+
