@@ -1,0 +1,27 @@
+name: Pytest
+
+on:
+  pull_request:
+    branches:
+      - main # This workflow will run for PRs targeting the main branch
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install dependencies with uv
+        run: |
+          uv sync --all-extras --frozen
+
+      - name: Run Pytest tests
+        run: |
+          uv run pytest
