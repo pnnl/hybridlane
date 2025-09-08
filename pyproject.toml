@@ -9,7 +9,7 @@ readme = "README.md"
 license = "BSD-2-Clause"
 license-files = ["LICENSE.txt", "DISCLAIMER.txt"]
 classifiers = [
-    "Development Status :: 4 - Alpha",
+    "Development Status :: 3 - Alpha",
 
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
