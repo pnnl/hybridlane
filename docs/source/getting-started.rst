@@ -1,21 +1,15 @@
 Getting Started
 ===============
 
-In the future, this package will be available on PyPI and will be installable with
+This package can be installed from PyPI with
 
 .. code-block:: bash
 
-    pip install hybridlane
-
-But for now, it must be manually installed by cloning with Github:
-
-.. code-block:: bash
-
-    git clone https://www.github.com/pnnl/hybridlane
-    pip install ./hybridlane[extras]
+    pip install hybridlane[extras]
 
 The available extra flags are:
 
+- ``all``: Installs all extra flags.
 - ``bq``: Adds support for the ``hybrid.bosonicqiskit`` device.
 
 Developing
@@ -28,7 +22,7 @@ python package manager. Next, clone the package from Github and create the virtu
 
     git clone https://www.github.com/pnnl/hybridlane
     cd hybridlane
-    uv sync --extra bq
+    uv sync --all-extras
 
 This should take care of installing all the developer dependencies for you and build the package.
 

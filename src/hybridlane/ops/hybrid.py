@@ -1,22 +1,12 @@
-import itertools
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
 import math
-from typing import Any, Hashable, Iterable, Optional, Union
+from typing import Iterable, Optional
 
 import pennylane as qml
-from pennylane.operation import Operator
-from pennylane.bose import BoseSentence, BoseWord
 from pennylane.operation import Operation
-from pennylane.ops.cv import (
-    FockStateProjector,
-    NumberOperator,
-    PolyXP,
-    QuadX,
-    QuadP,
-    TensorN,
-    QuadOperator,
-    CVObservable,
-)
-from pennylane.pauli import PauliSentence, PauliWord
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
