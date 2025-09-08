@@ -162,9 +162,7 @@ This project is licensed under a permissive open-source license - see the LICENS
 🙏 Acknowledgements
 -------------------
 
-hybridlane is developed by PNNL with contributions from the open-source community.
-
-
+This project was supported by the U.S. Department of Energy, Office of Science, Advanced Scientific Computing Research program under contract number DE-FOA-0003265.
 
 
 
