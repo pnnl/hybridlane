@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -735,7 +735,7 @@ wheels = [
 
 [[package]]
 name = "hybridlane"
-version = "0.1.0"
+version = "0.1.0a1"
 source = { editable = "." }
 dependencies = [
     { name = "pennylane" },
@@ -743,6 +743,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "bosonic-qiskit" },
+    { name = "sparse" },
+]
 bq = [
     { name = "bosonic-qiskit" },
     { name = "sparse" },
@@ -750,10 +754,12 @@ bq = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "furo" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+]
+docs = [
+    { name = "furo" },
     { name = "sphinx", version = "8.1.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sphinx", version = "8.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "sphinx-autoapi" },
@@ -765,18 +771,21 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "bosonic-qiskit", marker = "extra == 'bq'", specifier = ">=14.0" },
+    { name = "hybridlane", extras = ["bq"], marker = "extra == 'all'" },
     { name = "pennylane", specifier = ">=0.41.1" },
     { name = "pydantic", specifier = ">=2.9.2" },
     { name = "sparse", marker = "extra == 'bq'", specifier = ">=0.17.0" },
 ]
-provides-extras = ["bq"]
+provides-extras = ["bq", "all"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "furo", specifier = ">=2024.8.6" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "ruff", specifier = ">=0.12.0" },
+]
+docs = [
+    { name = "furo", specifier = ">=2024.8.6" },
     { name = "sphinx", specifier = ">=8.1.3" },
     { name = "sphinx-autoapi", specifier = ">=3.6.0" },
     { name = "sphinx-autobuild", specifier = ">=2024.10.3" },
