@@ -1,13 +1,10 @@
 // Hybrid gate standard library
-
-const int homodyne_precision_bits = 32;
-const int fock_readout_precision_bits = 32;
-
-// Position measurement x
-defcal measure_x(qumode m) -> float[homodyne_precision_bits] {}
+// 
+// This library should be imported after declaring the constants `homodyne_precision_bits`, `fock_readout_bits`
+defcal measure_x m -> float[homodyne_precision_bits] {}
 
 // Fock measurement n
-defcal measure_n(qumode m) -> uint[fock_readout_precision_bits] {}
+defcal measure_n m -> uint[fock_readout_precision_bits] {}
 
 // Phase-space rotation gate
 gate cv_r(θ) m {}
@@ -52,7 +49,7 @@ gate cv_sqr(θ, φ, n) q, m {}
 gate cv_snap(φ, n) q, m { cv_sqr(π, φ, n) q, m; cv_sqr(-π, φ, n) q, m; }
 
 // Swap gate
-gate cv_swap m1, m2 { cv_bs(π, 0) m1, m2; cv_r(-π/2) m1; cv_r(-π/2) m2; }
+gate cv_swap m1, m2 { cv_bs(π, π/2) m1, m2; }
 
 // Jaynes-Cummings gate
 gate cv_jc(θ, φ) q, m {}
