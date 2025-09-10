@@ -47,7 +47,7 @@ class TestBosonicQiskitDevice:
 
         @qml.qnode(dev)
         def circuit():
-            hqml.ConditionalDisplacement(1.0, 0, [1, 0])
+            hqml.ConditionalDisplacement(1.0, 0, [0, 1])
             return hqml.expval(hqml.NumberOperator(1))
 
         with pytest.raises(DeviceError):
@@ -90,7 +90,7 @@ class TestBosonicQiskitDevice:
 
         @qml.qnode(dev)
         def circuit():
-            hqml.ConditionalDisplacement(1.0, 0, [1, 0])
+            hqml.ConditionalDisplacement(1.0, 0, [0, 1])
             return hqml.expval(hqml.NumberOperator(1))
 
         with pytest.raises(DeviceError):
@@ -104,7 +104,7 @@ class TestBosonicQiskitDevice:
         @qml.qnode(dev)
         def circuit():
             hqml.ConditionalDisplacement(
-                1.0, 0, [1, 0]
+                1.0, 0, [0, 1]
             )  # wire 0 established as a qubit here
             return hqml.expval(hqml.NumberOperator(0))  # measure wire 0 in fock basis
 
@@ -288,7 +288,7 @@ class TestExampleCircuits:
         def circuit():
             for j in range(n):
                 qml.X(0)
-                hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, ["m0", 0])
+                hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m0"])
 
             return hqml.expval(hqml.NumberOperator("m0")), hqml.expval(qml.Z(0))
 
@@ -306,15 +306,15 @@ class TestExampleCircuits:
 
         @qml.qnode(dev)
         def circuit():
-            # Put the first subsystem (qubit 0, qumode 2) in state |0>_Q |1>_B
+            # Put the first subsystem (qubit 0, qumode 1) in state |0>_Q |1>_B
             qml.X(0)
-            hqml.JaynesCummings(np.pi / 2, np.pi / 2, [1, 0])
+            hqml.JaynesCummings(np.pi / 2, np.pi / 2, [0, 1])
 
-            # Put the second subsystem (qubit 1, qumode 3) in state |0>_Q |2>_B
+            # Put the second subsystem (qubit 2, qumode 3) in state |0>_Q |2>_B
             qml.X(2)
-            hqml.JaynesCummings(np.pi / 2, np.pi / 2, [3, 2])
+            hqml.JaynesCummings(np.pi / 2, np.pi / 2, [2, 3])
             qml.X(2)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(2)), np.pi / 2, [3, 2])
+            hqml.JaynesCummings(np.pi / (2 * np.sqrt(2)), np.pi / 2, [2, 3])
 
             # check qumodes in state |1>|2>
             return (

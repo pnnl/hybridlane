@@ -2,11 +2,7 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-import pytest
 import pennylane as qml
-from pennylane import numpy as np
-from pennylane.pauli import PauliWord
-from pennylane.bose import BoseWord
 from hybridlane.ops.hybrid import (
     ConditionalRotation,
     ConditionalParity,

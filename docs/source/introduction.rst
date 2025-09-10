@@ -32,7 +32,7 @@ Defining a quantum circuit in Hybridlane follows the same format as Pennylane, a
     def circuit(n):
         for j in range(n):
             qml.X(0)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [1, 0])
+            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
         
         return hqml.expval(hqml.NumberOperator(1))
     
@@ -66,7 +66,7 @@ When simulating circuits in Pennylane, circuits are usually bound to devices. Yo
     def circuit(n):
         for j in range(n):
             qml.X(0)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [1, 0])
+            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
         
         return hqml.expval(hqml.NumberOperator(1))
 
@@ -77,13 +77,13 @@ This middle part is the actual circuit definition consisting of its inputs, oper
     def circuit(n):
         for j in range(n):
             qml.X(0)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [1, 0])
+            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
 
 Next is our circuit definition, which accepts a single parameter :math:`n`. The function produces the circuit
 
 .. math::
 
-    \ket{\psi} = \left[\prod_{j=n-1}^{0} JC_{1, 0}\left(\frac{\pi}{2\sqrt{j+1}}, \frac{\pi}{2}\right) X_0 \right] \ket{0,0}.
+    \ket{\psi} = \left[\prod_{j=n-1}^{0} JC_{0, 1}\left(\frac{\pi}{2\sqrt{j+1}}, \frac{\pi}{2}\right) X_0 \right] \ket{0,0}.
 
 Within a circuit definition, you are free to use Python control flow, like loops (``for``, ``while``) and conditionals (``if``, ``else``, ``match``). This makes circuits in Pennylane rather flexible. The last argument of a gate (e.g. ``qml.X`` or ``hqml.JaynesCummings``) is always the "wires", the qubit(s) and/or qumode(s) that the gate acts on, in order.
 
@@ -91,7 +91,7 @@ Within a circuit definition, you are free to use Python control flow, like loops
 
 - The hybrid qubit-qumode gate :math:`JC(\theta, \phi)` (``hqml.JaynesCummings``) accepts two parameters and then acts on two wires (qumode ``1`` and qubit ``0``).
 
-In Hybridlane we use the convention that all qumodes are listed before qubits (more on that later).
+In Hybridlane we use the convention that all qubits are listed before qumodes (more on that later).
 
 .. tip::
 
@@ -114,7 +114,7 @@ These lines pass the parameter :math:`n = 5` to our circuit, meaning we will pre
 
 .. tip::
 
-    At this point you might be wondering how Hybridlane determines which wires are qumodes and qubits in a circuit. The short answer is by inspecting the circuit structure and gate definitions, e.g. the wires of a qumode gate are inferred to be qumodes. This is why all our gates enforce the convention that qumodes come before qubits. Inference of the circuit structure is covered more in-depth in the :doc:`static-analysis` section.
+    At this point you might be wondering how Hybridlane determines which wires are qumodes and qubits in a circuit. The short answer is by inspecting the circuit structure and gate definitions, e.g. the wires of a qumode gate are inferred to be qumodes. This is why all our gates enforce the convention that qubits come before qumodes. Inference of the circuit structure is covered more in-depth in the :doc:`static-analysis` section.
 
 Drawing the circuit
 -------------------

@@ -334,7 +334,7 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
     elif isinstance(op, Hybrid) and (method := hybrid_gate_map.get(type(op))):
         # Todo: bosonic-qiskit uses the format below by default. We need to verify that each gate in
         # _cv_gate_map matches pennylane and qiskit conventions
-        qumodes, qubits = op.split_wires()
+        qubits, qumodes = op.split_wires()
         qumodes = [regmapper.get(w) for w in qumodes]
         qubits = [regmapper.get(w) for w in qubits]
 

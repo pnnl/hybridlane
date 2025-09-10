@@ -1,9 +1,8 @@
 # hybridlane
 
-<!-- Badges are common for top repos. Add these when your project is ready. -->
-<!-- [![PyPI - Version](https://img.shields.io/pypi/v/hybridlane)](https://pypi.org/project/hybridlane/) -->
-<!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/ci.yml?branch=main)](https://github.com/pnnl/hybridlane/actions/workflows/ci.yml) -->
-<!-- [![License](https://img.shields.io/github/license/pnnl/hybridlane)](LICENSE.md) -->
+[![PyPI - Version](https://img.shields.io/pypi/v/hybridlane)](https://pypi.org/project/hybridlane/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/release.yml?branch=main)](https://github.com/pnnl/hybridlane/actions/workflows/release.yml)
+[![License](https://img.shields.io/github/license/pnnl/hybridlane)](LICENSE.md)
 
 hybridlane is a frontend library for expressing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the [PennyLane](https://pennylane.ai/) ecosystem. It implements the concepts introduced in the paper Y. Liu *et al*, 2024 ([arXiv:2407.10381](https://arxiv.org/abs/2407.10381)).
 
@@ -84,8 +83,8 @@ def circuit(n):
         qml.X(0) # wire `0` inferred to be a qubit
 
         # Or use the hybrid CV-DV gates in Hybridlane
-        # (!) Qumodes come before qubits, allowing m0 to be inferred as a qumode
-        hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, ["m0", 0])
+        # (!) Qubits come before qumodes, allowing m0 to be inferred as a qumode
+        hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m0"])
 
     # Freely mix qubit and qumode observables
     # (!) We use `hqml` for measurements and for CV observables
