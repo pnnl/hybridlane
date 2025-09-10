@@ -1,8 +1,9 @@
 # hybridlane
 
-[![PyPI - Version](https://img.shields.io/pypi/v/hybridlane)](https://pypi.org/project/hybridlane/)
+[![PyPI - Version](https://img.shields.io/pypi/v/hybridlane?logo=pypi)](https://pypi.org/project/hybridlane/)
+[![Docs](https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/docs.yml?branch=main&logo=githubpages&label=docs)](https://pnnl.github.io/hybridlane/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/release.yml?branch=main)](https://github.com/pnnl/hybridlane/actions/workflows/release.yml)
-[![License](https://img.shields.io/github/license/pnnl/hybridlane)](LICENSE.md)
+[![License](https://img.shields.io/github/license/pnnl/hybridlane)](LICENSE.txt)
 
 hybridlane is a frontend library for expressing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the [PennyLane](https://pennylane.ai/) ecosystem. It implements the concepts introduced in the paper Y. Liu *et al*, 2024 ([arXiv:2407.10381](https://arxiv.org/abs/2407.10381)).
 
@@ -53,7 +54,7 @@ pip install hybridlane[extras]
 *   `[all]`: Installs all extra flags.
 *   `[bq]`: Installs support for the `hybrid.bosonicqiskit` simulation device.
 
-For more detailed installation instructions and environment setup, please refer to the [Getting Started Guide in our Documentation](docs/source/getting-started.rst).
+For more detailed installation instructions and environment setup, please refer to the [Getting Started Guide in our Documentation](https://pnnl.github.io/hybridlane/getting-started.html).
 
 ---
 
@@ -100,7 +101,7 @@ res = sa.analyze(circuit._tape)
 # StaticAnalysisResult(qumodes=Wires(['m0']), qubits=Wires([0]), schemas=[<hybridlane.sa.base.BasisSchema object at 0x7f504673a090>], wire_order=Wires([0, 'm0']))
 ```
 
-For more examples and detailed usage, explore the [Documentation](docs/source/index.rst).
+For more examples and detailed usage, explore the [Documentation](https://pnnl.github.io/hybridlane/).
 
 ---
 
@@ -121,7 +122,7 @@ While hybridlane provides a powerful framework for hybrid quantum circuits, it's
 
 ## 📚 Documentation
 
-For comprehensive information on hybridlane's API, detailed usage examples, theoretical background, and contributing guidelines, please visit our official [Documentation](docs/source/index.rst).
+For comprehensive information on hybridlane's API, detailed usage examples, theoretical background, and contributing guidelines, please visit our official [Documentation](https://pnnl.github.io/hybridlane/).
 
 ---
 
