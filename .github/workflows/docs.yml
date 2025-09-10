@@ -43,6 +43,10 @@ jobs:
       - name: Install docs dependencies with uv
         run: |
           uv sync --all-extras --frozen --only-group docs
+      
+      - name: Build docs
+        run: |
+          cd docs && uv run make html
 
       - name: Make nojekyll file
         run: |
