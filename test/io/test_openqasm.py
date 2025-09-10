@@ -1,4 +1,8 @@
-import jax.numpy as jnp
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
+import numpy as np
 import pennylane as qml
 from pennylane.tape import QuantumTape
 
@@ -10,8 +14,8 @@ def test_openqasm():
     def circuit(n):
         for j in range(n):
             qml.X(0)
-            hqml.JaynesCummings(jnp.pi / (2 * jnp.sqrt(j + 1)), jnp.pi / 2, [1, 0])
-            hqml.SelectiveNumberArbitraryPhase(0.5, j, [1, 0])
+            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+            hqml.SelectiveNumberArbitraryPhase(0.5, j, [0, 1])
 
         return (
             hqml.expval(hqml.NumberOperator(1)),

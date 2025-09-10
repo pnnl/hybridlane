@@ -1,11 +1,17 @@
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
 """Module containing export functions to a superset of OpenQASM"""
 
 from typing import Any, Optional
+import textwrap
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
 from pennylane.tape import QuantumScript
+from pennylane.tape.qscript import OPENQASM_GATES
 from pennylane.wires import Wires
 
 import hybridlane as hqml
@@ -15,36 +21,6 @@ from .. import sa
 ###########################################
 #           Gate definitions
 ###########################################
-
-# Standard QASM library, see https://openqasm.com/language/standard_library.html
-openqasm_stdgates: dict[str, str] = {
-    "GlobalPhase": "gphase",
-    "Identity": "id",
-    "Hadamard": "h",
-    "PauliX": "x",
-    "PauliY": "y",
-    "PauliZ": "z",
-    "S": "s",
-    "T": "t",
-    # Somehow we need sdg and tdg too
-    "SX": "sx",
-    "Rot": "u",
-    "RX": "rx",
-    "RY": "ry",
-    "RZ": "rz",
-    "PhaseShift": "p",
-    "ControlledPhaseShift": "cp",
-    "CNOT": "cx",
-    "CZ": "cz",
-    "CY": "cy",
-    "CH": "ch",
-    "SWAP": "swap",
-    "CSWAP": "cswap",
-    "Toffoli": "ccx",
-    "CRX": "crx",
-    "CRY": "cry",
-    "CRZ": "crz",
-}
 
 # CV "standard library", taken from Table IV.4 of https://arxiv.org/abs/2407.10381
 cv_stdgates: dict[str, str] = {
@@ -75,15 +51,15 @@ cv_stdgates: dict[str, str] = {
     "ConditionalTwoModeSqueezing": "cv_csq2",
 }
 
-all_gates = openqasm_stdgates | cv_stdgates
+all_gates = OPENQASM_GATES | cv_stdgates
 
 
 # These are our special extensions to OpenQASM
 class Keywords:
     CvStdLib = "cvstdgates.inc"
     QumodeDef = "qumode"
-    MeasureQuadX = "homodyne"
-    MeasureN = "fock_number"
+    MeasureQuadX = "measure_x"
+    MeasureN = "measure_n"
 
 
 HEADER = f"""
@@ -102,15 +78,15 @@ def get_cv_calibration_definition(
     int_bits: int = 32,
 ):
     kw = "qubit" if strict else Keywords.QumodeDef
-    return f"""
-cal {{
-    // Position measurement x
-    defcal {Keywords.MeasureQuadX}({kw} q) -> float[{float_bits}] {{}}
+    return textwrap.dedent(f"""
+        const int homodyne_precision_bits = {float_bits};
+        const int fock_readout_precision_bits = {int_bits};                   
 
-    // Fock measurement n
-    defcal {Keywords.MeasureN}({kw} q) -> uint[{int_bits}] {{}}
-}}
-"""
+        // Position measurement x
+        defcal {Keywords.MeasureQuadX}({kw} q) -> float[homodyne_precision_bits] {{}}
+
+        // Fock measurement n
+        defcal {Keywords.MeasureN}({kw} q) -> uint[fock_readout_precision_bits] {{}}""")
 
 
 # This version only unrolls all the gates. A more advanced version that captures the loop
