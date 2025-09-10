@@ -60,14 +60,19 @@ class Keywords:
     QumodeDef = "qumode"
     MeasureQuadX = "measure_x"
     MeasureN = "measure_n"
+    HomodynePrecision = "homodyne_precision_bits"
+    FockPrecision = "fock_readout_precision_bits"
 
 
-HEADER = f"""
-OPENQASM 3.0;
+def get_header(float_bits: int, int_bits: int):
+    return textwrap.dedent(f"""
+        OPENQASM 3.0;
+        include "stdgates.inc";
 
-include "stdgates.inc";
-include "{Keywords.CvStdLib}";
-""".strip()
+        const int {Keywords.HomodynePrecision} = {float_bits};
+        const int {Keywords.FockPrecision} = {int_bits};
+        include "{Keywords.CvStdLib}";
+        """)
 
 
 # We leave the calibration bodies {} empty because they should be opaque definitions.
@@ -79,14 +84,11 @@ def get_cv_calibration_definition(
 ):
     kw = "qubit" if strict else Keywords.QumodeDef
     return textwrap.dedent(f"""
-        const int homodyne_precision_bits = {float_bits};
-        const int fock_readout_precision_bits = {int_bits};                   
-
         // Position measurement x
-        defcal {Keywords.MeasureQuadX}({kw} q) -> float[homodyne_precision_bits] {{}}
+        defcal {Keywords.MeasureQuadX} m -> float[{Keywords.HomodynePrecision}] {{}}
 
         // Fock measurement n
-        defcal {Keywords.MeasureN}({kw} q) -> uint[fock_readout_precision_bits] {{}}""")
+        defcal {Keywords.MeasureN} m -> uint[{Keywords.FockPrecision}] {{}}""")
 
 
 # This version only unrolls all the gates. A more advanced version that captures the loop
@@ -109,19 +111,26 @@ def to_openqasm(
         w: f"m[{i}]" for i, w in enumerate(res.qumodes)
     }
 
-    qasm_str = f"{HEADER}\n\n"
+    qasm_str = get_header(float_bits, int_bits) + "\n"
+
+    if strict:
+        qasm_str += (
+            get_cv_calibration_definition(
+                strict=strict, float_bits=float_bits, int_bits=int_bits
+            )
+            + "\n"
+        )
+
+    qasm_str += "\n"
+
     # For strict compliance with openqasm, call all qumodes "qubits", losing
     # the ability to verify types easily
     if res.qubits:
-        qasm_str += f"qubit q[{len(res.qubits)}];\n"
+        qasm_str += f"qubit[{len(res.qubits)}] q;\n"
 
     if res.qumodes:
         kw = "qubit" if strict else Keywords.QumodeDef
-        qasm_str += f"{kw} m[{len(res.qumodes)}];\n"
-
-    qasm_str += get_cv_calibration_definition(
-        strict=strict, float_bits=float_bits, int_bits=int_bits
-    )
+        qasm_str += f"{kw}[{len(res.qumodes)}] m;\n"
 
     # Construct the state prep function consisting of all the circuit gates
     # prior to the measurements
@@ -189,7 +198,7 @@ def to_openqasm(
             if measured_qubits:
                 cvar = f"c{classical_vars}"
                 classical_vars += 1
-                qasm_str += f"bit {cvar}[{len(measured_qubits)}]\n"
+                qasm_str += f"bit[{len(measured_qubits)}] {cvar};\n"
                 for i, w in enumerate(measured_qubits):
                     qasm_str += f"{cvar}[{i}] = measure {wire_to_str[w]};\n"
 
@@ -203,17 +212,26 @@ def to_openqasm(
                     basis = schema.get_basis(qumode)
 
                     if basis == sa.ComputationalBasis.Discrete:
-                        result_type, func = f"uint[{int_bits}]", Keywords.MeasureN
+                        result_type, func = (
+                            f"uint[{Keywords.FockPrecision}]",
+                            Keywords.MeasureN,
+                        )
                     elif basis == sa.ComputationalBasis.Position:
                         result_type, func = (
-                            f"float[{float_bits}]",
+                            f"float[{Keywords.HomodynePrecision}]",
                             Keywords.MeasureQuadX,
                         )
                     else:
                         raise ValueError("Unsupported basis", basis)
 
-                    qasm_str += f"{result_type} {cvar};\n"
-                    qasm_str += f"{cvar} = {func}({wire_to_str[qumode]});\n"
+                    if strict:
+                        qasm_str += (
+                            f"{result_type} {cvar} = {func}({wire_to_str[qumode]});\n"
+                        )
+                    else:
+                        qasm_str += (
+                            f"{result_type} {cvar} = {func} {wire_to_str[qumode]};\n"
+                        )
 
         qasm_str += "\n"
 
