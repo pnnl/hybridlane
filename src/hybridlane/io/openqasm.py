@@ -120,6 +120,7 @@ from pennylane.wires import Wires
 import hybridlane as hqml
 
 from .. import sa
+from ..transforms import from_pennylane
 
 
 def to_openqasm(
@@ -174,7 +175,8 @@ def to_openqasm(
 
     @wraps(qnode)
     def wrapper(*args, **kwargs) -> str:
-        tape = construct_tape(qnode)(*args, **kwargs)
+        new_qnode = from_pennylane(qnode)  # compatibility with pl gates
+        tape = construct_tape(new_qnode)(*args, **kwargs)
         return tape_to_openqasm(
             tape,
             rotations=rotations,
@@ -198,11 +200,11 @@ cv_stdgates: dict[str, str] = {
     "Displacement": "cv_d",
     "Squeezing": "cv_sq",
     "Kerr": "cv_k",
-    "CubicPhase": "cv_p3",
+    "CubicPhase": "cv_c",
     "Fourier": "cv_f",
     "Beamsplitter": "cv_bs",
-    "TwoModeSqueezing": "cv_sq2",
-    "TwoModeSum": "cv_tms",
+    "TwoModeSqueezing": "cv_tms",
+    "TwoModeSum": "cv_sum",
     "ConditionalRotation": "cv_cr",
     "ConditionalDisplacement": "cv_cd",
     "ConditionalSqueezing": "cv_cs",
@@ -213,8 +215,8 @@ cv_stdgates: dict[str, str] = {
     "JaynesCummings": "cv_jc",
     "AntiJaynesCummings": "cv_ajc",
     "ConditionalBeamsplitter": "cv_cbs",
-    "ConditionalTwoModeSqueezing": "cv_csq2",
-    "ConditionalTwoModeSum": "cv_ctms",
+    "ConditionalTwoModeSqueezing": "cv_ctms",
+    "ConditionalTwoModeSum": "cv_csum",
 }
 
 all_gates = OPENQASM_GATES | cv_stdgates

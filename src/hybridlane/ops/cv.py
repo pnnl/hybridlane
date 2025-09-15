@@ -148,6 +148,7 @@ class Squeezing(CVOperation):
         )
 
 
+# Modify to have -i convention
 class Kerr(CVOperation):
     r"""Kerr gate :math:`K(\kappa)`
 

@@ -138,20 +138,20 @@ def get_truncated_matrix_generator(
         case qml.Identity():
             return lambda cutoff: sp.eye(cutoff, format="csc")  # type: ignore
 
-        case qml.NumberOperator() | hqml.NumberOperator():
+        case hqml.NumberOperator():
             return cvops.get_N
 
-        case qml.QuadX() | hqml.QuadX():
+        case hqml.QuadX():
             return get_x
 
-        case qml.QuadP() | hqml.QuadP():
+        case hqml.QuadP():
             return get_p
 
-        case qml.QuadOperator(parameters=params) | hqml.QuadOperator(parameters=params):
+        case hqml.QuadOperator(parameters=params):
             phi = params[0]
             return lambda c: np.cos(phi) * get_x(c) + np.sin(phi) * get_p(c)
 
-        case qml.FockStateProjector(parameters=params, wires=wires):
+        case hqml.FockStateProjector(parameters=params, wires=wires):
             if len(wires) > 1:
                 raise DeviceError(
                     "Only support obtaining matrix for single-wire fock projectors"
@@ -193,10 +193,7 @@ def get_observable_matrix(
         return functools.reduce(lambda x, y: x @ y, mats)
 
     # Decompose fock state projectors on multiple qumodes as a proper product
-    elif (
-        isinstance(obs, (qml.FockStateProjector, hqml.FockStateProjector))
-        and len(obs.wires) > 1
-    ):
+    elif isinstance(obs, hqml.FockStateProjector) and len(obs.wires) > 1:
         new_obs = qml.prod(
             *[
                 hqml.FockStateProjector(n, w)
@@ -292,8 +289,6 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
     parameters = tuple(map(to_scalar, op.parameters))
 
     if method := dv_gate_map.get(type(op)):
-        # Todo: qiskit uses the format below by default. We need to verify that each gate in
-        # _dv_gate_map matches pennylane and qiskit conventions
         qubits = [regmapper.get(w) for w in wires]
 
         match type(op):
@@ -310,42 +305,66 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
         qumodes = [regmapper.get(w) for w in wires]
 
         match type(op):
-            # These gates take complex parameters and/or differ from bosonic qiskit convention
-            #  - TwoModeSum is actually our gate, not in pennylane, and therefore matches the bq convention
-            case qml.Displacement:
+            # These gates take complex parameters or differ from bosonic qiskit
+            case hqml.Displacement:
                 a, phi = parameters
                 alpha = a * np.exp(1j * phi)
                 getattr(qc, method)(alpha, *qumodes)
-            case qml.Squeezing:
+            case hqml.Rotation:
+                theta = parameters[0]
+                getattr(qc, method)(-theta, *qumodes)
+            case hqml.Squeezing:
                 r, phi = parameters
                 z = r * np.exp(1j * phi)
                 getattr(qc, method)(z, *qumodes)
-            case qml.TwoModeSqueezing:
-                r, phi = parameters
-                z = r * np.exp(-1j * (phi - np.pi / 2))
-                getattr(qc, method)(z, *qumodes)
-            case qml.Beamsplitter:
+            case hqml.Beamsplitter:
                 theta, phi = parameters
-                z = -theta * np.exp(-1j * phi)
+                new_theta = theta / 2
+                new_phi = phi - np.pi / 2
+                z = new_theta * np.exp(1j * new_phi)
+                getattr(qc, method)(z, *qumodes)
+            case hqml.TwoModeSqueezing:
+                r, phi = parameters
+                new_phi = phi + np.pi / 2
+                z = r * np.exp(1j * new_phi)
                 getattr(qc, method)(z, *qumodes)
             case _:
                 getattr(qc, method)(*parameters, *qumodes)
 
     elif isinstance(op, Hybrid) and (method := hybrid_gate_map.get(type(op))):
-        # Todo: bosonic-qiskit uses the format below by default. We need to verify that each gate in
-        # _cv_gate_map matches pennylane and qiskit conventions
         qubits, qumodes = op.split_wires()
         qumodes = [regmapper.get(w) for w in qumodes]
         qubits = [regmapper.get(w) for w in qubits]
 
         match type(op):
+            case hqml.ConditionalRotation:
+                theta = parameters
+                getattr(qc, method)(-theta, *qumodes, *qubits)
             case hqml.ConditionalDisplacement:
                 a, phi = parameters
                 alpha = a * np.exp(1j * phi)
                 getattr(qc, method)(alpha, *qumodes, *qubits)
+            case hqml.ConditionalSqueezing:
+                z, phi = parameters
+                zeta = z * np.exp(1j * phi)
+                getattr(qc, method)(zeta, *qumodes, *qubits)
+            case hqml.SelectiveQubitRotation:
+                n: int = op.hyperparameters["n"]
+                getattr(qc, method)(*parameters, n, *qumodes, *qubits)
             case hqml.SelectiveNumberArbitraryPhase:
                 n: int = op.hyperparameters["n"]
                 getattr(qc, method)(*parameters, n, *qumodes, *qubits)
+            case hqml.ConditionalBeamsplitter:
+                theta, phi = parameters
+                new_theta = theta / 2
+                new_phi = phi - np.pi / 2
+                z = new_theta * np.exp(1j * new_phi)
+                getattr(qc, method)(z, *qumodes)
+            case hqml.ConditionalTwoModeSqueezing:
+                r, phi = parameters
+                new_phi = phi + np.pi / 2
+                z = r * np.exp(1j * new_phi)
+                getattr(qc, method)(z, *qumodes, *qubits)
             case _:
                 getattr(qc, method)(*parameters, *qumodes, *qubits)
 

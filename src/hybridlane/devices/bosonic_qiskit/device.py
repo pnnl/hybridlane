@@ -45,6 +45,7 @@ from ...measurements import (
 )
 from ...ops import attributes
 from ...sa import ComputationalBasis
+from ...transforms import from_pennylane
 from ..preprocess import static_analyze_tape
 from . import gates
 
@@ -228,6 +229,9 @@ class BosonicQiskitDevice(Device):
 
         # Check that all wires aren't abstract
         transform_program.add_transform(validate_device_wires, name=self.name)
+
+        # Convert pennylane gates to hybridlane
+        transform_program.add_transform(from_pennylane)
 
         # Qubit/qumode type checking
         transform_program.add_transform(static_analyze_tape)

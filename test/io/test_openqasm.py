@@ -90,3 +90,39 @@ class TestCircuits:
             assert "uint[fock_readout_precision_bits] c0 = measure_n m[0];" in qasm
             assert "c1[0] = measure q[0];" in qasm
             assert "float[homodyne_precision_bits] c2 = measure_x m[0];" in qasm
+
+    @pytest.mark.parametrize("strict", (True, False))
+    def test_with_pennylane_gate(self, strict):
+        dev = qml.device("hybrid.bosonicqiskit")
+
+        @qml.qnode(dev)
+        def circuit():
+            qml.X(0)
+            qml.Beamsplitter(np.pi / 2, 0, [1, 2])
+            qml.Kerr(5.0, 1)
+
+            return (
+                qml.var(hqml.QuadP(1)),
+                qml.expval(qml.PauliZ(0)),
+            )
+
+        qasm = hqml.to_openqasm(circuit, precision=5, strict=strict)()
+
+        # Beamsplitter gets converted
+        assert "cv_bs(3.1416, -1.5708) m[0], m[1];" in qasm
+        assert "cv_k(-5.0) m[0];" in qasm
+
+        p = re.compile(r"state_prep\(\);")
+        assert len(p.findall(qasm)) == 1
+
+        assert "bit[1] c1;" in qasm
+        assert "cv_r(1.5708) m[0];" in qasm
+
+        if strict:
+            evaluate_openqasm_compliance(qasm)
+        else:
+            assert "qubit[1] q;" in qasm
+            assert "qumode[2] m;" in qasm
+
+            assert "float[homodyne_precision_bits] c0 = measure_x m[0];" in qasm
+            assert "c1[0] = measure q[0];" in qasm

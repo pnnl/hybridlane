@@ -318,7 +318,9 @@ class TestExampleCircuits:
 
             # check qumodes in state |1>|2>
             return (
-                hqml.expval(hqml.FockStateProjector([1, 2], [1, 3])),
+                qml.expval(
+                    hqml.FockStateProjector([1, 2], [1, 3])
+                ),  # check that from_pennylane transform handles it
                 hqml.expval(hqml.NumberOperator(1)),
                 hqml.expval(hqml.NumberOperator(3)),
             )

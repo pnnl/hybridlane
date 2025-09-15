@@ -484,7 +484,6 @@ class AntiJaynesCummings(Operation, Hybrid):
         )
 
 
-# Todo: Verify if the expression is correct. In Table III.3, it is listed as :math:`\exp[-i\sigma_x (\theta \ad + \theta^*a)]`, but since :math:`\theta \in \mathbb{R}`, :math:`\theta^* = \theta`. Hence, I factored it out above.
 class Rabi(Operation, Hybrid):
     r"""Rabi interaction :math:`RB(\theta)`
 
@@ -492,33 +491,36 @@ class Rabi(Operation, Hybrid):
 
     .. math::
 
-        RB(\theta) = \exp[-i\theta\sigma_x (\ad + a)]
+        RB(\theta) = \exp[-i\sigma_x (\theta \ad + \theta^*a)]
 
-    where :math:`\theta \in \mathbb{R}` (see Table III.3 of [1]_).
+    where :math:`\theta = re^{i\varphi} \in \mathbb{C}` (see Table III.3 of [1]_).
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
-    num_params = 1
+    num_params = 2
     num_wires = 2
     num_qumodes = 1
 
-    def __init__(self, theta: TensorLike, wires: WiresLike, id: Optional[str] = None):
-        super().__init__(theta, wires=wires, id=id)
+    def __init__(
+        self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
+    ):
+        super().__init__(r, phi, wires=wires, id=id)
 
     def simplify(self):
-        theta = self.data[0] % (2 * math.pi)
+        r = self.data[0]
+        phi = self.data[1] % (2 * math.pi)
 
-        if _can_replace(theta, 0):
+        if _can_replace(r, 0):
             return qml.Identity(self.wires)
 
-        return Rabi(theta, self.wires)
+        return Rabi(r, phi, self.wires)
 
     def pow(self, z: int | float):
-        return [Rabi(self.data[0] * z, self.wires)]
+        return [Rabi(self.data[0] * z, self.data[1], self.wires)]
 
     def adjoint(self):
-        return Rabi(-self.data[0], self.wires)
+        return Rabi(-self.data[0], self.data[1], self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
