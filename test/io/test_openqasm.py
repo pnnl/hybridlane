@@ -33,6 +33,7 @@ class TestCircuits:
             )
 
         qasm = hqml.to_openqasm(circuit, precision=5, strict=strict)(5)
+        print(qasm)
 
         p = re.compile(r"cv_jc")
         assert len(p.findall(qasm)) == 5
