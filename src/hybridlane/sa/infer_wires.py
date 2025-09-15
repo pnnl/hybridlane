@@ -19,7 +19,7 @@ from ..measurements import (
     StateMeasurement,
 )
 from .exceptions import StaticAnalysisError
-from ..ops import Hybrid
+from ..ops.mixins import Hybrid
 from ..ops.mixins import Spectral
 from .base import BasisSchema, StaticAnalysisResult, ComputationalBasis
 

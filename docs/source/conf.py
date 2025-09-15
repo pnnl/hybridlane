@@ -39,9 +39,6 @@ autosummary_generate = True
 # Intersphinx mapping
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-    "qiskit": ("https://docs.quantum.ibm.com/api/qiskit", None),
     "pennylane": ("https://docs.pennylane.ai/en/stable/", None),
 }
 
@@ -87,3 +84,13 @@ html_static_path = ["_static"]
 # Sphinx Math Dollar configuration for $...$ inline math
 # math_dollar_inline = True
 # math_dollar_display = True
+
+# Configure MathJax for HTML output
+mathjax3_config = {
+    "tex": {
+        "macros": {
+            "ad": r"a^\dagger",
+            "bd": r"b^\dagger",
+        }
+    }
+}

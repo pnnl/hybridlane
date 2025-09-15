@@ -2,8 +2,9 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-from typing import Sequence
+from typing import Iterable, Sequence
 from pennylane.typing import TensorLike
+from pennylane.wires import Wires
 
 from ..sa.base import ComputationalBasis
 
@@ -67,3 +68,35 @@ class Spectral:
         raise NotImplementedError(
             "This class does not support obtaining the spectrum in Fock basis"
         )
+
+
+class Hybrid:
+    r"""Mixin for hybrid CV-DV gates
+
+    This mixin adds functionality to split the wires of the gate by type into
+    qumodes and qubits. By using this mixin, it enforces the convention that
+    qubits come first, followed by qumodes.
+
+    This mixin is also used in static analysis passes to type-check circuits.
+    """
+
+    num_qumodes: int
+    """The number of qumodes the gate acts on"""
+
+    wires: Wires
+
+    def split_wires(self) -> tuple[Wires, Wires]:
+        """Splits the wires into qubits and qumodes
+
+        Returns:
+            qubits: The wires representing the qubits this operator acts on
+
+            qumodes: The wires representing the qumodes this operator acts on
+        """
+
+        if not isinstance(self.wires, Iterable):
+            raise ValueError("Expected a hybrid gate acting on at least 2 objects")
+
+        wires = Wires(self.wires)
+        qubits, qumodes = wires[: -self.num_qumodes], wires[-self.num_qumodes :]
+        return qubits, qumodes

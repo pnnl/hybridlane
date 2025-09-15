@@ -19,7 +19,7 @@ gate cv_sq(r, φ) m {}
 gate cv_k(κ) m {}
 
 // Cubic-phase gate
-gate cv_p3(γ) m {}
+gate cv_c(r) m {}
 
 // Fourier gate
 gate cv_f m { cv_r(π/2) m; }
@@ -28,16 +28,19 @@ gate cv_f m { cv_r(π/2) m; }
 gate cv_bs(θ, φ) m1, m2 {}
 
 // Two-mode squeezing gate
-gate cv_sq2(r, φ) m1, m2 {}
+gate cv_tms(r, φ) m1, m2 {}
 
 // Two-mode sum gate
-gate cv_tms(λ) m1, m2 {}
+gate cv_sum(λ) m1, m2 {}
 
 // Conditioned-rotation gate
 gate cv_cr(θ) q, m { negctrl @ cv_r(θ) q, m; ctrl @ inv @ cv_r(θ) q, m; }
 
 // Conditioned-displacement gate
 gate cv_cd(r, ϕ) q, m { negctrl @ cv_d(r, ϕ) q, m; ctrl @ inv @ cv_d(r, ϕ) q, m; }
+
+// Conditioned-squeezing gate
+gate cv_cs(r, φ) q, m { negctrl @ cv_sq(r, φ) q, m; ctrl @ inv @ cv_sq(r, φ) q, m; }
 
 // Conditioned-parity gate
 gate cv_cp q, m { cv_cr(π) q, m; }
@@ -61,7 +64,7 @@ gate cv_ajc(θ, φ) q, m {}
 gate cv_cbs(θ, φ) q, m1, m2 { negctrl @ cv_bs(θ, φ) q, m1, m2; ctrl @ inv @ cv_bs(θ, φ) q, m1, m2; }
 
 // Conditioned-two mode squeezing gate
-gate cv_csq2(r, φ) q, m1, m2 { negctrl @ cv_sq2(r, φ) q, m1, m2; ctrl @ inv @ cv_sq2(r, φ) q, m1, m2; }
+gate cv_ctms(r, φ) q, m1, m2 { negctrl @ cv_tms(r, φ) q, m1, m2; ctrl @ inv @ cv_tms(r, φ) q, m1, m2; }
 
 // Conditioned-two-mode sum gate
-gate cv_ctms(λ) q, m1, m2 { negctrl @ cv_tms(λ) q, m1, m2; ctrl @ inv @ cv_tms(λ) q, m1, m2; }
+gate cv_csum(λ) q, m1, m2 { negctrl @ cv_sum(λ) q, m1, m2; ctrl @ inv @ cv_sum(λ) q, m1, m2; }

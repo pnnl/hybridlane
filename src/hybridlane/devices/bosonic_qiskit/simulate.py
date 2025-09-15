@@ -37,7 +37,7 @@ from ...measurements import (
     StateMeasurement,
     VarianceMP,
 )
-from ...ops import Hybrid
+from ...ops.mixins import Hybrid
 from .gates import cv_gate_map, dv_gate_map, hybrid_gate_map, misc_gate_map
 from .register_mapping import RegisterMapping
 

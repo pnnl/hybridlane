@@ -2,10 +2,113 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-"""Module containing export functions to a superset of OpenQASM"""
+r"""Module containing export functions to a superset of OpenQASM
 
-from typing import Any, Optional
+Here we give an example with a circuit that performs a measurement that is non-diagonal (because
+the computational basis in phase space is :math:`\hat{x}`).
+
+.. code:: python
+
+    import pennylane as qml
+    import hybridlane as hqml
+
+    dev = qml.device("hybrid.bosonicqiskit")
+
+    @qml.qnode(dev)
+    def circuit(n):
+        for j in range(n):
+            qml.X(0)
+            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+
+        return (
+            hqml.var(hqml.QuadP(1)),
+            hqml.expval(qml.PauliZ(0)),
+        )
+
+    qasm = hqml.to_openqasm(circuit, precision=5, strict=strict)(5)
+
+Output with ``strict=False`` (the default)
+
+.. code::
+
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    const int homodyne_precision_bits = 32;
+    const int fock_readout_precision_bits = 32;
+    include "cvstdgates.inc";
+
+
+    qubit[1] q;
+    qumode[1] m;
+
+    def state_prep() {
+        reset q;
+        reset m;
+        x q[0];
+        cv_jc(1.5708, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(1.1107, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(0.9069, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(0.7854, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(0.70248, 1.5708) q[0], m[0];
+    }
+
+    state_prep();
+    cv_r(-1.5708) m[0];
+    float[homodyne_precision_bits] c0 = measure_x m[0];
+    bit[1] c1;
+    c1[0] = measure q[0];
+
+Output with ``strict=True``
+
+.. code::
+
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    const int homodyne_precision_bits = 32;
+    const int fock_readout_precision_bits = 32;
+    include "cvstdgates.inc";
+
+
+    // Position measurement x
+    defcal measure_x m -> float[homodyne_precision_bits] {}
+
+    // Fock measurement n
+    defcal measure_n m -> uint[fock_readout_precision_bits] {}
+
+    qubit[1] q;
+    qubit[1] m;
+
+    def state_prep() {
+        reset q;
+        reset m;
+        x q[0];
+        cv_jc(1.5708, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(1.1107, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(0.9069, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(0.7854, 1.5708) q[0], m[0];
+        x q[0];
+        cv_jc(0.70248, 1.5708) q[0], m[0];
+    }
+
+    state_prep();
+    cv_r(-1.5708) m[0];
+    float[homodyne_precision_bits] c0 = measure_x(m[0]);
+    bit[1] c1;
+    c1[0] = measure q[0];
+"""
+
 import textwrap
+from functools import wraps
+from typing import Any, Callable, Optional
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
@@ -18,37 +121,100 @@ import hybridlane as hqml
 
 from .. import sa
 
+
+def to_openqasm(
+    qnode,
+    rotations: bool = True,
+    precision: Optional[int] = None,
+    strict: bool = False,
+    float_bits: int = 32,
+    int_bits: int = 32,
+    indent: int = 4,
+) -> Callable[[Any], str]:
+    r"""Converts a circuit to an OpenQASM 3.0 program
+
+    By default, the output will be a *superset* of the OpenQASM standard with extra features and language
+    extensions that capture hybrid CV-DV programs. These modifications are detailed in the documentation.
+    If you would like the output to be strictly compliant with OpenQASM 3.0, you can pass the ``strict=True``
+    flag, which will
+
+    1. Replace ``measure_x`` and ``measure_n`` keywords with equivalent ``defcal`` statements and function calls.
+
+    2. Remove all ``qumode`` keywords, replacing them with ``qubit``. This has the effect of erasing the type information of the program.
+
+    .. note::
+        Qubit measurements are assumed to be performed in the computational basis, while
+        qumode measurements are determined from the :class:`~hybridlane.sa.base.BasisSchema` of each
+        measurement. If sampling an observable, this function can provide the gates necessary to diagonalize
+        each observable by setting ``rotations=True``. Only wires that are actually measured will have measurement
+        statements. Finally, non-overlapping measurements will be grouped together as much as possible and
+        measured on the same call to ``state_prep()``; however, the resulting program may have multiple executions
+        of the tape as needed to accomodate all the measurements.
+
+    Args:
+        qnode: The QNode to be converted to OpenQASM
+
+        rotations: Include diagonalizing gates for an observable prior to measurement. This applies
+            both to qubit observables and qumode observables.
+
+        precision: An optional number of decimal places to use when recording the angle parameters of each gate
+
+        strict: Forces the output to be strictly compliant with the OpenQASM 3.0 parser.
+
+        float_bits: The number of bits used to contain the result of a homodyne measurement.
+
+        int_bits: The number of bits used to contain the result of a Fock state readout.
+
+        indent: Number of spaces to indent the program by
+
+    Returns:
+        A string containing the program in OpenQASM 3.0
+    """
+    from pennylane.workflow import construct_tape
+
+    @wraps(qnode)
+    def wrapper(*args, **kwargs) -> str:
+        tape = construct_tape(qnode)(*args, **kwargs)
+        return tape_to_openqasm(
+            tape,
+            rotations=rotations,
+            precision=precision,
+            strict=strict,
+            float_bits=float_bits,
+            int_bits=int_bits,
+            indent=indent,
+        )
+
+    return wrapper
+
+
 ###########################################
 #           Gate definitions
 ###########################################
 
-# CV "standard library", taken from Table IV.4 of https://arxiv.org/abs/2407.10381
+# CV "standard library", included in "cvstdgates.inc"
 cv_stdgates: dict[str, str] = {
-    # Gaussian operations
-    "Displacement": "cv_d",
     "Rotation": "cv_r",
+    "Displacement": "cv_d",
     "Squeezing": "cv_sq",
+    "Kerr": "cv_k",
+    "CubicPhase": "cv_p3",
+    "Fourier": "cv_f",
     "Beamsplitter": "cv_bs",
     "TwoModeSqueezing": "cv_sq2",
-    # Cubic ISA
-    "CubicPhase": "cv_p3",
-    # SNAP ISA
-    "SelectiveNumberArbitraryPhase": "cv_snap",
-    # Phase-space ISA
-    "ConditionalDisplacement": "cv_cd",
-    # Fock-space ISA
-    "SelectiveQubitRotation": "cv_sqr",
-    # Sideband ISA
-    "JaynesCummings": "cv_jc",
-    # Convenience
-    "ModeSwap": "cv_swap",
-    "Fourier": "cv_f",
-    "AntiJaynesCummings": "cv_ajc",
-    "ConditionalParity": "cv_cp",
-    # Controlled variants of above gates (maybe needed for `ctrl @ gate` syntax)
+    "TwoModeSum": "cv_tms",
     "ConditionalRotation": "cv_cr",
+    "ConditionalDisplacement": "cv_cd",
+    "ConditionalSqueezing": "cv_cs",
+    "ConditionalParity": "cv_cp",
+    "SelectiveQubitRotation": "cv_sqr",
+    "SelectiveNumberArbitraryPhase": "cv_snap",
+    "ModeSwap": "cv_swap",
+    "JaynesCummings": "cv_jc",
+    "AntiJaynesCummings": "cv_ajc",
     "ConditionalBeamsplitter": "cv_cbs",
     "ConditionalTwoModeSqueezing": "cv_csq2",
+    "ConditionalTwoModeSum": "cv_ctms",
 }
 
 all_gates = OPENQASM_GATES | cv_stdgates
@@ -77,12 +243,7 @@ def get_header(float_bits: int, int_bits: int):
 
 # We leave the calibration bodies {} empty because they should be opaque definitions.
 # In principle, these could be hardware pulse definitions.
-def get_cv_calibration_definition(
-    strict: bool = False,
-    float_bits: int = 32,
-    int_bits: int = 32,
-):
-    kw = "qubit" if strict else Keywords.QumodeDef
+def get_cv_calibration_definition():
     return textwrap.dedent(f"""
         // Position measurement x
         defcal {Keywords.MeasureQuadX} m -> float[{Keywords.HomodynePrecision}] {{}}
@@ -93,7 +254,7 @@ def get_cv_calibration_definition(
 
 # This version only unrolls all the gates. A more advanced version that captures the loop
 # and conditional branching structure would require plxpr
-def to_openqasm(
+def tape_to_openqasm(
     tape: QuantumScript,
     rotations: bool = True,
     precision: Optional[int] = None,
@@ -114,12 +275,7 @@ def to_openqasm(
     qasm_str = get_header(float_bits, int_bits) + "\n"
 
     if strict:
-        qasm_str += (
-            get_cv_calibration_definition(
-                strict=strict, float_bits=float_bits, int_bits=int_bits
-            )
-            + "\n"
-        )
+        qasm_str += get_cv_calibration_definition() + "\n"
 
     qasm_str += "\n"
 

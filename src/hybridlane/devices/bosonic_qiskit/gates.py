@@ -8,7 +8,7 @@ from pennylane.ops.cv import CVOperation
 
 import hybridlane as hqml
 
-from ...ops import Hybrid
+from ...ops.mixins import Hybrid
 
 # For entries that list `None`, they are listed for completeness. We should force the user to compile
 # their circuit to the basis defined by gates that have methods listed. However, some of these gates
