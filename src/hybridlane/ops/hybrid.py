@@ -3,56 +3,14 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import math
-from typing import Iterable, Optional
+from typing import Optional
 
 import pennylane as qml
 from pennylane.operation import Operation
 from pennylane.typing import TensorLike
-from pennylane.wires import Wires, WiresLike
+from pennylane.wires import WiresLike
 
-
-def _can_replace(x, y):
-    """
-    Convenience function that returns true if x is close to y and if
-    x does not require grad
-    """
-    return (
-        not qml.math.is_abstract(x)
-        and not qml.math.requires_grad(x)
-        and qml.math.allclose(x, y)
-    )
-
-
-class Hybrid:
-    r"""Mixin for hybrid CV-DV gates
-
-    This mixin adds functionality to split the wires of the gate by type into
-    qumodes and qubits. By using this mixin, it enforces the convention that
-    qumodes come first in the wire order, followed by qubits.
-
-    This mixin is also used in static analysis passes to type-check circuits.
-    """
-
-    num_qumodes: int
-    """The number of qumodes the gate acts on"""
-
-    wires: Wires
-
-    def split_wires(self) -> tuple[Wires, Wires]:
-        """Splits the wires into qubits and qumodes
-
-        Returns:
-            qumodes: The wires representing the qumodes this operator acts on
-
-            qubits: The wires representing the qubits this operator acts on
-        """
-
-        if not isinstance(self.wires, Iterable):
-            raise ValueError("Expected a hybrid gate acting on at least 2 objects")
-
-        wires = Wires(self.wires)
-        qumodes, qubits = wires[: self.num_qumodes], wires[self.num_qumodes :]
-        return qumodes, qubits
+from .mixins import Hybrid
 
 
 class ConditionalRotation(Operation, Hybrid):
@@ -61,36 +19,26 @@ class ConditionalRotation(Operation, Hybrid):
     This operation implements a phase-space rotation on a qumode, conditioned on the state of a control qubit. It
     is given by the unitary expression
 
-    ..math::
+    .. math::
 
-        CR(\theta) = \exp[-i \frac{\theta}{2}\sigma_z \hat{n}]
+        CR(\theta) &= \exp[-i \frac{\theta}{2}\sigma_z \hat{n}] \\
+                   &= \ket{0}\bra{0} \otimes R(\theta) + \ket{1}\bra{1} \otimes R(-\theta)
 
-    where :math:`\sigma_z` is the Z operator acting on the qubit, and :math:`\hat{n} = a^\dagger a`
+    where :math:`\sigma_z` is the Z operator acting on the qubit, and :math:`\hat{n} = \ad a`
     is the number operator of the qumode (see Box III.8 of [1]_). With this definition, the angle parameter
-    :math:`\theta \in [0, 4\pi)`.
+    ranges :math:`\theta \in [0, 4\pi)`.
 
     The ``wires`` attribute is assumed to be ``(qubit, qumode)``.
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 1
     num_wires = 2
     num_qumodes = 1
 
     def __init__(self, theta: TensorLike, wires: WiresLike, id: Optional[str] = None):
-        shape = qml.math.shape(theta)
-        if len(shape) > 1:
-            raise ValueError(f"Expected scalar parameter; got shape {shape}")
-
         super().__init__(theta, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 1
-
-    @property
-    def ndim_params(self):
-        return (0,)
 
     def adjoint(self):
         theta = self.parameters[0]
@@ -107,6 +55,113 @@ class ConditionalRotation(Operation, Hybrid):
 
         return ConditionalRotation(theta, self.wires)
 
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CR", cache=cache
+        )
+
+
+class ConditionalDisplacement(Operation, Hybrid):
+    r"""Symmetric conditional displacement gate :math:`CD(\alpha)`
+
+    This is the qubit-conditioned version of the :py:class:`~pennylane.ops.cv.Displacement` gate, given by
+
+    .. math::
+
+        CD(\alpha) &= \exp[\sigma_z(\alpha \ad - \alpha^* a)] \\
+                   &= \ket{0}\bra{0} \otimes D(\alpha) + \ket{1}\bra{1} \otimes D(-\alpha)
+
+    where :math:`\alpha = ae^{i\phi} \in \mathbb{C}` (see Box III.7 of [1]_).
+
+    .. seealso::
+
+        :py:class:`~hybridlane.ops.cv.Displacement`
+
+    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    """
+
+    num_params = 2
+    num_wires = 2
+    num_qumodes = 1
+
+    def __init__(
+        self,
+        a: TensorLike,
+        phi: TensorLike,
+        wires: WiresLike,
+        id: Optional[str] = None,
+    ):
+        super().__init__(a, phi, wires=wires, id=id)
+
+    def pow(self, z: int | float):
+        a, phi = self.data
+        return [ConditionalDisplacement(a * z, phi, self.wires)]
+
+    def adjoint(self):
+        return [ConditionalDisplacement(-self.data[0], self.data[1], self.wires)]
+
+    def simplify(self):
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+
+        if _can_replace(a, 0):
+            return qml.Identity(self.wires)
+
+        return ConditionalDisplacement(a, phi, self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CD", cache=cache
+        )
+
+
+class ConditionalSqueezing(Operation, Hybrid):
+    r"""Qubit-conditioned squeezing gate :math:`CS(\zeta)`
+
+    This gate implements the unitary
+
+    .. math::
+
+        CS(\zeta) &= \exp\left[\frac{1}{2}\sigma_z (\zeta^* a^2 - \zeta (\ad)^2)\right] \\
+                  &= \ket{0}\bra{0} \otimes S(\zeta) + \ket{1}\bra{1} \otimes S(-\zeta)
+
+    where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (see Box IV.3 of [1]_).
+
+    .. seealso::
+
+        :class:`~hybridlane.ops.cv.Squeezing`
+    
+    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    """
+
+    num_params = 2
+    num_wires = 2
+    num_qumodes = 1
+
+    def __init__(
+        self, z: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
+    ):
+        super().__init__(z, phi, wires=wires, id=id)
+
+    def pow(self, n: int | float):
+        z, phi = self.data
+        return [ConditionalSqueezing(z * n, phi, self.wires)]
+
+    def adjoint(self):
+        return [ConditionalSqueezing(-self.data[0], self.data[1], self.wires)]
+
+    def simplify(self):
+        z, phi = self.data[0], self.data[1] % (2 * math.pi)
+
+        if _can_replace(z, 0):
+            return qml.Identity(self.wires)
+
+        return ConditionalSqueezing(z, phi, self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CS", cache=cache
+        )
+
 
 class ConditionalParity(Operation, Hybrid):
     r"""Qubit-conditioned number parity gate :math:`CP`
@@ -116,22 +171,22 @@ class ConditionalParity(Operation, Hybrid):
 
     .. math::
 
-        CP = \exp[-i\frac{\pi}{2}\sigma_z \hat{n}]
+        CP &= \exp[-i\frac{\pi}{2}\sigma_z \hat{n}] \\
+           &= \ket{0}\bra{0} \otimes F + \ket{1}\bra{1} \otimes F^\dagger
+
+    This gate can also be viewed as the "conditioned" version of the :class:`~hybridlane.ops.cv.Fourier` gate.
 
     .. seealso::
 
         :py:class:`~.ConditionalRotation`
     """
 
+    num_params = 0
     num_wires = 2
     num_qumodes = 1
 
     def __init__(self, wires: WiresLike, id: Optional[str] = None):
         super().__init__(wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 0
 
     @staticmethod
     def compute_decomposition(*params, wires, **hyperparameters):
@@ -139,6 +194,11 @@ class ConditionalParity(Operation, Hybrid):
 
     def adjoint(self):
         return ConditionalRotation(-math.pi, self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CP", cache=cache
+        )
 
 
 class SelectiveQubitRotation(Operation, Hybrid):
@@ -155,12 +215,12 @@ class SelectiveQubitRotation(Operation, Hybrid):
 
     .. note::
 
-        This differs from the vectorized definition in the CVDV paper to act on just a single Fock state :math:`\ket{n}`. To
-        match the vectorized version, apply multiple SQR gates in series with the appropriate angles and Fock states.
+        This differs from the vectorized definition in the CVDV paper to act on just a single Fock state :math:`\ket{n}`. To match the vectorized version, apply multiple SQR gates in series with the appropriate angles and Fock states.
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 2
     num_wires = 2
     num_qumodes = 1
 
@@ -172,14 +232,6 @@ class SelectiveQubitRotation(Operation, Hybrid):
         wires: WiresLike,
         id: Optional[str] = None,
     ):
-        theta_shape = qml.math.shape(theta)
-        if len(theta_shape) > 1:
-            raise ValueError(f"Expected scalar for theta; got shape {theta_shape}")
-
-        phi_shape = qml.math.shape(phi)
-        if len(phi_shape) > 1:
-            raise ValueError(f"Expected scalar for phi; got shape {phi_shape}")
-
         if n < 0:
             raise ValueError(f"Fock state must be >= 0; got {n}")
 
@@ -187,14 +239,6 @@ class SelectiveQubitRotation(Operation, Hybrid):
         self.hyperparameters["n"] = n
 
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 2
-
-    @property
-    def ndim_params(self):
-        return (0, 0)
 
     def adjoint(self):
         theta, phi = self.parameters
@@ -225,6 +269,12 @@ class SelectiveQubitRotation(Operation, Hybrid):
         hyperparams = dict(metadata[1])
         return cls(data[0], data[1], hyperparams["n"], wires)
 
+    def label(self, decimals=None, base_label=None, cache=None):
+        n = self.hyperparameters["n"]
+        return super().label(
+            decimals=decimals, base_label=base_label or f"SQR_{{{n}}}", cache=cache
+        )
+
 
 class SelectiveNumberArbitraryPhase(Operation, Hybrid):
     r"""Selective Number-dependent Arbitrary Phase (SNAP) gate :math:`SNAP(\varphi, n)`
@@ -233,7 +283,8 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
 
     .. math::
 
-        SNAP(\varphi, n) = e^{-i \varphi \sigma_z \ket{n}\bra{n}}
+        SNAP(\varphi, n) &= e^{-i \varphi \sigma_z \ket{n}\bra{n}} \\
+                         &= \left(e^{-i \varphi}\ket{0}\bra{0} + e^{i\varphi}\ket{1}\bra{1} \right) \otimes \ket{n}\bra{n} + I_2 \otimes I_{\mathbb{N}_0 - \{n\}}
 
     with :math:`\varphi \in [0, 2\pi)` (see Box III.10 of [1]_). If the control qubit starts in the :math:`\ket{0}` state, the :math:`\sigma_z` term
     can be neglected, effectively making this gate purely bosonic. However, because its implementation frequently
@@ -252,6 +303,7 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 1
     num_wires = 2
     num_qumodes = 1
 
@@ -262,23 +314,11 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
         wires: WiresLike,
         id: Optional[str] = None,
     ):
-        shape = qml.math.shape(phi)
-        if len(shape) > 1:
-            raise ValueError(f"Expected scalar-like for phi; got shape {shape}")
-
         if n < 0:
             raise ValueError(f"Fock state must be >= 0; got {n}")
 
         self.hyperparameters["n"] = n
         super().__init__(phi, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 1
-
-    @property
-    def ndim_params(self):
-        return (0,)
 
     def adjoint(self):
         phi = self.parameters[0]
@@ -319,6 +359,12 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
 
         return SelectiveNumberArbitraryPhase(phi, n, self.wires)
 
+    def label(self, decimals=None, base_label=None, cache=None):
+        n = self.hyperparameters["n"]
+        return super().label(
+            decimals=decimals, base_label=base_label or f"SNAP_{{{n}}}", cache=cache
+        )
+
 
 class JaynesCummings(Operation, Hybrid):
     r"""Jaynes-cummings gate :math:`JC(\theta, \varphi)`, also known as Red-Sideband
@@ -327,10 +373,10 @@ class JaynesCummings(Operation, Hybrid):
 
     .. math::
 
-        JC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_- a^\dagger + e^{-i\varphi}\sigma_+ a)]
+        JC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_- \ad + e^{-i\varphi}\sigma_+ a)]
 
     where :math:`\sigma_+` (:math:`\sigma_-`) is the raising (lowering) operator of the qubit, and
-    :math:`\theta, \varphi \in [0, 2\pi)`. See Table III.3 of [1]_.
+    :math:`\theta, \varphi \in [0, 2\pi)` (see Table III.3 of [1]_).
 
     .. note::
 
@@ -345,6 +391,7 @@ class JaynesCummings(Operation, Hybrid):
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 2
     num_wires = 2
     num_qumodes = 1
 
@@ -355,23 +402,7 @@ class JaynesCummings(Operation, Hybrid):
         wires: WiresLike,
         id: Optional[str] = None,
     ):
-        theta_shape = qml.math.shape(theta)
-        if len(theta_shape) > 1:
-            raise ValueError(f"Expected scalar for theta; got shape {theta_shape}")
-
-        phi_shape = qml.math.shape(phi)
-        if len(phi_shape) > 1:
-            raise ValueError(f"Expected scalar for phi; got shape {phi_shape}")
-
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 2
-
-    @property
-    def ndim_params(self):
-        return (0, 0)
 
     def simplify(self):
         theta = self.data[0] % (2 * math.pi)
@@ -388,6 +419,11 @@ class JaynesCummings(Operation, Hybrid):
     def adjoint(self):
         return JaynesCummings(-self.data[0], self.data[1], self.wires)
 
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "JC", cache=cache
+        )
+
 
 class AntiJaynesCummings(Operation, Hybrid):
     r"""Anti-Jaynes-cummings gate :math:`AJC(\theta, \varphi)`, also known as Blue-Sideband
@@ -396,7 +432,7 @@ class AntiJaynesCummings(Operation, Hybrid):
 
     .. math::
 
-        AJC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_+ a^\dagger + e^{-i\varphi}\sigma_- a)]
+        AJC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_+ \ad + e^{-i\varphi}\sigma_- a)]
 
     where :math:`\sigma_+` (:math:`\sigma_-`) is the raising (lowering) operator of the qubit, and
     :math:`\theta, \varphi \in [0, 2\pi)`.
@@ -414,6 +450,7 @@ class AntiJaynesCummings(Operation, Hybrid):
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 2
     num_wires = 2
     num_qumodes = 1
 
@@ -424,23 +461,7 @@ class AntiJaynesCummings(Operation, Hybrid):
         wires: WiresLike,
         id: Optional[str] = None,
     ):
-        theta_shape = qml.math.shape(theta)
-        if len(theta_shape) > 1:
-            raise ValueError(f"Expected scalar for theta; got shape {theta_shape}")
-
-        phi_shape = qml.math.shape(phi)
-        if len(phi_shape) > 1:
-            raise ValueError(f"Expected scalar for phi; got shape {phi_shape}")
-
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 2
-
-    @property
-    def ndim_params(self):
-        return (0, 0)
 
     def simplify(self):
         theta = self.data[0] % (2 * math.pi)
@@ -457,6 +478,11 @@ class AntiJaynesCummings(Operation, Hybrid):
     def adjoint(self):
         return AntiJaynesCummings(-self.data[0], self.data[1], self.wires)
 
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "AJC", cache=cache
+        )
+
 
 class Rabi(Operation, Hybrid):
     r"""Rabi interaction :math:`RB(\theta)`
@@ -465,117 +491,41 @@ class Rabi(Operation, Hybrid):
 
     .. math::
 
-        RB(\theta) = \exp[-i\theta\sigma_x (a^\dagger + a)]
+        RB(\theta) = \exp[-i\sigma_x (\theta \ad + \theta^*a)]
 
-    where :math:`\theta \in \mathbb{R}` (see Table III.3 of [1]_).
-
-    .. todo::
-
-        Verify if the expression is correct. In Table III.3, it is listed as :math:`\exp[-i\sigma_x (\theta a^\dagger + \theta^*a)]`,
-        but since :math:`\theta \in \mathbb{R}`, :math:`\theta^* = \theta`. Hence, I factored it out above.
+    where :math:`\theta = re^{i\varphi} \in \mathbb{C}` (see Table III.3 of [1]_).
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
-    num_wires = 2
-    num_qumodes = 1
-
-    def __init__(self, theta: TensorLike, wires: WiresLike, id: Optional[str] = None):
-        shape = qml.math.shape(theta)
-        if len(shape) > 1:
-            raise ValueError(f"Expected scalar for theta; got shape {shape}")
-
-        super().__init__(theta, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 1
-
-    @property
-    def ndim_params(self):
-        return (0,)
-
-    def simplify(self):
-        theta = self.data[0] % (2 * math.pi)
-
-        if _can_replace(theta, 0):
-            return qml.Identity(self.wires)
-
-        return Rabi(theta, self.wires)
-
-    def pow(self, z: int | float):
-        return [Rabi(self.data[0] * z, self.wires)]
-
-    def adjoint(self):
-        return Rabi(-self.data[0], self.wires)
-
-
-class ConditionalDisplacement(Operation, Hybrid):
-    r"""Symmetric conditional displacement gate :math:`CD(\alpha)`
-
-    This is the qubit-conditioned version of the :py:class:`~pennylane.ops.cv.Displacement` gate, given by
-
-    .. math::
-
-        CD(\alpha) = \ket{0}\bra{0} \otimes D(\alpha) + \ket{1}\bra{1} \otimes D(-\alpha)
-
-    where :math:`\alpha = ae^{i\phi} \in \mathbb{C}` (see Box III.7 of [1]_). This can also be written as an exponential
-
-    .. math::
-
-        CD(\alpha) = \exp[\sigma_z(\alpha a^\dagger - \alpha^* a)]
-
-    .. seealso::
-
-        :py:class:`~pennylane.ops.cv.Displacement`
-
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
-    """
-
+    num_params = 2
     num_wires = 2
     num_qumodes = 1
 
     def __init__(
-        self,
-        a: TensorLike,
-        phi: TensorLike,
-        wires: WiresLike,
-        id: Optional[str] = None,
+        self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
     ):
-        a_shape = qml.math.shape(a)
-        if len(a_shape) > 1:
-            raise ValueError(f"Expected scalar for a; got shape {a_shape}")
-
-        phi_shape = qml.math.shape(phi)
-        if len(phi_shape) > 1:
-            raise ValueError(f"Expected scalar for phi; got shape {phi_shape}")
-
-        super().__init__(a, phi, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 2
-
-    @property
-    def ndim_params(self):
-        return (0, 0)
-
-    def pow(self, z: int | float):
-        a = self.data[0] ** z
-        phi = self.data[1] * z
-
-        return [ConditionalDisplacement(a, phi, self.wires)]
-
-    def adjoint(self):
-        return [ConditionalDisplacement(1 / self.data[0], -self.data[1], self.wires)]
+        super().__init__(r, phi, wires=wires, id=id)
 
     def simplify(self):
-        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+        r = self.data[0]
+        phi = self.data[1] % (2 * math.pi)
 
-        if _can_replace(a, 0):
+        if _can_replace(r, 0):
             return qml.Identity(self.wires)
 
-        return ConditionalDisplacement(a, phi, self.wires)
+        return Rabi(r, phi, self.wires)
+
+    def pow(self, z: int | float):
+        return [Rabi(self.data[0] * z, self.data[1], self.wires)]
+
+    def adjoint(self):
+        return Rabi(-self.data[0], self.data[1], self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "RB", cache=cache
+        )
 
 
 class ConditionalBeamsplitter(Operation, Hybrid):
@@ -585,23 +535,19 @@ class ConditionalBeamsplitter(Operation, Hybrid):
 
     .. math::
 
-        CBS(\theta, \varphi) = \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}a^\dagger b + e^{-i\varphi} ab^\dagger)]
+        CBS(\theta, \varphi) &= \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b + e^{-i\varphi} ab^\dagger)] \\
+                             &= \ket{0}\bra{0} \otimes BS(\theta, \varphi) + \ket{1}\bra{1} \otimes BS(-\theta, \varphi)
 
     where :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, \pi)` (see Table III.3 of [1]_).
 
-    .. note::
-
-        Pennylane uses a different convention for the Beamsplitter gate compared to the CVDV paper. In particular,
-        one must transform :math:`\theta \rightarrow \theta/2` and :math:`\varphi \rightarrow -(\varphi + \pi/2)` to be compatible
-        with the original definition.
-
     .. seealso::
 
-        :py:class:`~pennylane.ops.cv.Beamsplitter`
+        :py:class:`~hybridlane.ops.cv.Beamsplitter`
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 2
     num_wires = 3
     num_qumodes = 2
 
@@ -612,23 +558,7 @@ class ConditionalBeamsplitter(Operation, Hybrid):
         wires: WiresLike,
         id: Optional[str] = None,
     ):
-        theta_shape = qml.math.shape(theta)
-        if len(theta_shape) > 1:
-            raise ValueError(f"Expected scalar for theta; got shape {theta_shape}")
-
-        phi_shape = qml.math.shape(phi)
-        if len(phi_shape) > 1:
-            raise ValueError(f"Expected scalar for phi; got shape {phi_shape}")
-
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 2
-
-    @property
-    def ndim_params(self):
-        return (0, 0)
 
     def adjoint(self):
         return ConditionalBeamsplitter(-self.data[0], self.data[1], self.wires)
@@ -645,15 +575,21 @@ class ConditionalBeamsplitter(Operation, Hybrid):
 
         return ConditionalBeamsplitter(theta, phi, self.wires)
 
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CBS", cache=cache
+        )
+
 
 class ConditionalTwoModeSqueezing(Operation, Hybrid):
     r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
 
-    This is the qubit-conditioned version of the :py:class:`~pennylane.ops.cv.TwoModeSqueezing` gate, given by
+    This is the qubit-conditioned version of the :py:class:`~hybridlane.ops.cv.TwoModeSqueezing` gate, given by
 
     .. math::
 
-        CTMS(\xi) = \exp[\sigma_z (\xi a^\dagger b^\dagger - \xi^* ab)]
+        CTMS(\xi) &= \exp[\sigma_z (\xi \ad b^\dagger - \xi^* ab)] \\
+                  &= \ket{0}\bra{0} \otimes TMS(\xi) + \ket{1}\bra{1} \otimes TMS(-\xi)
 
     where :math:`\xi = re^{i\phi} \in \mathbb{C}` (see Table III.3 of [1]_).
 
@@ -663,11 +599,12 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
 
     .. seealso::
 
-        :py:class:`~pennylane.ops.cv.TwoModeSqueezing`
+        :py:class:`~hybridlane.ops.cv.TwoModeSqueezing`
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 2
     num_wires = 3
     num_qumodes = 2
 
@@ -678,34 +615,14 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
         wires: WiresLike,
         id: Optional[str] = None,
     ):
-        r_shape = qml.math.shape(r)
-        if len(r_shape) > 1:
-            raise ValueError(f"Expected scalar for a; got shape {r_shape}")
-
-        phi_shape = qml.math.shape(phi)
-        if len(phi_shape) > 1:
-            raise ValueError(f"Expected scalar for phi; got shape {phi_shape}")
-
         super().__init__(r, phi, wires=wires, id=id)
 
-    @property
-    def num_params(self):
-        return 2
-
-    @property
-    def ndim_params(self):
-        return (0, 0)
-
     def pow(self, z: int | float):
-        a = self.data[0] ** z
-        phi = self.data[1] * z
-
-        return [ConditionalTwoModeSqueezing(a, phi, self.wires)]
+        r, phi = self.data
+        return [ConditionalTwoModeSqueezing(r * z, phi, self.wires)]
 
     def adjoint(self):
-        return [
-            ConditionalTwoModeSqueezing(1 / self.data[0], -self.data[1], self.wires)
-        ]
+        return [ConditionalTwoModeSqueezing(-self.data[0], self.data[1], self.wires)]
 
     def simplify(self):
         a, phi = self.data[0], self.data[1] % (2 * math.pi)
@@ -715,6 +632,11 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
 
         return ConditionalTwoModeSqueezing(a, phi, self.wires)
 
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CTMS", cache=cache
+        )
+
 
 class ConditionalTwoModeSum(Operation, Hybrid):
     r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
@@ -723,34 +645,24 @@ class ConditionalTwoModeSum(Operation, Hybrid):
 
     .. math::
 
-        CSUM(\lambda) = \exp[\frac{\lambda}{2}\sigma_z(a + a^\dagger)(b^\dagger - b)]
+        CSUM(\lambda) &= \exp[\frac{\lambda}{2}\sigma_z(a + \ad)(b^\dagger - b)] \\
+                      &= \ket{0}\bra{0} \otimes SUM(\lambda) + \ket{1}\bra{1} \otimes SUM(-\lambda)
 
     with :math:`\lambda \in \mathbb{R}` (see Table III.3 of [1]_).
 
     .. seealso::
 
-        :py:class:`~hybridlane.qml.ops.cv.TwoModeSum`
+        :py:class:`~hybridlane.ops.cv.TwoModeSum`
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
 
+    num_params = 1
     num_wires = 3
     num_qumodes = 2
 
     def __init__(self, lam: TensorLike, wires: WiresLike, id: Optional[str] = None):
-        shape = qml.math.shape(lam)
-        if len(shape) > 1:
-            raise ValueError(f"Expected scalar-like for lambda; got shape {shape}")
-
         super().__init__(lam, wires=wires, id=id)
-
-    @property
-    def num_params(self):
-        return 1
-
-    @property
-    def ndim_params(self):
-        return (0,)
 
     def adjoint(self):
         lambda_ = self.parameters[0]
@@ -765,6 +677,23 @@ class ConditionalTwoModeSum(Operation, Hybrid):
             return qml.Identity(self.wires)
 
         return ConditionalTwoModeSum(lambda_, self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CSUM", cache=cache
+        )
+
+
+def _can_replace(x, y):
+    """
+    Convenience function that returns true if x is close to y and if
+    x does not require grad
+    """
+    return (
+        not qml.math.is_abstract(x)
+        and not qml.math.requires_grad(x)
+        and qml.math.allclose(x, y)
+    )
 
 
 # -----------------------------------

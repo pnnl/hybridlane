@@ -84,8 +84,8 @@ def circuit(n):
         qml.X(0) # wire `0` inferred to be a qubit
 
         # Or use the hybrid CV-DV gates in Hybridlane
-        # (!) Qumodes come before qubits, allowing m0 to be inferred as a qumode
-        hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, ["m0", 0])
+        # (!) Qubits come before qumodes, allowing m0 to be inferred as a qumode
+        hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m0"])
 
     # Freely mix qubit and qumode observables
     # (!) We use `hqml` for measurements and for CV observables

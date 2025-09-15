@@ -19,7 +19,7 @@ from ..measurements import (
     StateMeasurement,
 )
 from .exceptions import StaticAnalysisError
-from ..ops import Hybrid
+from ..ops.mixins import Hybrid
 from ..ops.mixins import Spectral
 from .base import BasisSchema, StaticAnalysisResult, ComputationalBasis
 
@@ -178,7 +178,7 @@ def _infer_wire_types_from_operations(ops: list[Operator]) -> tuple[Wires, Wires
         # For hybrid observables, we defined a function to explicitly
         # partition qubits and qumodes
         if isinstance(op, Hybrid):
-            qumode_wires, qubit_wires = op.split_wires()
+            qubit_wires, qumode_wires = op.split_wires()
             qumodes += qumode_wires
             qubits += qubit_wires
 

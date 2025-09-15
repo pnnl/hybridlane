@@ -25,7 +25,7 @@ class TestWireTypeChecking:
 
     def test_some_operations(self):
         with qml.queuing.AnnotatedQueue() as q:
-            hqml.ConditionalDisplacement(0, 0, wires=[0, 1])
+            hqml.ConditionalDisplacement(0, 0, wires=[1, 0])
             qml.X(1)
             qml.Displacement(0, 0, wires=[0])
 

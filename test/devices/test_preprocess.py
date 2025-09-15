@@ -14,7 +14,7 @@ from hybridlane.sa.exceptions import StaticAnalysisError
 class TestValidateWireTypes:
     def test_bad_circuit(self):
         with qml.queuing.AnnotatedQueue() as q:
-            hqml.ConditionalDisplacement(0, 0, wires=[0, 1])
+            hqml.ConditionalDisplacement(0, 0, wires=[1, 0])
             qml.X(0)
 
         tape = QuantumScript.from_queue(q)
@@ -24,7 +24,7 @@ class TestValidateWireTypes:
 
     def test_good_circuit(self):
         with qml.queuing.AnnotatedQueue() as q:
-            hqml.ConditionalDisplacement(0, 0, wires=[0, 1])
+            hqml.ConditionalDisplacement(0, 0, wires=[1, 0])
             qml.X(1)
             qml.Displacement(0, 0, wires=[0])
 
