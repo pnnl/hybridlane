@@ -248,6 +248,7 @@ def _infer_wire_types_from_observable(obs: Operator) -> tuple[Wires, Wires]:
         raise StaticAnalysisError(f"Unknown how to infer qumodes for observable {obs}")
 
 
+# todo: maybe incorporate the attributes.diagonal_in_fock_basis and attributes.diagonal_in_position_basis?
 def infer_schema_from_observable(obs: Operator) -> BasisSchema:
     if isinstance(obs, CompositeOp):
         return BasisSchema.all_wires(

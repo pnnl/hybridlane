@@ -1,7 +1,7 @@
 hybridlane documentation
 ========================
 
-hybridlane is a frontend library for expressing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the `PennyLane <https://pennylane.ai/>`_ ecosystem. It implements the concepts introduced in the paper Y. Liu *et al*, 2024 `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_.
+hybridlane is a frontend library for expressing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the `PennyLane <https://pennylane.ai/>`_ ecosystem. It implements the concepts introduced in the paper Y. Liu *et al*, 2024 (`arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_).
 
 
 
@@ -43,24 +43,16 @@ hybridlane offers functionality designed for hybrid quantum circuit development:
 
 hybridlane is currently in **early preview**. We highly value your feedback on GitHub Issues to help us improve!
 
-In the future, this package will be available on PyPI and installable via:
+The package can be installed from PyPI with
 
 .. code:: bash
 
-    pip install hybridlane
-
-
-For now, you must install it manually by cloning the GitHub repository:
-
-.. code:: bash
-
-    git clone https://www.github.com/pnnl/hybridlane.git
-    cd hybridlane
-    pip install -e .[bq]
+    pip install hybridlane[extras]
 
 
 **Available Extra Flags:**
 
+*   ``[all]``: Installs all extra flags.
 *   ``[bq]``: Installs support for the ``hybrid.bosonicqiskit`` simulation device.
 
 For more detailed installation instructions and environment setup, please refer to the :doc:`Getting Started Guide in our Documentation <getting-started>`.

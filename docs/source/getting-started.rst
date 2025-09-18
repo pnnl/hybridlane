@@ -41,7 +41,7 @@ To enable hot-reloading (live updating) of the documentation, run
 .. code-block:: bash
 
     cd docs
-    uv run sphinx-autobuild source _build/html --watch ../src --ignore "source/api/**/*.rst" --re-ignore ".*__pycache__.*"
+    uv run sphinx-autobuild source _build/html --watch ../src --ignore "source/_autoapi/**/*.rst" --re-ignore ".*__pycache__.*"
 
 and open your browser to `http://localhost:8000 <http://localhost:8000>`_. For users unfamiliar with the Sphinx reStructured Text
 format, there is a nice cheatsheet `here <https://sphinx-tutorial.readthedocs.io/cheatsheet/>`_.

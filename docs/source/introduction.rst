@@ -23,6 +23,7 @@ Defining a quantum circuit in Hybridlane follows the same format as Pennylane, a
 
 .. code:: python
 
+    import numpy as np
     import pennylane as qml
     import hybridlane as hqml
 
@@ -49,6 +50,7 @@ Let's walk through the steps:
 
 .. code:: python
 
+    import numpy as np
     import pennylane as qml
     import hybridlane as hqml
 
@@ -129,11 +131,11 @@ which produces the output
 
 .. code::
 
-    0: ──X─╭JaynesCummings(1.57,1.57)──X─╭JaynesCummings(1.11,1.57)──X─╭JaynesCummings(0.91,1.57)──X ···
-    1: ────╰JaynesCummings(1.57,1.57)────╰JaynesCummings(1.11,1.57)────╰JaynesCummings(0.91,1.57)─── ···
+    0: ──X─╭JC(1.57,1.57)──X─╭JC(1.11,1.57)──X─╭JC(0.91,1.57)──X─╭JC(0.79,1.57)──X─╭JC(0.70,1.57)─┤ ···
+    1: ────╰JC(1.57,1.57)────╰JC(1.11,1.57)────╰JC(0.91,1.57)────╰JC(0.79,1.57)────╰JC(0.70,1.57)─┤ ···
 
-    0: ··· ─╭JaynesCummings(0.79,1.57)──X─╭JaynesCummings(0.70,1.57)─┤               
-    1: ··· ─╰JaynesCummings(0.79,1.57)────╰JaynesCummings(0.70,1.57)─┤  expval(n̂(1))
+    0: ···                
+    1: ···   expval(n̂(1))
 
 A prettier graphic can be made through matplotlib, with
 
@@ -141,4 +143,4 @@ A prettier graphic can be made through matplotlib, with
 
     qml.draw_mpl(circuit, decimals=2, style='sketch')(5)
 
-.. image:: _static/images/ex_jc_circuit.png
+.. image:: _static/introduction/ex_jc_circuit.png
