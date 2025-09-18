@@ -42,7 +42,7 @@ jobs:
 
       - name: Install docs dependencies with uv
         run: |
-          uv sync --all-extras --frozen --only-group docs
+          uv sync --all-extras --frozen --no-default-groups --group docs
       
       - name: Build docs
         run: |
