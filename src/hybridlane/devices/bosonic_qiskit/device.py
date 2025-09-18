@@ -169,14 +169,15 @@ class BosonicQiskitDevice(Device):
         from .simulate import simulate
 
         truncation = execution_config.device_options.get("truncation", self._truncation)
+        max_fock_level = execution_config.device_options.get(
+            "max_fock_level", self._max_fock_level
+        )
 
         # Try to infer truncation based on circuit structure
         if truncation is None:
             sa_results = map(sa.analyze, circuits)
             truncations = list(
-                map(
-                    lambda res: _infer_truncation(res, self._max_fock_level), sa_results
-                )
+                map(lambda res: _infer_truncation(res, max_fock_level), sa_results)
             )
             if any(t is None for t in truncations):
                 raise DeviceError(
