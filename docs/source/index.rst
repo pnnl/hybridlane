@@ -79,12 +79,7 @@ Get started with hybridlane in just a few lines of code:
     import hybridlane as hqml
 
     # Create the bosonic qiskit simulator with custom Fock truncation
-    dev = qml.device(
-        "hybrid.bosonicqiskit",
-        wires=[0, "m0"],
-        qumodes=["m0"],
-        max_fock_level=8
-    )
+    dev = qml.device("hybrid.bosonicqiskit", max_fock_level=8)
 
     # Define a hybrid circuit with familiar Pennylane syntax
     @qml.qnode(dev)

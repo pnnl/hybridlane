@@ -125,29 +125,38 @@ class BosonicQiskitDevice(Device):
         self,
         wires: Optional[Sequence[Hashable]] = None,
         shots: Optional[int] = None,
-        qumodes: Optional[Sequence[Hashable]] = None,
         max_fock_level: Optional[int] = None,
         truncation: Optional[FockTruncation] = None,
         hbar: float = 2,
     ):
+        r"""Initializes the device
+
+        Args:
+            wires: An optional list of wires to expect in each circuit. If this is passed, then executing
+                a circuit will error if it has any wire not in `wires`
+
+            shots: The number of shots to use for a measurement. If `None` (the default), this performs
+                analytic measurements
+
+            max_fock_level: The cutoff to apply uniformly across all qumodes.
+
+            truncation: An optional truncation that allows for more granular cutoffs specified per-qumode.
+                This must be passed if `max_fock_level` is None.
+
+            hbar: The value for the constant :math:`\bar{h}`.
+        """
+
         if importlib.util.find_spec("c2qa") is None:
             raise ImportError(
                 f"The {self.short_name} device depends on bosonic-qiskit, "
                 "which can be installed with `pip install hybrid-circuit[bq]`"
             )
 
-        if truncation is None and max_fock_level is not None:
-            # Try to use the `max_fock_level` and `wires` as a shortcut to specifying a truncation
-            if qumodes is None or wires is None:
-                raise DeviceError(
-                    "Must specify device wires that are qumodes to use max_fock_level keyword argument"
-                )
-
-            truncation = FockTruncation.all_fock_space(
-                wires, {w: max_fock_level for w in qumodes}
-            )
+        if truncation and not isinstance(truncation, FockTruncation):
+            raise DeviceError(f"Only Fock truncations are supported, got {truncation}")
 
         self._truncation = truncation
+        self._max_fock_level = max_fock_level
         self._hbar = hbar
 
         super().__init__(wires=wires, shots=shots)
@@ -161,33 +170,26 @@ class BosonicQiskitDevice(Device):
 
         truncation = execution_config.device_options.get("truncation", self._truncation)
 
-        # This should be handled in the setup_execution_config, but for some reason that's never
-        # invoked by qml.qnode(). Therefore we also try to infer truncation here too
+        # Try to infer truncation based on circuit structure
         if truncation is None:
             sa_results = map(sa.analyze, circuits)
-            truncations = list(map(_maybe_infer_qubits, sa_results))
+            truncations = list(
+                map(
+                    lambda res: _infer_truncation(res, self._max_fock_level), sa_results
+                )
+            )
             if any(t is None for t in truncations):
                 raise DeviceError(
                     "Unable to infer truncation for one of the circuits in the batch. Need to specify truncation "
                     "of qumodes through `device_options`"
                 )
+        else:
+            truncations = [truncation] * len(circuits)
 
-            # Check that they're all the same
-            t = truncations[0]
-            if len(truncations) > 1:
-                for t2 in truncations[1:]:
-                    if t != t2:
-                        raise DeviceError(
-                            f"{self.name} inferred different truncations for some circuits in the batch. "
-                            "Consider splitting up into different batches"
-                        )
-
-            truncation = t
-
-        if not isinstance(truncation, FockTruncation):
-            raise DeviceError(f"Only Fock truncations are supported, got {truncation}")
-
-        return tuple(simulate(tape, truncation, hbar=self._hbar) for tape in circuits)
+        return tuple(
+            simulate(tape, truncation, hbar=self._hbar)
+            for tape, truncation in zip(circuits, truncations)
+        )
 
     def setup_execution_config(
         self,
@@ -212,8 +214,9 @@ class BosonicQiskitDevice(Device):
             updated_values["device_options"].get("truncation") is None
             and circuit is not None
         ):
+            max_fock_level = updated_values["device_options"].get("max_fock_level")
             res = sa.analyze(circuit)
-            if (truncation := _maybe_infer_qubits(res)) is None:
+            if (truncation := _infer_truncation(res, max_fock_level)) is None:
                 raise DeviceError(
                     "Need to specify truncation of qumodes through `device_options`"
                 )
@@ -254,11 +257,14 @@ class BosonicQiskitDevice(Device):
         return transform_program
 
 
-def _maybe_infer_qubits(sa_result: sa.StaticAnalysisResult) -> FockTruncation | None:
-    if sa_result.qumodes:
+def _infer_truncation(
+    sa_result: sa.StaticAnalysisResult, max_fock_level: int | None
+) -> FockTruncation | None:
+    if sa_result.qumodes and max_fock_level is None:
         return None
 
-    truncation = FockTruncation.all_fock_space(
-        sa_result.wire_order, {w: 2 for w in sa_result.wire_order}
-    )
+    qumodes = {w: max_fock_level for w in sa_result.qumodes}
+    qubits = {w: 2 for w in sa_result.qubits}
+
+    truncation = FockTruncation.all_fock_space(sa_result.wire_order, qumodes | qubits)
     return truncation
