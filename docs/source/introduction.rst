@@ -121,7 +121,18 @@ These lines pass the parameter :math:`n = 5` to our circuit, meaning we will pre
 Drawing the circuit
 -------------------
 
-Pennylane provides some utility methods for visualizing circuits, :py:func:`pennylane.draw` and :py:func:`pennylane.draw_mpl`, which (mostly) work on Hybridlane circuits. To view a textual representation of the circuit, we can do
+Pennylane provides some utility methods for visualizing circuits, :py:func:`pennylane.draw` and :py:func:`pennylane.draw_mpl`, which (mostly) work on Hybridlane circuits. 
+
+.. code:: python
+
+    hqml.draw_mpl(circuit, style='sketch')(n)
+
+.. image:: _static/introduction/ex_jc_circuit.png
+
+Note that here we use :py:func:`hqml.draw_mpl <hybridlane.draw_mpl>` because Hybridlane includes extra functionality to draw
+hybrid circuits like support for gates and drawing icons denoting qubits/qumodes.
+
+To view a textual representation of the circuit, we can do
 
 .. code:: python
 
@@ -137,10 +148,3 @@ which produces the output
     0: ···                
     1: ···   expval(n̂(1))
 
-A prettier graphic can be made through matplotlib, with
-
-.. code:: python
-
-    qml.draw_mpl(circuit, decimals=2, style='sketch')(5)
-
-.. image:: _static/introduction/ex_jc_circuit.png
