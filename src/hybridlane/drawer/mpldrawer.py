@@ -61,8 +61,7 @@ class HybridMPLDrawer(MPLDrawer):
         color = options.get("color", plt.rcParams["lines.color"])
 
         # Draw containing box
-        bg_color = _adjust_alpha(color, self._icon_face_alpha)
-        bg_color = _blend(bg_color, "white")
+        bg_color = icon_face_color(color, self._icon_face_alpha)
         rect = patches.Rectangle(
             (x - w / 2, y - h / 2),
             width=w,
@@ -103,8 +102,7 @@ class HybridMPLDrawer(MPLDrawer):
         color = options.get("color", plt.rcParams["lines.color"])
 
         # Draw containing circle
-        bg_color = _adjust_alpha(color, self._icon_face_alpha)
-        bg_color = _blend(bg_color, "white")
+        bg_color = icon_face_color(color, self._icon_face_alpha)
         rect = patches.Circle(
             (x, y),
             radius=r,
@@ -212,6 +210,12 @@ def _parabola_width(poly: Polynomial, y: float):
 
 def _circle_width(r, y):
     return 2 * np.sqrt(r**2 - y**2)
+
+
+def icon_face_color(color, alpha):
+    color = _adjust_alpha(color, alpha)
+    color = _blend(color, "white")
+    return tuple(color)
 
 
 def _adjust_alpha(color, alpha):
