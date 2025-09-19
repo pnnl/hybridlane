@@ -395,13 +395,8 @@ class TwoModeSum(CVOperation):
 class ModeSwap(CVOperation):
     r"""Continuous-variable SWAP between two qumodes
 
-    The unitary implementing this gate is
-
-    .. math::
-
-        SWAP = \exp[\frac{\pi}{2}(\ad b - ab^\dagger)]
-
-    (see Box III.4 of [1]_). This is a special case of the :py:class:`~hybridlane.ops.cv.Beamsplitter` gate with :math:`SWAP = BS(\theta=\pi, \varphi=\pi / 2)`.
+    This has a decomposition in terms of a Beamsplitter and phase-space rotation gates
+    to eliminate the global phase. See eq. 175 [1]_.
 
     .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
     """
@@ -414,7 +409,11 @@ class ModeSwap(CVOperation):
 
     @staticmethod
     def compute_decomposition(*params, wires, **hyperparameters):
-        return [Beamsplitter(math.pi, math.pi / 2, wires)]
+        return [
+            Beamsplitter(math.pi, 0, wires),
+            Rotation(-math.pi / 2, wires[0]),
+            Rotation(-math.pi / 2, wires[1]),
+        ]
 
     def adjoint(self):
         return ModeSwap(self.wires)  # self-adjoint up to a global phase of -1
