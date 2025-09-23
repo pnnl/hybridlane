@@ -363,7 +363,7 @@ class TwoModeSum(CVOperation):
 
     in the position basis (see Box III.6 of [1]_).
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
@@ -398,7 +398,7 @@ class ModeSwap(CVOperation):
     This has a decomposition in terms of a Beamsplitter and phase-space rotation gates
     to eliminate the global phase. See eq. 175 [1]_.
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 0

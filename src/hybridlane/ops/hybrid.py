@@ -31,7 +31,7 @@ class ConditionalRotation(Operation, Hybrid):
 
     The ``wires`` attribute is assumed to be ``(qubit, qumode)``.
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
@@ -716,7 +716,7 @@ class ConditionalTwoModeSum(Operation, Hybrid):
 
         :py:class:`~hybridlane.ops.cv.TwoModeSum`
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
