@@ -1,13 +1,13 @@
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
+
 import math
-from collections import Counter
 from functools import partial
 import textwrap
 
 import pennylane as qml
-import pytest
-from pennylane.decomposition import DecompositionError
-from pennylane.exceptions import DeviceError
-from pennylane.workflow import construct_tape
 
 import hybridlane as hqml
 from hybridlane.devices.sandia_qscout import QscoutIonTrap, to_jaqal

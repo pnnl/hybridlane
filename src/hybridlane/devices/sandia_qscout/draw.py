@@ -1,3 +1,8 @@
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
+
 r"""Contains drawing utilities for quantum circuits on the ion trap"""
 
 from .device import _get_allowed_device_wires, QscoutIonTrap
