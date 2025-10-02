@@ -10,7 +10,7 @@ This package can be installed from PyPI with
 The available extra flags are:
 
 - ``all``: Installs all extra flags.
-- ``bq``: Adds support for the ``hybrid.bosonicqiskit`` device.
+- ``bq``: Adds support for the ``bosonicqiskit.hybrid`` device.
 
 Developing
 ----------

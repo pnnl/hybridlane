@@ -60,7 +60,7 @@ This code imports both Pennylane (``qml``) to get access to its decorators and t
 
     dev = qml.device('hybrid.device')
 
-When simulating circuits in Pennylane, circuits are usually bound to devices. You must choose a device that supports the operations in your circuit, or you'll obtain an error (for example, using ``qml.Displacement`` gates with the ``default.qubit`` device). This line initializes the device registered with name ``hybrid.device``. Note that while we picked a fictional device for the purposes of providing a clean example, Hybridlane does provide a reference simulator device based on Bosonic Qiskit, ``hybrid.bosonicqiskit``.
+When simulating circuits in Pennylane, circuits are usually bound to devices. You must choose a device that supports the operations in your circuit, or you'll obtain an error (for example, using ``qml.Displacement`` gates with the ``default.qubit`` device). This line initializes the device registered with name ``hybrid.device``. Note that while we picked a fictional device for the purposes of providing a clean example, Hybridlane does provide a reference simulator device based on Bosonic Qiskit, ``bosonicqiskit.hybrid``.
 
 .. code:: python
 

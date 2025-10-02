@@ -37,8 +37,14 @@ class ConditionalRotation(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(self, theta: TensorLike, wires: WiresLike, id: Optional[str] = None):
         super().__init__(theta, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         theta = self.parameters[0]
@@ -84,6 +90,8 @@ class ConditionalDisplacement(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(
         self,
         a: TensorLike,
@@ -92,6 +100,10 @@ class ConditionalDisplacement(Operation, Hybrid):
         id: Optional[str] = None,
     ):
         super().__init__(a, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def pow(self, z: int | float):
         a, phi = self.data
@@ -137,10 +149,16 @@ class ConditionalSqueezing(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(
         self, z: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
     ):
         super().__init__(z, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def pow(self, n: int | float):
         z, phi = self.data
@@ -185,8 +203,14 @@ class ConditionalParity(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(self, wires: WiresLike, id: Optional[str] = None):
         super().__init__(wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     @staticmethod
     def compute_decomposition(*params, wires, **hyperparameters):
@@ -224,6 +248,8 @@ class SelectiveQubitRotation(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(
         self,
         theta: TensorLike,
@@ -239,6 +265,10 @@ class SelectiveQubitRotation(Operation, Hybrid):
         self.hyperparameters["n"] = n
 
         super().__init__(theta, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         theta, phi = self.parameters
@@ -276,6 +306,19 @@ class SelectiveQubitRotation(Operation, Hybrid):
         )
 
 
+SQR = SelectiveQubitRotation
+r"""number-Selective Qubit Rotation (SQR) gate`
+
+.. math::
+
+    SQR(\theta, \varphi) = R_{\varphi}(\theta) \otimes \ket{n}\bra{n}
+
+.. seealso::
+
+    This is an alias for :class:`~.SelectiveQubitRotation`
+"""
+
+
 class SelectiveNumberArbitraryPhase(Operation, Hybrid):
     r"""Selective Number-dependent Arbitrary Phase (SNAP) gate :math:`SNAP(\varphi, n)`
 
@@ -307,6 +350,8 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(
         self,
         phi: TensorLike,
@@ -319,6 +364,10 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
 
         self.hyperparameters["n"] = n
         super().__init__(phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         phi = self.parameters[0]
@@ -366,6 +415,19 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
         )
 
 
+SNAP = SelectiveNumberArbitraryPhase
+r"""Selective Number-dependent Arbitrary Phase (SNAP) gate
+
+.. math::
+
+    SNAP(\varphi, n) = e^{-i \varphi \sigma_z \ket{n}\bra{n}}
+
+.. seealso::
+
+    This is an alias for :class:`~.SelectiveNumberArbitraryPhase`
+"""
+
+
 class JaynesCummings(Operation, Hybrid):
     r"""Jaynes-cummings gate :math:`JC(\theta, \varphi)`, also known as Red-Sideband
 
@@ -395,6 +457,8 @@ class JaynesCummings(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(
         self,
         theta: TensorLike,
@@ -403,6 +467,10 @@ class JaynesCummings(Operation, Hybrid):
         id: Optional[str] = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def simplify(self):
         theta = self.data[0] % (2 * math.pi)
@@ -423,6 +491,19 @@ class JaynesCummings(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "JC", cache=cache
         )
+
+
+Red = JaynesCummings
+r"""Red sideband gate
+
+.. math::
+
+    JC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_- \ad + e^{-i\varphi}\sigma_+ a)]
+
+.. seealso::
+
+    This is an alias of :class:`~.JaynesCummings`
+"""
 
 
 class AntiJaynesCummings(Operation, Hybrid):
@@ -454,6 +535,8 @@ class AntiJaynesCummings(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(
         self,
         theta: TensorLike,
@@ -462,6 +545,10 @@ class AntiJaynesCummings(Operation, Hybrid):
         id: Optional[str] = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def simplify(self):
         theta = self.data[0] % (2 * math.pi)
@@ -484,6 +571,19 @@ class AntiJaynesCummings(Operation, Hybrid):
         )
 
 
+Blue = AntiJaynesCummings
+r"""Blue sideband gate
+
+.. math::
+
+    AJC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_+ \ad + e^{-i\varphi}\sigma_- a)]
+
+.. seealso::
+
+    This is an alias of :class:`~.AntiJaynesCummings`
+"""
+
+
 class Rabi(Operation, Hybrid):
     r"""Rabi interaction :math:`RB(\theta)`
 
@@ -502,10 +602,16 @@ class Rabi(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
 
+    resource_keys = set()
+
     def __init__(
         self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
     ):
         super().__init__(r, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def simplify(self):
         r = self.data[0]
@@ -551,6 +657,8 @@ class ConditionalBeamsplitter(Operation, Hybrid):
     num_wires = 3
     num_qumodes = 2
 
+    resource_keys = set()
+
     def __init__(
         self,
         theta: TensorLike,
@@ -559,6 +667,10 @@ class ConditionalBeamsplitter(Operation, Hybrid):
         id: Optional[str] = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         return ConditionalBeamsplitter(-self.data[0], self.data[1], self.wires)
@@ -608,6 +720,8 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
     num_wires = 3
     num_qumodes = 2
 
+    resource_keys = set()
+
     def __init__(
         self,
         r: TensorLike,
@@ -616,6 +730,10 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
         id: Optional[str] = None,
     ):
         super().__init__(r, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def pow(self, z: int | float):
         r, phi = self.data
@@ -661,8 +779,14 @@ class ConditionalTwoModeSum(Operation, Hybrid):
     num_wires = 3
     num_qumodes = 2
 
+    resource_keys = set()
+
     def __init__(self, lam: TensorLike, wires: WiresLike, id: Optional[str] = None):
         super().__init__(lam, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         lambda_ = self.parameters[0]

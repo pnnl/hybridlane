@@ -116,8 +116,10 @@ def is_sampled_observable_supported(o: Operator) -> bool:
 class BosonicQiskitDevice(Device):
     r"""Backend for Pennylane that executes hybrid CV-DV circuits in Bosonic Qiskit"""
 
-    name = "hybrid.bosonicqiskit"  # type: ignore
-    short_name = "bosonic-qiskit"
+    name = "Bosonic Qiskit"  # type: ignore
+    shortname = "bosonic-qiskit"
+    version = "0.1.0"
+    author = "PNNL"
 
     _device_options = ("truncation", "hbar")
 
@@ -148,7 +150,7 @@ class BosonicQiskitDevice(Device):
 
         if importlib.util.find_spec("c2qa") is None:
             raise ImportError(
-                f"The {self.short_name} device depends on bosonic-qiskit, "
+                f"The {self.name} device depends on bosonic-qiskit, "
                 "which can be installed with `pip install hybrid-circuit[bq]`"
             )
 
