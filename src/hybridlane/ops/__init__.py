@@ -21,7 +21,10 @@ from .cv import (
     TwoModeSum,
 )
 from .hybrid import (
+    SNAP,
+    SQR,
     AntiJaynesCummings,
+    Blue,
     ConditionalBeamsplitter,
     ConditionalDisplacement,
     ConditionalParity,
@@ -31,6 +34,7 @@ from .hybrid import (
     ConditionalTwoModeSum,
     JaynesCummings,
     Rabi,
+    Red,
     SelectiveNumberArbitraryPhase,
     SelectiveQubitRotation,
 )
@@ -51,9 +55,13 @@ __all__ = [
     "Fourier",
     "Hybrid",
     "SelectiveQubitRotation",
+    "SQR",
     "SelectiveNumberArbitraryPhase",
+    "SNAP",
     "JaynesCummings",
+    "Red",
     "AntiJaynesCummings",
+    "Blue",
     "Rabi",
     "ConditionalDisplacement",
     "ConditionalSqueezing",

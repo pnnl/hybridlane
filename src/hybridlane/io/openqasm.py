@@ -12,7 +12,7 @@ the computational basis in phase space is :math:`\hat{x}`).
     import pennylane as qml
     import hybridlane as hqml
 
-    dev = qml.device("hybrid.bosonicqiskit")
+    dev = qml.device("bosonicqiskit.hybrid")
 
     @qml.qnode(dev)
     def circuit(n):

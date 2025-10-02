@@ -47,10 +47,16 @@ class Displacement(CVOperation):
         _two_term_shift_rule,
     )
 
+    resource_keys = set()
+
     def __init__(
         self, a: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
     ):
         super().__init__(a, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -84,8 +90,14 @@ class Rotation(CVOperation):
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule,)
 
+    resource_keys = set()
+
     def __init__(self, theta: TensorLike, wires: WiresLike, id: Optional[str] = None):
         super().__init__(theta, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -129,8 +141,14 @@ class Squeezing(CVOperation):
         _two_term_shift_rule,
     )
 
+    resource_keys = set()
+
     def __init__(self, r, phi, wires, id=None):
         super().__init__(r, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -161,8 +179,14 @@ class Kerr(CVOperation):
     num_wires = 1
     grad_method = "F"
 
+    resource_keys = set()
+
     def __init__(self, kappa: TensorLike, wires: WiresLike, id: Optional[str] = None):
         super().__init__(kappa, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         return Kerr(-self.parameters[0], wires=self.wires)
@@ -193,8 +217,14 @@ class CubicPhase(CVOperation):
     num_wires = 1
     grad_method = "F"
 
+    resource_keys = set()
+
     def __init__(self, r: TensorLike, wires: WiresLike, id: Optional[str] = None):
         super().__init__(r, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         return CubicPhase(-self.parameters[0], wires=self.wires)
@@ -221,8 +251,14 @@ class Fourier(CVOperation):
     num_params = 0
     num_wires = 1
 
+    resource_keys = set()
+
     def __init__(self, wires: WiresLike, id: Optional[str] = None):
         super().__init__(wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     @staticmethod
     def compute_decomposition(
@@ -253,6 +289,8 @@ class Beamsplitter(CVOperation):
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule, _two_term_shift_rule)
 
+    resource_keys = set()
+
     def __init__(
         self,
         theta: TensorLike,
@@ -261,6 +299,10 @@ class Beamsplitter(CVOperation):
         id: Optional[str] = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     # For the beamsplitter, both parameters are rotation-like
     # Todo: Redo this with new convention
@@ -313,8 +355,14 @@ class TwoModeSqueezing(CVOperation):
         _two_term_shift_rule,
     )
 
+    resource_keys = set()
+
     def __init__(self, r, phi, wires, id=None):
         super().__init__(r, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -368,9 +416,16 @@ class TwoModeSum(CVOperation):
 
     num_params = 1
     num_wires = 2
+    grad_method = "F"
+
+    resource_keys = set()
 
     def __init__(self, lambda_: TensorLike, wires: WiresLike, id: Optional[str] = None):
         super().__init__(lambda_, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     def adjoint(self):
         lambda_ = self.parameters[0]
@@ -409,8 +464,14 @@ class ModeSwap(CVOperation):
     num_params = 0
     num_wires = 2
 
+    resource_keys = set()
+
     def __init__(self, wires: WiresLike, id: Optional[str] = None):
         super().__init__(wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
     @staticmethod
     def compute_decomposition(*params, wires, **hyperparameters):

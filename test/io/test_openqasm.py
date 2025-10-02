@@ -19,7 +19,7 @@ def evaluate_openqasm_compliance(s: str):
 class TestCircuits:
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_nondiagonal_measurement(self, strict):
-        dev = qml.device("hybrid.bosonicqiskit")
+        dev = qml.device("bosonicqiskit.hybrid")
 
         @qml.qnode(dev)
         def circuit(n):
@@ -54,7 +54,7 @@ class TestCircuits:
 
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_noncommuting_measurements(self, strict):
-        dev = qml.device("hybrid.bosonicqiskit")
+        dev = qml.device("bosonicqiskit.hybrid")
 
         @qml.qnode(dev)
         def circuit(n):
@@ -94,7 +94,7 @@ class TestCircuits:
 
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_pennylane_gate(self, strict):
-        dev = qml.device("hybrid.bosonicqiskit")
+        dev = qml.device("bosonicqiskit.hybrid")
 
         @qml.qnode(dev)
         def circuit():

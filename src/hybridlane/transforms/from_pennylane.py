@@ -3,15 +3,23 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 
+from __future__ import annotations
+
 import math
-from functools import partial
-from typing import Any, Optional
+from functools import partial, singledispatch
+from typing import Any, Optional, Union
 
 import pennylane as qml
 import pennylane.measurements as pl_mp
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
-from pennylane.ops.op_math import CompositeOp, ScalarSymbolicOp, SProd, SymbolicOp
+from pennylane.ops.op_math import (
+    CompositeOp,
+    Controlled,
+    ScalarSymbolicOp,
+    SProd,
+    SymbolicOp,
+)
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
 from pennylane.wires import Wires
@@ -56,13 +64,13 @@ def from_pennylane(
             f"default_qumode_measurement must be one of {optional_qumode_measurements}, got: {default_qumode_measurement}"
         )
 
-    new_ops = list(map(_convert_operator, tape.operations))
+    new_ops = list(map(convert_operator, tape.operations))
     just_ops = QuantumScript(new_ops)
 
     sa_res = sa.analyze(just_ops)
     cache = {"sa_res": sa_res}
     mp_fn = partial(
-        _convert_measurement_process,
+        convert_measurement_process,
         default_qumode_measurement=default_qumode_measurement,
         cache=cache,
     )
@@ -77,132 +85,192 @@ def from_pennylane(
     return [new_tape], null_postprocessing
 
 
-def _convert_operator(op: Operator) -> Operator:
-    # Handle qml.adjoint
-    if isinstance(op, SymbolicOp):
-        return op.__class__(_convert_observable(op.base), id=op.id)
-
-    match op:
-        # No change
-        case qml.Displacement(data=data, wires=wires, id=id):
-            return hqml.Displacement(*data, wires=wires, id=id)
-
-        # i -> -i
-        case qml.Rotation(data=data, wires=wires, id=id):
-            return hqml.Rotation(-data[0], wires=wires, id=id)
-
-        # No change
-        case qml.Squeezing(data=data, wires=wires, id=id):
-            return hqml.Squeezing(*data, wires=wires, id=id)
-
-        # i -> -i
-        case qml.Kerr(data=data, wires=wires, id=id):
-            return hqml.Kerr(-data[0], wires=wires, id=id)
-
-        # ir(x^3)/3 -> -irx^3
-        case qml.CubicPhase(data=data, wires=wires, id=id):
-            return hqml.CubicPhase(-data[0] / 3, wires=wires, id=id)
-
-        # θ(e^{iϕ} ab† - e^{-iϕ} a†b) -> -iθ'/2 (e^{iϕ'} a†b + e^{iϕ'} ab†)
-        # θ' = 2θ
-        # ϕ' = -(ϕ + π/2)
-        case qml.Beamsplitter(data=data, wires=wires, id=id):
-            theta, phi = data
-            return hqml.Beamsplitter(
-                2 * theta, -(phi + math.pi / 2), wires=wires, id=id
-            )
-
-        # r -> -r
-        case qml.TwoModeSqueezing(data=data, wires=wires, id=id):
-            r, phi = data
-            return hqml.TwoModeSqueezing(-r, phi, wires=wires, id=id)
-
-        case _:
-            return op
+@singledispatch
+def convert_operator(op: Operator) -> Operator:
+    return op
 
 
-def _convert_observable(obs: Operator) -> Operator:
-    # Traverse the observable tree, if required.
-    # For some reason, SProd breaks the convention
-    if isinstance(obs, SProd):
-        return obs.__class__(obs.scalar, _convert_observable(obs.base), id=obs.id)
-    if isinstance(obs, ScalarSymbolicOp):
-        return obs.__class__(_convert_observable(obs.base), obs.scalar, id=obs.id)
-    if isinstance(obs, SymbolicOp):
-        return obs.__class__(_convert_observable(obs.base), id=obs.id)
-    elif isinstance(obs, CompositeOp):
-        operands = list(map(lambda op: _convert_observable(op), obs.operands))
-        return obs.__class__(*operands, id=id)
-
-    match obs:
-        case qml.QuadX(wires=wires):
-            return hqml.QuadX(wires=wires)
-
-        case qml.QuadP(wires=wires):
-            return hqml.QuadP(wires=wires)
-
-        case qml.QuadOperator(data=data, wires=wires):
-            return hqml.QuadOperator(*data, wires=wires)
-
-        case qml.FockStateProjector(data=data, wires=wires):
-            return hqml.FockStateProjector(*data, wires=wires)
-
-        case _:
-            return obs
+@convert_operator.register
+def _(op: Controlled):
+    return qml.ctrl(
+        convert_operator(op.base),
+        op.control_wires,
+        control_values=op.control_values,
+        work_wires=op.work_wires,
+        work_wire_type=op.work_wire_type,
+    )
 
 
-def _convert_measurement_process(
+@convert_operator.register
+def _(op: SymbolicOp):
+    return op.__class__(convert_operator(op.base), id=op.id)
+
+
+@convert_operator.register
+def _(op: qml.Displacement):
+    # no change, just convert to our gate
+    return hqml.Displacement(*op.data, wires=op.wires, id=op.id)
+
+
+@convert_operator.register
+def _(op: qml.Rotation):
+    # i -> -i
+    return hqml.Rotation(-op.data[0], wires=op.wires, id=op.id)
+
+
+@convert_operator.register
+def _(op: qml.Squeezing):
+    # no change, convert to our gate
+    return hqml.Squeezing(*op.data, wires=op.wires, id=op.id)
+
+
+@convert_operator.register
+def _(op: qml.Kerr):
+    # i -> -i
+    return hqml.Kerr(-op.data[0], wires=op.wires, id=op.id)
+
+
+@convert_operator.register
+def _(op: qml.CubicPhase):
+    # ir(x^3)/3 -> -irx^3
+    return hqml.CubicPhase(-op.data[0] / 3, wires=op.wires, id=op.id)
+
+
+@convert_operator.register
+def _(op: qml.Beamsplitter):
+    # θ(e^{iϕ} ab† - e^{-iϕ} a†b) -> -iθ'/2 (e^{iϕ'} a†b + e^{iϕ'} ab†)
+    # θ' = 2θ
+    # ϕ' = -(ϕ + π/2)
+    theta, phi = op.data
+    return hqml.Beamsplitter(2 * theta, -(phi + math.pi / 2), wires=op.wires, id=op.id)
+
+
+@convert_operator.register
+def _(op: qml.TwoModeSqueezing):
+    # r -> -r
+    r, phi = op.data
+    return hqml.TwoModeSqueezing(-r, phi, wires=op.wires, id=op.id)
+
+
+@singledispatch
+def convert_observable(obs: Operator) -> Operator:
+    return obs
+
+
+@convert_observable.register
+def _(obs: SProd) -> SProd:
+    return obs.__class__(obs.scalar, convert_observable(obs.base), id=obs.id)
+
+
+@convert_observable.register
+def _(obs: ScalarSymbolicOp) -> ScalarSymbolicOp:
+    return obs.__class__(convert_observable(obs.base), obs.scalar, id=obs.id)
+
+
+@convert_observable.register
+def _(obs: SymbolicOp) -> SymbolicOp:
+    return obs.__class__(convert_observable(obs.base), id=obs.id)
+
+
+@convert_observable.register
+def _(obs: CompositeOp) -> CompositeOp:
+    operands = [convert_observable(op) for op in obs.operands]
+    return obs.__class__(*operands, id=obs.id)
+
+
+@convert_observable.register
+def _(obs: qml.QuadX):
+    return hqml.QuadX(wires=obs.wires)
+
+
+@convert_observable.register
+def _(obs: qml.QuadP):
+    return hqml.QuadP(wires=obs.wires)
+
+
+@convert_observable.register
+def _(obs: qml.QuadOperator):
+    return hqml.QuadOperator(*obs.data, wires=obs.wires)
+
+
+@convert_observable.register
+def _(obs: qml.FockStateProjector):
+    return hqml.FockStateProjector(*obs.data, wires=obs.wires)
+
+
+@singledispatch
+def convert_measurement_process(
     mp: MeasurementProcess,
+    *,
     default_qumode_measurement: Optional[str] = None,
     cache: Optional[dict[str, Any]] = None,
 ) -> MeasurementProcess:
-    match mp:
-        case pl_mp.ExpectationMP(obs=obs, id=id) | hl_mp.ExpectationMP(obs=obs, id=id):
-            if obs:
-                return hl_mp.ExpectationMP(obs=_convert_observable(obs), id=id)
+    return mp
 
-            raise NotImplementedError("An observable is required with hqml.expval")
 
-        case pl_mp.VarianceMP(obs=obs, id=id) | hl_mp.VarianceMP(obs=obs, id=id):
-            if obs:
-                return hl_mp.VarianceMP(obs=_convert_observable(obs), id=id)
+# We stack decorators to handle the OR `|` cases from the match statement.
+@convert_measurement_process.register(pl_mp.ExpectationMP)
+@convert_measurement_process.register(hl_mp.ExpectationMP)
+def _(
+    mp: Union[pl_mp.ExpectationMP, hl_mp.ExpectationMP],
+    *,
+    default_qumode_measurement: Optional[str] = None,
+    cache: Optional[dict[str, Any]] = None,
+) -> hl_mp.ExpectationMP:
+    if mp.obs:
+        return hl_mp.ExpectationMP(obs=convert_observable(mp.obs), id=mp.id)
+    raise NotImplementedError("An observable is required with hqml.expval")
 
-            raise NotImplementedError("An observable is required with hqml.var")
 
-        case hl_mp.SampleMP(obs=obs, schema=schema, id=id):
-            if obs:
-                return hl_mp.SampleMP(obs=_convert_observable(obs), id=id)
+@convert_measurement_process.register(pl_mp.VarianceMP)
+@convert_measurement_process.register(hl_mp.VarianceMP)
+def _(
+    mp: Union[pl_mp.VarianceMP, hl_mp.VarianceMP],
+    *,
+    default_qumode_measurement: Optional[str] = None,
+    cache: Optional[dict[str, Any]] = None,
+):
+    if mp.obs:
+        return hl_mp.VarianceMP(obs=convert_observable(mp.obs), id=mp.id)
+    raise NotImplementedError("An observable is required with hqml.var")
 
-            return mp
 
-        case pl_mp.SampleMP(obs=obs, wires=wires, id=id):
-            if obs:
-                return hl_mp.SampleMP(obs=_convert_observable(obs), id=id)
+@convert_measurement_process.register
+def _(
+    mp: hl_mp.SampleMP,
+    *,
+    default_qumode_measurement: Optional[str] = None,
+    cache: Optional[dict[str, Any]] = None,
+):
+    if mp.obs:
+        return hl_mp.SampleMP(obs=convert_observable(mp.obs), id=mp.id)
+    return mp
 
-            # If we have no observable, we need to find which wires are qubits and qumodes,
-            # then make all qumodes use ``default_qumode_measurement``, or error if its not provided
-            # since we have no way of inferring which basis to use.
-            sa_res: sa.StaticAnalysisResult = cache["sa_res"]
-            schema = sa.BasisSchema(
-                {
-                    Wires(q): sa.ComputationalBasis.Discrete
-                    for q in wires & sa_res.qubits
-                }
+
+@convert_measurement_process.register
+def _(
+    mp: pl_mp.SampleMP,
+    *,
+    default_qumode_measurement: Optional[str] = None,
+    cache: Optional[dict[str, Any]] = None,
+):
+    if mp.obs:
+        return hl_mp.SampleMP(obs=convert_observable(mp.obs), id=mp.id)
+
+    sa_res: sa.StaticAnalysisResult = cache["sa_res"]
+    schema = sa.BasisSchema(
+        {Wires(q): sa.ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
+    )
+    if sa_res.qumodes:
+        if default_qumode_measurement is None:
+            raise ValueError(
+                f"Unable to infer basis measurements for qumodes {sa_res.qumodes}. "
+                "Consider passing in the `default_qumode_measurement` argument"
             )
-            if sa_res.qumodes:
-                if default_qumode_measurement is None:
-                    raise ValueError(
-                        f"Unable to infer basis measurements for qumodes {sa_res.qumodes}. "
-                        "Consider passing in the `default_qumode_measurement` argument"
-                    )
+        fill_value = optional_qumode_measurements[default_qumode_measurement]
+        qumode_schema = sa.BasisSchema(
+            {Wires(m): fill_value for m in mp.wires & sa_res.qumodes}
+        )
+        schema |= qumode_schema
 
-                fill_value = optional_qumode_measurements[default_qumode_measurement]
-                qumode_schema = sa.BasisSchema(
-                    {Wires(m): fill_value for m in wires & sa_res.qumodes}
-                )
-                schema |= qumode_schema
-
-            return hl_mp.SampleMP(schema=schema, id=id)
-
-        case _:
-            return mp
+    return hl_mp.SampleMP(schema=schema, id=mp.id)

@@ -12,7 +12,7 @@ Here we give an example of exporting a basic circuit to OpenQASM. Consider the f
 
 .. code:: python
 
-    dev = qml.device("hybrid.bosonicqiskit")
+    dev = qml.device("bosonicqiskit.hybrid")
 
     @qml.qnode(dev)
     def circuit(n):

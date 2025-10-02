@@ -53,7 +53,7 @@ pip install hybridlane[extras]
 
 **Available Extra Flags:**
 *   `[all]`: Installs all extra flags.
-*   `[bq]`: Installs support for the `hybrid.bosonicqiskit` simulation device.
+*   `[bq]`: Installs support for the `bosonicqiskit.hybrid` simulation device.
 
 For more detailed installation instructions and environment setup, please refer to the [Getting Started Guide in our Documentation](https://pnnl.github.io/hybridlane/getting-started.html).
 
@@ -69,7 +69,7 @@ import pennylane as qml
 import hybridlane as hqml
 
 # Create the bosonic qiskit simulator with custom Fock truncation
-dev = qml.device("hybrid.bosonicqiskit", max_fock_level=8)
+dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
 # Define a hybrid circuit with familiar Pennylane syntax
 @qml.qnode(dev)
@@ -112,7 +112,7 @@ While hybridlane provides a powerful framework for hybrid quantum circuits, it's
     Currently, hybridlane does not support PennyLane's Catalyst and `qjit` capabilities. This would require developing a custom MLIR dialect for hybrid operations, which is a significant undertaking. While not on the immediate roadmap, this could be a potential feature in the future.
 
 *   **❌ Automatic Differentiation (Autodiff):**
-    While our gate definitions are fundamentally compatible with PennyLane's differentiability paradigm, we do not yet provide a differentiable simulator device, nor are gradient recipes fully defined for all hybrid operations. For now, the `hybrid.bosonicqiskit` device will typically require finite differences for gradient computation. We plan to integrate more robust autodiff capabilities in future releases.
+    While our gate definitions are fundamentally compatible with PennyLane's differentiability paradigm, we do not yet provide a differentiable simulator device, nor are gradient recipes fully defined for all hybrid operations. For now, the `bosonicqiskit.hybrid` device will typically require finite differences for gradient computation. We plan to integrate more robust autodiff capabilities in future releases.
 
 ---
 

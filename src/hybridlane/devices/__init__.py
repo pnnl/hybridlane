@@ -4,5 +4,6 @@
 # See the LICENSE.txt file for full license text.
 from . import preprocess
 from .bosonic_qiskit import BosonicQiskitDevice
+from .sandia_qscout import QscoutIonTrap
 
-__all__ = ["preprocess", "BosonicQiskitDevice"]
+__all__ = ["preprocess", "BosonicQiskitDevice", "QscoutIonTrap"]
