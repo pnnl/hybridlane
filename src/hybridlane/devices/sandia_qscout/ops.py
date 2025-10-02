@@ -238,7 +238,7 @@ class R(Operation):
         return {}
 
     def simplify(self):
-        theta, phi = self.data[0] % (2 * math.pi), self.data[1] % math.pi
+        theta, phi = self.data[0] % (4 * math.pi), self.data[1] % math.pi
 
         if _can_replace(theta, 0):
             return qml.Identity(wires=self.wires)
