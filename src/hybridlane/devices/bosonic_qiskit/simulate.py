@@ -338,8 +338,8 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
 
         match type(op):
             case hqml.ConditionalRotation:
-                theta = parameters
-                getattr(qc, method)(-theta, *qumodes, *qubits)
+                theta = parameters[0]
+                getattr(qc, method)(-theta / 2, *qumodes, *qubits)
             case hqml.ConditionalDisplacement:
                 a, phi = parameters
                 alpha = a * np.exp(1j * phi)
