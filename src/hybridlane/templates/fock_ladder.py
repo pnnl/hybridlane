@@ -6,6 +6,7 @@
 import math
 from typing import Optional, cast
 
+import pennylane as qml
 from pennylane.ops import Operation
 from pennylane.wires import Wires, WiresLike
 
@@ -25,7 +26,7 @@ class FockLadder(Operation, Hybrid):
     num_qumodes = 1
     grad_method = None
 
-    resource_keys = {"num_gates"}
+    resource_keys = {"fock_level"}
 
     def __init__(self, n: int, wires: WiresLike = None, id: Optional[str] = None):
         super().__init__(n, wires=wires, id=id)
@@ -33,7 +34,7 @@ class FockLadder(Operation, Hybrid):
     @property
     def resource_params(self):
         n = cast(int, self.parameters[0])
-        return {"num_gates": n}
+        return {"fock_level": n}
 
     @staticmethod
     def compute_decomposition(*params, wires: Wires, **_):
@@ -48,3 +49,22 @@ class FockLadder(Operation, Hybrid):
                 decomp.append(Red(theta, math.pi / 2, wires))
 
         return decomp
+
+
+def _fockladder_resources(fock_level):
+    return {Blue: math.ceil(fock_level / 2), Red: math.floor(fock_level / 2)}
+
+
+@qml.register_resources(_fockladder_resources)
+def _fockladder_decomp(*params, wires, **_):
+    fock_state = cast(int, params[0])
+    for n in range(fock_state):
+        rabi_rate = math.sqrt(n + 1)
+        theta = math.pi / (2 * rabi_rate)
+        if n % 2 == 0:
+            Blue(theta, math.pi / 2, wires)
+        else:
+            Red(theta, math.pi / 2, wires)
+
+
+qml.add_decomps(FockLadder, _fockladder_decomp)
