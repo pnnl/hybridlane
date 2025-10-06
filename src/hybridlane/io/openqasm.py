@@ -131,6 +131,7 @@ def to_openqasm(
     float_bits: int = 32,
     int_bits: int = 32,
     indent: int = 4,
+    level: Optional[str] = "user",
 ) -> Callable[[Any], str]:
     r"""Converts a circuit to an OpenQASM 3.0 program
 
@@ -175,8 +176,8 @@ def to_openqasm(
 
     @wraps(qnode)
     def wrapper(*args, **kwargs) -> str:
-        new_qnode = from_pennylane(qnode)  # compatibility with pl gates
-        tape = construct_tape(new_qnode)(*args, **kwargs)
+        tape = construct_tape(qnode, level="user")(*args, **kwargs)
+        (tape,), _ = from_pennylane(tape)  # compatibility with pl gates
         return tape_to_openqasm(
             tape,
             rotations=rotations,
@@ -403,7 +404,7 @@ def _format_gate(
         raise ValueError(f"Unsupported gate {op.name}")
 
     if precision:
-        params = list(map(lambda p: f"{p:.{precision}}", op.parameters))
+        params = list(map(lambda p: f"{p:.{precision}f}", op.parameters))
     else:
         params = list(map(str, op.parameters))
 
