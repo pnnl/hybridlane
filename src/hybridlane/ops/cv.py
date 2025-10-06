@@ -512,6 +512,15 @@ class QuadX(qml.QuadX, Spectral):
         return f"x̂({inner})"
 
 
+X = QuadX
+r"""Position operator :math:`\hat{x}`
+
+.. seealso::
+
+    This is an alias for :class:`~.QuadX`
+"""
+
+
 class QuadP(qml.QuadP, Spectral):
     natural_basis = ComputationalBasis.Position  # type: ignore
 
@@ -530,6 +539,15 @@ class QuadP(qml.QuadP, Spectral):
     def __repr__(self):
         inner = ", ".join(map(str, self.wires))
         return f"p̂({inner})"
+
+
+P = QuadP
+r"""Momentum operator :math:`\hat{p}`
+
+.. seealso::
+
+    This is an alias for :class:`~.QuadP`
+"""
 
 
 class QuadOperator(qml.QuadOperator, Spectral):
@@ -572,6 +590,15 @@ class NumberOperator(qml.NumberOperator, Spectral):
     def __repr__(self):
         inner = ", ".join(map(str, self.wires))
         return f"n̂({inner})"
+
+
+N = NumberOperator
+r"""Number operator :math:`\hat{n}`
+
+.. seealso::
+
+    This is an alias for :class:`~.NumberOperator`
+"""
 
 
 class FockStateProjector(qml.FockStateProjector, Spectral):

@@ -11,7 +11,9 @@ from .cv import (
     Fourier,
     Kerr,
     ModeSwap,
+    N,
     NumberOperator,
+    P,
     QuadOperator,
     QuadP,
     QuadX,
@@ -19,6 +21,7 @@ from .cv import (
     Squeezing,
     TwoModeSqueezing,
     TwoModeSum,
+    X,
 )
 from .hybrid import (
     SNAP,
@@ -71,7 +74,10 @@ __all__ = [
     "ConditionalTwoModeSqueezing",
     "ConditionalTwoModeSum",
     "QuadP",
+    "P",
     "QuadX",
+    "X",
     "NumberOperator",
+    "N",
     "FockStateProjector",
 ]
