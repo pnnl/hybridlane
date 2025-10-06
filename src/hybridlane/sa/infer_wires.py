@@ -8,7 +8,7 @@ from typing import Hashable, Optional
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
-from pennylane.ops import CompositeOp, SymbolicOp
+from pennylane.ops import CompositeOp, SymbolicOp, ControlledOp
 from pennylane.ops.cv import CVObservable, CVOperation
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
@@ -175,22 +175,50 @@ def _infer_wire_types_from_operations(ops: list[Operator]) -> tuple[Wires, Wires
     qumodes, qubits = Wires([]), Wires([])
 
     for op in ops:
-        # For hybrid observables, we defined a function to explicitly
-        # partition qubits and qumodes
-        if isinstance(op, Hybrid):
-            qubit_wires, qumode_wires = op.split_wires()
-            qumodes += qumode_wires
-            qubits += qubit_wires
-
-        # Assume all CV pennylane stuff is qumodes
-        elif isinstance(op, CVOperation):
-            qumodes += op.wires
-
-        # All pennylane DV gates should fall through to here
-        else:
-            qubits += op.wires
+        new_qumodes, new_qubits = _infer_wires_from_operation(op)
+        qumodes += new_qumodes
+        qubits += new_qubits
 
     return qumodes, qubits
+
+
+@functools.singledispatch
+def _infer_wires_from_operation(op: Operator):
+    qumodes, qubits = Wires([]), Wires([])
+
+    if op.has_decomposition:
+        for o in op.decomposition():
+            new_qumodes, new_qubits = _infer_wires_from_operation(o)
+            qumodes += new_qumodes
+            qubits += new_qubits
+
+    else:
+        qubits = op.wires
+
+    return qumodes, qubits
+
+
+@_infer_wires_from_operation.register
+def _(op: CVOperation):
+    return op.wires, Wires([])
+
+
+@_infer_wires_from_operation.register
+def _(op: Hybrid):
+    qubits, qumodes = op.split_wires()
+    return qumodes, qubits
+
+
+@_infer_wires_from_operation.register
+def _(op: SymbolicOp):
+    return _infer_wires_from_operation(op.base)
+
+
+@_infer_wires_from_operation.register
+def _(op: ControlledOp):
+    ctrl_qubits = op.control_wires
+    qumodes, qubits = _infer_wires_from_operation(op.base)
+    return qumodes, qubits + ctrl_qubits
 
 
 def _infer_wire_types_from_measurement(
