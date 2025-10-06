@@ -463,6 +463,9 @@ def sampled_measurement(
 
     basis_states = {}
     for wire, qubits in regmapper.mapping.items():
+        if wire not in m.wires:
+            continue
+
         # Qumode, convert back to fock space
         if isinstance(qubits, list):
             indices: list[int] = qc.get_qubit_indices(qubits)
