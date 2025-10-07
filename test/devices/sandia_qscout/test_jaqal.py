@@ -68,7 +68,7 @@ class TestTokenizer:
 
 
 class TestToJaqal:
-    def test_sample_circuit(self):
+    def test_sample_qubit_circuit(self):
         dev = QscoutIonTrap()
 
         @partial(qml.set_shots, shots=20)
@@ -79,21 +79,22 @@ class TestToJaqal:
             return hqml.expval(qml.X(0))
 
         program = to_jaqal(circuit, level="device", precision=3)()
-        assert (
-            program
-            == textwrap.dedent(
-                r"""
+
+        def get_valid_programs(*wires):
+            return textwrap.dedent(
+                f"""
             register q[2]
 
             prepare_all
-            Rz q[0] 3.14
-            Ry q[0] 3.14
-            XX q[0] q[1] 1.57
-            Rx q[1] 11.0
-            Rz q[0] 7.85
-            Ry q[0] 1.57
-            Rz q[0] 1.57
+            Rz q[{wires[0]}] 3.14
+            Ry q[{wires[0]}] 3.14
+            XX q[{wires[0]}] q[{wires[1]}] 1.57
+            Rx q[{wires[1]}] 11.0
+            Rz q[{wires[0]}] 7.85
+            Ry q[{wires[0]}] 1.57
+            Rz q[{wires[0]}] 1.57
 
             measure_all"""
             ).strip()
-        )
+
+        assert program in {get_valid_programs(0, 1), get_valid_programs(1, 0)}

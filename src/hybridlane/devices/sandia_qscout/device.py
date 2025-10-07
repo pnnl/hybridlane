@@ -8,7 +8,7 @@ r"""Device definition for Sandia Qscout ion trap"""
 import math
 import re
 from dataclasses import replace
-from functools import singledispatch
+from functools import partial, singledispatch
 from typing import Hashable, Optional, Sequence, cast
 
 import numpy as np
@@ -185,6 +185,10 @@ class QscoutIonTrap(Device):
                 acting on the tilt modes will be replaced by the native instruction instead of
                 being decomposed into blue/red gates.
         """
+        if n_qubits is not None and n_qubits > self._max_qubits:
+            raise DeviceError(
+                f"Requested more qubits than available ({n_qubits} > {self._max_qubits})"
+            )
 
         if use_hardware_wires:
             qubits = n_qubits or self._max_qubits
@@ -242,18 +246,30 @@ class QscoutIonTrap(Device):
         # Convert pennylane gates to hybridlane
         transform_program.add_transform(from_pennylane)
 
+        # Make everything measurable in pauli z basis. Diagonalize prior to
+        # decompose so that it decomposes unsupported gates
+        transform_program.add_transform(diagonalize_measurements)
+
+        # Decompose all gates into the native gate set. We include FockLadder so that
+        # it can be laid out, and then after the layout stage we'll decompose it if necessary.
+        transform_program.add_transform(
+            decompose, gate_set=NATIVE_GATES | {"FockLadder"}
+        )
+
         # If virtual wires are allowed, we need to assign them
-        max_qubits = device_options.get("n_qubits", self._n_qubits) or self._max_qubits
+        max_qubits = device_options.get("n_qubits", self._n_qubits)
         use_com_modes = device_options.get("use_com_modes", self._use_com_modes)
         if not device_options.get("use_hardware_wires", self._use_hardware_wires):
             transform_program.add_transform(
-                assign_initial_layout,
+                layout_wires,
                 max_qubits=max_qubits,
                 use_com_modes=use_com_modes,
             )
 
         # Validate all wires are assigned to proper physical addresses
-        allowed_wires = _get_allowed_device_wires(max_qubits, use_com_modes)
+        allowed_wires = _get_allowed_device_wires(
+            max_qubits or self._max_qubits, use_com_modes
+        )
         transform_program.add_transform(
             validate_device_wires, wires=allowed_wires, name=self.name
         )
@@ -272,17 +288,13 @@ class QscoutIonTrap(Device):
         # Expand any unsupported fockstate operations because decompose transform
         # below won't (it's a native gate)
         transform_program.add_transform(
-            expand_unsupported_fockstate,
+            map_supported_fockstate,
             use_native_instruction=device_options.get(
                 "use_fockstate_instruction", self._use_fockstate_instruction
             ),
         )
 
-        # Make everything measurable in pauli z basis. Diagonalize prior to
-        # decompose so that it decomposes unsupported gates
-        transform_program.add_transform(diagonalize_measurements)
-
-        # Decompose all gates into the native gate set
+        # Do one more transformation that now expands unsupported fock ladders
         transform_program.add_transform(decompose, gate_set=NATIVE_GATES)
 
         # Optional optimizations
@@ -323,7 +335,7 @@ def validate_gates_supported_on_hardware(tape: QuantumScript):
 
 
 @qml.transform
-def assign_initial_layout(
+def layout_wires(
     tape: QuantumScript,
     sa_res: Optional[sa.StaticAnalysisResult] = None,
     max_qubits: Optional[int] = None,
@@ -348,43 +360,52 @@ def assign_initial_layout(
             f"requested or allowed ({max_qumodes})"
         )
 
-    wire_map = {}
-    occupied_qumodes = {axis: set() for axis in (0, 1)}
+    wire_map = _constrained_layout(
+        tape, sa_res, max_qubits=max_qubits, use_com_modes=use_com_modes
+    )
 
-    # If any qumodes match the convention m<mode>a<axis>, keep them, enabling users to
-    # be specific about what mode they want to target
-    unmapped_qumodes = []
-    qumode_pattern = re.compile(r"^a([01])m(\d+)$")
-    for wire in qumodes:
-        if isinstance(wire, str) and (match := qumode_pattern.match(wire)):
-            axis = int(match.group(1))
-            i = int(match.group(2))
-            occupied_qumodes[axis].add(i)
-            wire_map[wire] = wire
-        else:
-            unmapped_qumodes.append(wire)
+    if wire_map is None:
+        raise DeviceError(
+            "No layout was found that could implement the gates in the circuit"
+        )
 
-    # Generic algorithmic qumodes will get mapped to the lowest available index
-    min_qumode_idx = 1 - use_com_modes
-    i = min_qumode_idx
-    axis = 0
+    # wire_map = {}
+    # occupied_qumodes = {axis: set() for axis in (0, 1)}
 
-    def transition():
-        return (i + axis, (axis + 1) % 2)
+    # # If any qumodes match the convention m<mode>a<axis>, keep them, enabling users to
+    # # be specific about what mode they want to target
+    # unmapped_qumodes = []
+    # qumode_pattern = re.compile(r"^a([01])m(\d+)$")
+    # for wire in qumodes:
+    #     if isinstance(wire, str) and (match := qumode_pattern.match(wire)):
+    #         axis = int(match.group(1))
+    #         i = int(match.group(2))
+    #         occupied_qumodes[axis].add(i)
+    #         wire_map[wire] = wire
+    #     else:
+    #         unmapped_qumodes.append(wire)
 
-    for wire in sorted(unmapped_qumodes):
-        found = False
-        while not found:
-            if i not in occupied_qumodes[axis]:
-                found = True
-                occupied_qumodes[axis].add(i)
-                wire_map[wire] = f"a{axis}m{i}"
+    # # Generic algorithmic qumodes will get mapped to the lowest available index
+    # min_qumode_idx = 1 - use_com_modes
+    # i = min_qumode_idx
+    # axis = 0
 
-            i, axis = transition()
+    # def transition():
+    #     return (i + axis, (axis + 1) % 2)
 
-    # Just assign qubits indices 0..n
-    for i, wire in enumerate(sorted(qubits)):
-        wire_map[wire] = i
+    # for wire in sorted(unmapped_qumodes):
+    #     found = False
+    #     while not found:
+    #         if i not in occupied_qumodes[axis]:
+    #             found = True
+    #             occupied_qumodes[axis].add(i)
+    #             wire_map[wire] = f"a{axis}m{i}"
+
+    #         i, axis = transition()
+
+    # # Just assign qubits indices 0..n
+    # for i, wire in enumerate(sorted(qubits)):
+    #     wire_map[wire] = i
 
     def null_postprocessing(results):
         return results[0]
@@ -393,19 +414,69 @@ def assign_initial_layout(
     return tape_batch, null_postprocessing
 
 
-@qml.transform
-def expand_unsupported_fockstate(
-    tape: QuantumScript, use_native_instruction: bool = True
+def _constrained_layout(
+    tape: QuantumScript,
+    sa_res: sa.StaticAnalysisResult,
+    max_qubits: Optional[int] = None,
+    use_com_modes: bool = False,
+) -> dict | None:
+    max_qubits = max_qubits or len(sa_res.qubits)
+    hw_qubits = _get_device_qubits(max_qubits)
+    hw_qumodes = _get_device_qumodes(max_qubits, use_com_modes)
+
+    # Todo: Possible improvement is to iterate through solutions and score
+    # them based on qumode assignment/gate fidelities
+    problem = _construct_csp(tape, sa_res, hw_qubits, hw_qumodes)
+    wire_map = problem.getSolution()
+    return wire_map
+
+
+def _construct_csp(
+    tape: QuantumScript,
+    sa_res: sa.StaticAnalysisResult,
+    hw_qubits: Wires,
+    hw_qumodes: Wires,
 ):
+    from constraint import AllDifferentConstraint, Problem
+
+    # We'll solve the layout (note: not routing) as a constraint satisfaction problem.
+    # The inputs are virtual wires, and our output is hardware wires. Each gate
+    # potentially restricts the domain of a virtual wire's assignments.
+
+    problem = Problem()
+
+    # Ensure we get valid wire types out
+    problem.addVariables(sa_res.qubits, hw_qubits)
+    problem.addVariables(sa_res.qumodes, hw_qumodes)
+
+    # All virtual wires must have unique hardware assignments
+    problem.addConstraint(AllDifferentConstraint())
+
+    def constraint(*hw_wires, virtual_op):
+        hw_op = virtual_op.__class__(
+            *virtual_op.parameters, wires=hw_wires, **virtual_op.hyperparameters
+        )
+        return is_gate_supported(hw_op)
+
+    # Add a constraint per gate that aligns with the conditions above
+    for op in tape.operations:
+        problem.addConstraint(partial(constraint, virtual_op=op), op.wires)
+
+    return problem
+
+
+@qml.transform
+def map_supported_fockstate(tape: QuantumScript, use_native_instruction: bool = True):
     new_ops = []
 
     for op in tape.operations:
-        if isinstance(op, ops.FockStatePrep):
-            if use_native_instruction and is_gate_supported(op):
-                new_ops.append(op)
+        if isinstance(op, hqml.FockLadder):
+            native_op = ops.FockStatePrep(*op.parameters, wires=op.wires)
+            if use_native_instruction and is_gate_supported(native_op):
+                new_ops.append(native_op)
 
             else:
-                new_ops.extend(op.decomposition())
+                new_ops.append(op)
 
         else:
             new_ops.append(op)
@@ -467,8 +538,19 @@ add_decomps(hqml.ConditionalDisplacement, _conditionaldisplacement_decomp)
 # add_decomps(hqml.ConditionalSqueezing, _conditionalsqueezing_decomp)
 
 
-def _get_allowed_device_wires(max_qubits: int, use_com_modes: bool):
-    min_qumode_idx = 1 - use_com_modes
-    qubits = list(range(max_qubits))
-    qumodes = [f"a{a}m{i}" for i in range(min_qumode_idx, max_qubits) for a in (0, 1)]
+def _get_allowed_device_wires(max_qubits: int, use_com_modes: bool) -> Wires:
+    qubits = _get_device_qubits(max_qubits)
+    qumodes = _get_device_qumodes(max_qubits, use_com_modes)
     return qubits + qumodes
+
+
+def _get_device_qubits(max_qubits: int) -> Wires:
+    return Wires(range(max_qubits))
+
+
+def _get_device_qumodes(max_qubits: int, use_com_modes: bool) -> Wires:
+    min_qumode_idx = 1 - use_com_modes
+    qumodes = Wires(
+        [f"a{a}m{i}" for i in range(min_qumode_idx, max_qubits) for a in (0, 1)]
+    )
+    return qumodes

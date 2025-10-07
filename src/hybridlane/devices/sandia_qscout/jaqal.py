@@ -45,7 +45,7 @@ QUBIT_GATES = {
 BOSON_GATES = {
     "JaynesCummings": "Red",
     "AntiJaynesCummings": "Blue",
-    "FockLadder": "FockState",
+    "FockStatePrep": "FockState",
     "ConditionalXDisplacement": "SDF",
     "ConditionalXSqueezing": "RampUp",
     "NativeBeamsplitter": "Beamsplitter",
@@ -71,7 +71,7 @@ def to_jaqal(
 
 def tape_to_jaqal(tape: QuantumScript, precision: Optional[float] = None):
     sa_res = sa.analyze(tape)
-    num_qubits = len(sa_res.qubits)
+    num_qubits = max(sa_res.qubits) + 1
 
     program = f"register q[{num_qubits}]\n\n"
     program += "prepare_all\n"

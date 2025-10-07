@@ -17,6 +17,9 @@ import hybridlane as hqml
 
 from ...ops.hybrid import Hybrid, _can_replace
 
+Red = hqml.Red
+Blue = hqml.Blue
+
 
 class ConditionalXDisplacement(Operation, Hybrid):
     r"""Symmetric conditional displacement gate :math:`C_xD(\alpha)`
@@ -164,13 +167,26 @@ class SidebandProbe(Operation, Hybrid):
         )
 
 
-FockStatePrep = hqml.FockLadder
-r"""Prepare a definite Fock state
+class FockStatePrep(Operation, Hybrid):
+    r"""Prepare a definite Fock state
 
-If this is used on the tilt modes (hardware qumodes ``a0m1`` and ``a1m1``), this can
-be represented in terms of a native Jaqal instruction ``FockState``. Otherwise, the
-program will contain custom sequences of Red/Blue sideband gates
-"""
+    This is identical to ``hqml.FockLadder`` except it's only supported on hardware qumodes ``a0m1`` and ``a1m1``.
+    This gate is represented in terms of a native Jaqal instruction ``FockState``.
+    """
+
+    num_params = 1
+    num_wires = 2
+    num_qumodes = 1
+    grad_method = None
+
+    resource_keys = set()
+
+    def __init__(self, n: int, wires: WiresLike = None, id: Optional[str] = None):
+        super().__init__(n, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
 
 class NativeBeamsplitter(Operation, Hybrid):
