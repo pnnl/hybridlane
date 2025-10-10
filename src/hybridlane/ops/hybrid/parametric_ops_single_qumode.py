@@ -41,6 +41,7 @@ class ConditionalRotation(Operation, Hybrid):
     num_params = 1
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0,)
 
     resource_keys = set()
 
@@ -106,6 +107,7 @@ class ConditionalDisplacement(Operation, Hybrid):
     num_params = 2
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0, 0)
 
     resource_keys = set()
 
@@ -196,6 +198,7 @@ class ConditionalSqueezing(Operation, Hybrid):
     num_params = 2
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0, 0)
 
     resource_keys = set()
 
@@ -269,6 +272,7 @@ class SelectiveQubitRotation(Operation, Hybrid):
     num_params = 2
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0, 0)
 
     resource_keys = set()
 
@@ -380,6 +384,7 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
     num_params = 1
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0,)
 
     resource_keys = set()
 
@@ -497,6 +502,7 @@ class JaynesCummings(Operation, Hybrid):
     num_params = 2
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0, 0)
 
     resource_keys = set()
 
@@ -584,6 +590,7 @@ class AntiJaynesCummings(Operation, Hybrid):
     num_params = 2
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0, 0)
 
     resource_keys = set()
 
@@ -660,6 +667,7 @@ class Rabi(Operation, Hybrid):
     num_params = 2
     num_wires = 2
     num_qumodes = 1
+    ndim_params = (0, 0)
 
     resource_keys = set()
 

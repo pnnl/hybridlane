@@ -47,6 +47,7 @@ class ConditionalBeamsplitter(Operation, Hybrid):
     num_params = 2
     num_wires = 3
     num_qumodes = 2
+    ndim_params = (0, 0)
 
     resource_keys = set()
 
@@ -142,6 +143,7 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
     num_params = 2
     num_wires = 3
     num_qumodes = 2
+    ndim_params = (0, 0)
 
     resource_keys = set()
 
@@ -227,6 +229,7 @@ class ConditionalTwoModeSum(Operation, Hybrid):
     num_params = 1
     num_wires = 3
     num_qumodes = 2
+    ndim_params = (0,)
 
     resource_keys = set()
 

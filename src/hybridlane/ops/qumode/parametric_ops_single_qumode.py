@@ -38,6 +38,7 @@ class Displacement(CVOperation):
 
     num_params = 2
     num_wires = 1
+    ndim_params = (0, 0)
     grad_method = "A"
 
     shift = 0.1
@@ -97,6 +98,7 @@ class Rotation(CVOperation):
 
     num_params = 1
     num_wires = 1
+    ndim_params = (0,)
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule,)
 
@@ -145,6 +147,7 @@ class Squeezing(CVOperation):
 
     num_params = 2
     num_wires = 1
+    ndim_params = (0, 0)
     grad_method = "A"
 
     shift = 0.1
@@ -200,6 +203,7 @@ class Kerr(CVOperation):
 
     num_params = 1
     num_wires = 1
+    ndim_params = (0,)
     grad_method = "F"
 
     resource_keys = set()
@@ -242,6 +246,7 @@ class CubicPhase(CVOperation):
 
     num_params = 1
     num_wires = 1
+    ndim_params = (0,)
     grad_method = "F"
 
     resource_keys = set()

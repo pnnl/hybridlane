@@ -36,6 +36,7 @@ class Beamsplitter(CVOperation):
 
     num_params = 2
     num_wires = 2
+    ndim_params = (0, 0)
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule, _two_term_shift_rule)
 
@@ -104,6 +105,7 @@ class TwoModeSqueezing(CVOperation):
 
     num_params = 2
     num_wires = 2
+    ndim_params = (0, 0)
     grad_method = "A"
 
     shift = 0.1
@@ -184,6 +186,7 @@ class TwoModeSum(CVOperation):
 
     num_params = 1
     num_wires = 2
+    ndim_params = (0,)
     grad_method = "F"
 
     resource_keys = set()
