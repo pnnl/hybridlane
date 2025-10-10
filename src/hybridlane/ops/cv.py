@@ -2,24 +2,27 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-#
-# Some gates are copied from Pennylane, which is subject to
-# the Apache 2.0 license. They have been modified to match
-# the definitions in the paper arXiv:2407.10381.
 import math
+from collections.abc import Iterable, Sequence
 from functools import reduce
-from typing import Any, Hashable, Iterable, Optional, Sequence
+from typing import Any, Hashable
 
 import numpy as np
 import pennylane as qml
+from pennylane.decomposition.symbolic_decomposition import (
+    adjoint_rotation,
+    make_pow_decomp_with_period,
+    pow_involutory,
+    pow_rotation,
+    self_adjoint,
+)
 from pennylane.operation import CVOperation, Operator
+from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
-from pennylane.ops.cv import _rotation, _two_term_shift_rule
 
 from ..sa import ComputationalBasis
 from .mixins import Spectral
-
 
 # Todo: Check the grad method/param shift rules/heisenberg rep of each operator
 
@@ -50,7 +53,7 @@ class Displacement(CVOperation):
     resource_keys = set()
 
     def __init__(
-        self, a: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
+        self, a: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None
     ):
         super().__init__(a, phi, wires=wires, id=id)
 
@@ -76,6 +79,15 @@ class Displacement(CVOperation):
         )
 
 
+@qml.register_resources({Displacement: 1})
+def _pow_d(a, phi, wires, z, **_):
+    Displacement(a * z, phi, wires)
+
+
+qml.add_decomps("Adjoint(Displacement)", adjoint_rotation)
+qml.add_decomps("Pow(Displacement)", _pow_d)
+
+
 # Modify to use -i convention
 class Rotation(CVOperation):
     r"""Phase space rotation gate :math:`R(\theta)`
@@ -92,7 +104,7 @@ class Rotation(CVOperation):
 
     resource_keys = set()
 
-    def __init__(self, theta: TensorLike, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, theta: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(theta, wires=wires, id=id)
 
     @property
@@ -117,6 +129,10 @@ class Rotation(CVOperation):
         return super().label(
             decimals=decimals, base_label=base_label or "R", cache=cache
         )
+
+
+qml.add_decomps("Adjoint(Rotation)", adjoint_rotation)
+qml.add_decomps("Pow(Rotation)", pow_rotation)
 
 
 # Re-export since it matches paper convention
@@ -166,6 +182,15 @@ class Squeezing(CVOperation):
         )
 
 
+@qml.register_resources({Squeezing: 1})
+def _pow_s(r, phi, wires, z, **_):
+    Squeezing(r * z, phi, wires)
+
+
+qml.add_decomps("Adjoint(Squeezing)", adjoint_rotation)
+qml.add_decomps("Pow(Squeezing)", _pow_s)
+
+
 # Modify to have -i convention
 class Kerr(CVOperation):
     r"""Kerr gate :math:`K(\kappa)`
@@ -181,7 +206,7 @@ class Kerr(CVOperation):
 
     resource_keys = set()
 
-    def __init__(self, kappa: TensorLike, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, kappa: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(kappa, wires=wires, id=id)
 
     @property
@@ -204,6 +229,10 @@ class Kerr(CVOperation):
         )
 
 
+qml.add_decomps("Adjoint(Kerr)", adjoint_rotation)
+qml.add_decomps("Pow(Kerr)", pow_rotation)
+
+
 # Modify for -i convention
 class CubicPhase(CVOperation):
     r"""Cubic phase shift gate :math:`C(r)`
@@ -219,7 +248,7 @@ class CubicPhase(CVOperation):
 
     resource_keys = set()
 
-    def __init__(self, r: TensorLike, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, r: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(r, wires=wires, id=id)
 
     @property
@@ -242,6 +271,10 @@ class CubicPhase(CVOperation):
         )
 
 
+qml.add_decomps("Adjoint(CubicPhase)", adjoint_rotation)
+qml.add_decomps("Pow(CubicPhase)", pow_rotation)
+
+
 class Fourier(CVOperation):
     r"""Continuous-variable Fourier gate :math:`F`
 
@@ -253,7 +286,7 @@ class Fourier(CVOperation):
 
     resource_keys = set()
 
-    def __init__(self, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)
 
     @property
@@ -273,6 +306,26 @@ class Fourier(CVOperation):
         return super().label(
             decimals=decimals, base_label=base_label or "F", cache=cache
         )
+
+
+@qml.register_resources({Rotation: 1})
+def _f_to_r(wires, **_):
+    Rotation(math.pi / 2, wires)
+
+
+@qml.register_resources({Rotation: 1})
+def _adjoint_f_to_r(wires, **_):
+    Rotation(-math.pi / 2, wires)
+
+
+@qml.register_resources({Rotation: 1})
+def _pow_f_to_r(wires, z, **_):
+    Rotation(math.pi / 2 * z, wires)
+
+
+qml.add_decomps(Fourier, _f_to_r)
+qml.add_decomps("Adjoint(Fourier)", _adjoint_f_to_r)
+qml.add_decomps("Pow(Fourier)", make_pow_decomp_with_period(4), _pow_f_to_r)
 
 
 # Change to match convention
@@ -296,7 +349,7 @@ class Beamsplitter(CVOperation):
         theta: TensorLike,
         phi: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
 
@@ -332,6 +385,15 @@ class Beamsplitter(CVOperation):
         return super().label(
             decimals=decimals, base_label=base_label or "BS", cache=cache
         )
+
+
+@qml.register_resources({Beamsplitter: 1})
+def _pow_bs(theta, phi, wires, z, **_):
+    Beamsplitter(theta * z, phi, wires)
+
+
+qml.add_decomps("Adjoint(Beamsplitter)", adjoint_rotation)
+qml.add_decomps("Pow(Beamsplitter)", _pow_bs)
 
 
 # Re-export flipping sign of r, equivalent to φ -> φ + π
@@ -394,6 +456,15 @@ class TwoModeSqueezing(CVOperation):
         )
 
 
+@qml.register_resources({TwoModeSqueezing: 1})
+def _pow_tms(r, phi, wires, z, **_):
+    TwoModeSqueezing(r * z, phi, wires)
+
+
+qml.add_decomps("Adjoint(TwoModeSqueezing)", adjoint_rotation)
+qml.add_decomps("Pow(TwoModeSqueezing)", _pow_tms)
+
+
 class TwoModeSum(CVOperation):
     r"""Two-mode summing gate :math:`SUM(\lambda)`
 
@@ -420,7 +491,7 @@ class TwoModeSum(CVOperation):
 
     resource_keys = set()
 
-    def __init__(self, lambda_: TensorLike, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, lambda_: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lambda_, wires=wires, id=id)
 
     @property
@@ -447,6 +518,10 @@ class TwoModeSum(CVOperation):
         )
 
 
+qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
+qml.add_decomps("Pow(TwoModeSum)", pow_rotation)
+
+
 class ModeSwap(CVOperation):
     r"""Continuous-variable SWAP between two qumodes
 
@@ -461,7 +536,7 @@ class ModeSwap(CVOperation):
 
     resource_keys = set()
 
-    def __init__(self, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)
 
     @property
@@ -490,6 +565,17 @@ class ModeSwap(CVOperation):
         else:
             return [ModeSwap(self.wires)]
 
+
+@qml.register_resources({Beamsplitter: 1, Rotation: 2})
+def _swap_to_bs(wires, **_):
+    Beamsplitter(math.pi, 0, wires)
+    Rotation(-math.pi / 2, wires[0])
+    Rotation(-math.pi / 2, wires[1])
+
+
+qml.add_decomps(ModeSwap, _swap_to_bs)
+qml.add_decomps("Adjoint(ModeSwap)", self_adjoint)
+qml.add_decomps("Pow(ModeSwap)", pow_involutory)
 
 # ------------------------------------
 #           CV Observables

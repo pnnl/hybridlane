@@ -3,9 +3,14 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import math
-from typing import Optional
 
 import pennylane as qml
+from pennylane import numpy as np
+from pennylane.decomposition.symbolic_decomposition import (
+    adjoint_rotation,
+    make_pow_decomp_with_period,
+    pow_rotation,
+)
 from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
@@ -40,7 +45,7 @@ class ConditionalRotation(Operation, Hybrid):
 
     resource_keys = set()
 
-    def __init__(self, theta: TensorLike, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, theta: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(theta, wires=wires, id=id)
 
     @property
@@ -66,6 +71,83 @@ class ConditionalRotation(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "CR", cache=cache
         )
+
+
+qml.add_decomps("Adjoint(ConditionalRotation)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalRotation)", pow_rotation)
+
+
+class ConditionalParity(Operation, Hybrid):
+    r"""Qubit-conditioned number parity gate :math:`CP`
+
+    This gate is a special case of the :py:class:`~.ConditionalRotation` gate, with :math:`CP = CR(\pi)`, resulting
+    in the unitary expression
+
+    .. math::
+
+        CP &= \exp[-i\frac{\pi}{2}\sigma_z \hat{n}] \\
+           &= \ket{0}\bra{0} \otimes F + \ket{1}\bra{1} \otimes F^\dagger
+
+    This gate can also be viewed as the "conditioned" version of the :class:`~hybridlane.ops.cv.Fourier` gate.
+
+    .. seealso::
+
+        :py:class:`~.ConditionalRotation`
+    """
+
+    num_params = 0
+    num_wires = 2
+    num_qumodes = 1
+
+    resource_keys = set()
+
+    def __init__(self, wires: WiresLike, id: str | None = None):
+        super().__init__(wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
+
+    @staticmethod
+    def compute_decomposition(wires, **_):
+        return [ConditionalRotation(math.pi, wires)]
+
+    def adjoint(self):
+        return ConditionalRotation(-math.pi, self.wires)
+
+    def pow(self, z: int | float) -> list[Operation]:
+        z_mod4 = z % 4
+
+        if np.allclose(z_mod4, 0):
+            return []
+
+        return [ConditionalRotation(math.pi * z_mod4, self.wires)]
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "CΠ", cache=cache
+        )
+
+
+@qml.register_resources({ConditionalRotation: 1})
+def _cp_to_cr(wires, **_):
+    ConditionalRotation(math.pi, wires)
+
+
+@qml.register_resources({ConditionalRotation: 1})
+def _adjoint_cp_to_cr(wires, **_):
+    ConditionalRotation(-math.pi, wires)
+
+
+@qml.register_resources({ConditionalRotation: 1})
+def _pow_cp_to_cr(wires, z, **_):
+    z_mod4 = z % 4
+    qml.pow(ConditionalRotation(math.pi * z_mod4, wires=wires), z)
+
+
+qml.add_decomps(ConditionalParity, _cp_to_cr)
+qml.add_decomps("Adjoint(ConditionalParity)", _adjoint_cp_to_cr)
+qml.add_decomps("Pow(ConditionalParity)", make_pow_decomp_with_period(4), _pow_cp_to_cr)
 
 
 class ConditionalDisplacement(Operation, Hybrid):
@@ -106,7 +188,7 @@ class ConditionalDisplacement(Operation, Hybrid):
         a: TensorLike,
         phi: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(a, phi, wires=wires, id=id)
 
@@ -144,6 +226,23 @@ class ConditionalDisplacement(Operation, Hybrid):
         )
 
 
+@qml.register_resources({cv.Displacement: 1, ConditionalParity: 2})
+def _cd_parity_decomp(a, phi, wires, **_):
+    qml.adjoint(ConditionalParity)(wires)
+    cv.Displacement(a, phi + math.pi / 2, wires[1])
+    ConditionalParity(wires)
+
+
+@qml.register_resources({ConditionalDisplacement: 1})
+def _pow_cd(a, phi, wires, z, **_):
+    ConditionalDisplacement(z * a, phi, wires=wires)
+
+
+qml.add_decomps(ConditionalDisplacement, _cd_parity_decomp)
+qml.add_decomps("Adjoint(ConditionalDisplacement)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalDisplacement)", _pow_cd)
+
+
 class ConditionalSqueezing(Operation, Hybrid):
     r"""Qubit-conditioned squeezing gate :math:`CS(\zeta)`
 
@@ -175,7 +274,7 @@ class ConditionalSqueezing(Operation, Hybrid):
     resource_keys = set()
 
     def __init__(
-        self, z: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
+        self, z: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None
     ):
         super().__init__(z, phi, wires=wires, id=id)
 
@@ -213,48 +312,13 @@ class ConditionalSqueezing(Operation, Hybrid):
         )
 
 
-class ConditionalParity(Operation, Hybrid):
-    r"""Qubit-conditioned number parity gate :math:`CP`
+@qml.register_resources({ConditionalSqueezing: 1})
+def _pow_cs(r, phi, wires, z, **_):
+    ConditionalSqueezing(z * r, phi, wires=wires)
 
-    This gate is a special case of the :py:class:`~.ConditionalRotation` gate, with :math:`CP = CR(\pi)`, resulting
-    in the unitary expression
 
-    .. math::
-
-        CP &= \exp[-i\frac{\pi}{2}\sigma_z \hat{n}] \\
-           &= \ket{0}\bra{0} \otimes F + \ket{1}\bra{1} \otimes F^\dagger
-
-    This gate can also be viewed as the "conditioned" version of the :class:`~hybridlane.ops.cv.Fourier` gate.
-
-    .. seealso::
-
-        :py:class:`~.ConditionalRotation`
-    """
-
-    num_params = 0
-    num_wires = 2
-    num_qumodes = 1
-
-    resource_keys = set()
-
-    def __init__(self, wires: WiresLike, id: Optional[str] = None):
-        super().__init__(wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
-
-    @staticmethod
-    def compute_decomposition(*params, wires, **hyperparameters):
-        return [ConditionalRotation(math.pi, wires)]
-
-    def adjoint(self):
-        return ConditionalRotation(-math.pi, self.wires)
-
-    def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CP", cache=cache
-        )
+qml.add_decomps("Adjoint(ConditionalSqueezing)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalSqueezing)", _pow_cs)
 
 
 class SelectiveQubitRotation(Operation, Hybrid):
@@ -288,7 +352,7 @@ class SelectiveQubitRotation(Operation, Hybrid):
         phi: TensorLike,
         n: int,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         if n < 0:
             raise ValueError(f"Fock state must be >= 0; got {n}")
@@ -351,6 +415,15 @@ r"""number-Selective Qubit Rotation (SQR) gate`
 """
 
 
+@qml.register_resources({SQR: 1})
+def _pow_sqr(theta, phi, wires, z, n, **_):
+    SQR((theta * z) % (4 * math.pi), phi, n, wires)
+
+
+qml.add_decomps("Adjoint(SelectiveQubitRotation)", adjoint_rotation)
+qml.add_decomps("Pow(SelectiveQubitRotation)", _pow_sqr)
+
+
 class SelectiveNumberArbitraryPhase(Operation, Hybrid):
     r"""Selective Number-dependent Arbitrary Phase (SNAP) gate :math:`SNAP(\varphi, n)`
 
@@ -389,7 +462,7 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
         phi: TensorLike,
         n: int,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         if n < 0:
             raise ValueError(f"Fock state must be >= 0; got {n}")
@@ -460,6 +533,16 @@ r"""Selective Number-dependent Arbitrary Phase (SNAP) gate
 """
 
 
+@qml.register_resources({SQR: 2})
+def _snap_to_sqr(phi, wires, n, **_):
+    SQR(math.pi, phi, n, wires)
+    SQR(-math.pi, phi, n, wires)
+
+
+qml.add_decomps("Adjoint(SelectiveNumberArbitraryPhase)", adjoint_rotation)
+qml.add_decomps("Pow(SelectiveNumberArbitraryPhase)", pow_rotation)
+
+
 class JaynesCummings(Operation, Hybrid):
     r"""Jaynes-cummings gate :math:`JC(\theta, \varphi)`, also known as Red-Sideband
 
@@ -496,7 +579,7 @@ class JaynesCummings(Operation, Hybrid):
         theta: TensorLike,
         phi: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
 
@@ -538,6 +621,15 @@ r"""Red sideband gate
 """
 
 
+@qml.register_resources({Red: 1})
+def _pow_jc(theta, phi, wires, z, **_):
+    Red(theta * z, phi, wires)
+
+
+qml.add_decomps("Adjoint(JaynesCummings)", adjoint_rotation)
+qml.add_decomps("Pow(JaynesCummings)", _pow_jc)
+
+
 class AntiJaynesCummings(Operation, Hybrid):
     r"""Anti-Jaynes-cummings gate :math:`AJC(\theta, \varphi)`, also known as Blue-Sideband
 
@@ -574,7 +666,7 @@ class AntiJaynesCummings(Operation, Hybrid):
         theta: TensorLike,
         phi: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
 
@@ -616,6 +708,15 @@ r"""Blue sideband gate
 """
 
 
+@qml.register_resources({Blue: 1})
+def _pow_ajc(theta, phi, wires, z, **_):
+    Blue(theta * z, phi, wires)
+
+
+qml.add_decomps("Adjoint(AntiJaynesCummings)", adjoint_rotation)
+qml.add_decomps("Pow(AntiJaynesCummings)", _pow_ajc)
+
+
 class Rabi(Operation, Hybrid):
     r"""Rabi interaction :math:`RB(\theta)`
 
@@ -637,7 +738,7 @@ class Rabi(Operation, Hybrid):
     resource_keys = set()
 
     def __init__(
-        self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: Optional[str] = None
+        self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None
     ):
         super().__init__(r, phi, wires=wires, id=id)
 
@@ -664,6 +765,31 @@ class Rabi(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "RB", cache=cache
         )
+
+
+@qml.register_resources({ConditionalDisplacement: 1, qml.H: 2})
+def _rb_to_cd(r, phi, wires, **_):
+    qml.H(wires[0])
+    ConditionalDisplacement(r, phi - math.pi / 2, wires)
+    qml.H(wires[0])
+
+
+@qml.register_resources({Rabi: 1, qml.H: 2})
+def _cd_to_rb(r, phi, wires, **_):
+    qml.H(wires[0])
+    Rabi(r, phi + math.pi / 2, wires)
+    qml.H(wires[0])
+
+
+@qml.register_resources({Rabi: 1})
+def _pow_rb(r, phi, wires, z, **_):
+    Rabi(r * z, phi, wires)
+
+
+qml.add_decomps(Rabi, _rb_to_cd)
+qml.add_decomps(ConditionalDisplacement, _cd_to_rb)
+qml.add_decomps("Adjoint(Rabi)", adjoint_rotation)
+qml.add_decomps("Pow(Rabi)", _pow_rb)
 
 
 class ConditionalBeamsplitter(Operation, Hybrid):
@@ -702,7 +828,7 @@ class ConditionalBeamsplitter(Operation, Hybrid):
         theta: TensorLike,
         phi: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
 
@@ -738,6 +864,23 @@ class ConditionalBeamsplitter(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "CBS", cache=cache
         )
+
+
+@qml.register_resources({cv.Beamsplitter: 1, ConditionalParity: 2})
+def _cbs_parity_decomp(theta, phi, wires, **_):
+    qml.adjoint(ConditionalParity)(wires[:2])
+    cv.Beamsplitter(theta, phi + math.pi / 2, wires[1:])
+    ConditionalParity(wires[:2])
+
+
+@qml.register_resources({ConditionalBeamsplitter: 1})
+def _pow_cbs(theta, phi, wires, z, **_):
+    ConditionalBeamsplitter(theta * z, phi, wires)
+
+
+qml.add_decomps(ConditionalBeamsplitter, _cbs_parity_decomp)
+qml.add_decomps("Adjoint(ConditionalBeamsplitter)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalBeamsplitter)", _pow_cbs)
 
 
 class ConditionalTwoModeSqueezing(Operation, Hybrid):
@@ -780,7 +923,7 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
         r: TensorLike,
         phi: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(r, phi, wires=wires, id=id)
 
@@ -818,6 +961,23 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
         )
 
 
+@qml.register_resources({cv.TwoModeSqueezing: 1, ConditionalParity: 2})
+def _ctms_parity_decomp(r, phi, wires, **_):
+    qml.adjoint(ConditionalParity)(wires[:2])
+    cv.TwoModeSqueezing(r, phi + math.pi / 2, wires[1:])
+    ConditionalParity(wires[:2])
+
+
+@qml.register_resources({ConditionalTwoModeSqueezing: 1})
+def _pow_ctms(theta, phi, wires, z, **_):
+    ConditionalTwoModeSqueezing(theta * z, phi, wires)
+
+
+qml.add_decomps(ConditionalTwoModeSqueezing, _ctms_parity_decomp)
+qml.add_decomps("Adjoint(ConditionalTwoModeSqueezing)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalTwoModeSqueezing)", _pow_ctms)
+
+
 class ConditionalTwoModeSum(Operation, Hybrid):
     r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
 
@@ -843,7 +1003,7 @@ class ConditionalTwoModeSum(Operation, Hybrid):
 
     resource_keys = set()
 
-    def __init__(self, lam: TensorLike, wires: WiresLike, id: Optional[str] = None):
+    def __init__(self, lam: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lam, wires=wires, id=id)
 
     @property
@@ -868,6 +1028,10 @@ class ConditionalTwoModeSum(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "CSUM", cache=cache
         )
+
+
+qml.add_decomps("Adjoint(ConditionalTwoModeSum)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalTwoModeSum)", pow_rotation)
 
 
 def _can_replace(x, y):
