@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import functools
 import math
+import warnings
 from typing import Callable
 
 import c2qa as bq
@@ -23,7 +24,7 @@ from qiskit.primitives import BitArray
 from qiskit.quantum_info import Statevector
 from qiskit.result import Result as QiskitResult
 from scipy import sparse as sp
-from scipy.sparse import csc_matrix
+from scipy.sparse import SparseEfficiencyWarning, csc_matrix
 
 import hybridlane as hqml
 
@@ -49,6 +50,8 @@ c2qa.operators.sigma_plus[:] = c2qa.operators.sigma_plus.T
 def simulate(
     tape: QuantumScript, truncation: FockTruncation, *, hbar: float
 ) -> tuple[np.ndarray]:
+    warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
+
     qc, regmapper = make_cv_circuit(tape, truncation)
 
     if tape.shots and not len(tape.shots.shot_vector) == 1:
