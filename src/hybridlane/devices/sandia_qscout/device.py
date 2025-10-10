@@ -313,7 +313,7 @@ class QscoutIonTrap(Device):
             transform_program.add_transform(_simplify_transform)
             transform_program.add_transform(decompose, gate_set=NATIVE_GATES)
 
-            transform_program.add_transform(combine_global_phases)
+        transform_program.add_transform(combine_global_phases)
 
         # Finally check all native gates. This takes into account additional constraints
         # like gates being defined only on certain qumodes that decompose doesn't know about
