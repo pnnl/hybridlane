@@ -10,6 +10,7 @@ from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
+from . import cv
 from .mixins import Hybrid
 
 
@@ -25,12 +26,12 @@ class ConditionalRotation(Operation, Hybrid):
                    &= \ket{0}\bra{0} \otimes R(\theta) + \ket{1}\bra{1} \otimes R(-\theta)
 
     where :math:`\sigma_z` is the Z operator acting on the qubit, and :math:`\hat{n} = \ad a`
-    is the number operator of the qumode (see Box III.8 of [1]_). With this definition, the angle parameter
+    is the number operator of the qumode (Box III.8 [1]_). With this definition, the angle parameter
     ranges :math:`\theta \in [0, 4\pi)`.
 
     The ``wires`` attribute is assumed to be ``(qubit, qumode)``.
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
@@ -77,13 +78,21 @@ class ConditionalDisplacement(Operation, Hybrid):
         CD(\alpha) &= \exp[\sigma_z(\alpha \ad - \alpha^* a)] \\
                    &= \ket{0}\bra{0} \otimes D(\alpha) + \ket{1}\bra{1} \otimes D(-\alpha)
 
-    where :math:`\alpha = ae^{i\phi} \in \mathbb{C}` (see Box III.7 of [1]_).
+    where :math:`\alpha = ae^{i\phi} \in \mathbb{C}` (Box III.7 [1]_). There also exists a decomposition
+    in terms of :py:class:`~.ConditionalParity` gates (eq. 20 [2]_),
+
+    .. math::
+
+        CD(\alpha) = CP D(i\alpha) CP^\dagger
+    
+    The ``wires`` attribute is assumed to be ``(qubit, qumode)``.
 
     .. seealso::
 
         :py:class:`~hybridlane.ops.cv.Displacement`
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
     """
 
     num_params = 2
@@ -120,6 +129,15 @@ class ConditionalDisplacement(Operation, Hybrid):
 
         return ConditionalDisplacement(a, phi, self.wires)
 
+    @staticmethod
+    def compute_decomposition(*params, wires=None, **hyperparameters):
+        a, phi = params
+        return [
+            ConditionalParity(wires).adjoint(),
+            cv.Displacement(a, phi + math.pi / 2, wires[1]),
+            ConditionalParity(wires),
+        ]
+
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "CD", cache=cache
@@ -136,13 +154,18 @@ class ConditionalSqueezing(Operation, Hybrid):
         CS(\zeta) &= \exp\left[\frac{1}{2}\sigma_z (\zeta^* a^2 - \zeta (\ad)^2)\right] \\
                   &= \ket{0}\bra{0} \otimes S(\zeta) + \ket{1}\bra{1} \otimes S(-\zeta)
 
-    where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (see Box IV.3 of [1]_).
+    where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (Box IV.3 [1]_). There exists a decomposition in terms
+    of :py:class:`.ConditionalRotation` and :py:class:`~hybridlane.ops.cv.Squeezing` gates
+
+    .. math::
+
+        CS(\zeta) = CR(\pi/2) S(i\zeta) CR(-\pi/2)
 
     .. seealso::
 
         :class:`~hybridlane.ops.cv.Squeezing`
     
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
@@ -174,6 +197,15 @@ class ConditionalSqueezing(Operation, Hybrid):
             return qml.Identity(self.wires)
 
         return ConditionalSqueezing(z, phi, self.wires)
+
+    @staticmethod
+    def compute_decomposition(*params, wires=None, **hyperparameters):
+        a, phi = params
+        return [
+            ConditionalRotation(math.pi / 2, wires).adjoint(),
+            cv.Squeezing(a, phi + math.pi / 2, wires[1:]),
+            ConditionalRotation(math.pi / 2, wires),
+        ]
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -235,13 +267,13 @@ class SelectiveQubitRotation(Operation, Hybrid):
 
         SQR(\theta, \varphi) = R_{\varphi}(\theta) \otimes \ket{n}\bra{n}
 
-    with :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, 2\pi)` (see Box III.9 of [1]_).
+    with :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, 2\pi)` (Box III.9 [1]_).
 
     .. note::
 
         This differs from the vectorized definition in the CVDV paper to act on just a single Fock state :math:`\ket{n}`. To match the vectorized version, apply multiple SQR gates in series with the appropriate angles and Fock states.
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
@@ -329,7 +361,7 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
         SNAP(\varphi, n) &= e^{-i \varphi \sigma_z \ket{n}\bra{n}} \\
                          &= \left(e^{-i \varphi}\ket{0}\bra{0} + e^{i\varphi}\ket{1}\bra{1} \right) \otimes \ket{n}\bra{n} + I_2 \otimes I_{\mathbb{N}_0 - \{n\}}
 
-    with :math:`\varphi \in [0, 2\pi)` (see Box III.10 of [1]_). If the control qubit starts in the :math:`\ket{0}` state, the :math:`\sigma_z` term
+    with :math:`\varphi \in [0, 2\pi)` (Box III.10 [1]_). If the control qubit starts in the :math:`\ket{0}` state, the :math:`\sigma_z` term
     can be neglected, effectively making this gate purely bosonic. However, because its implementation frequently
     involves an ancilla qubit, it is marked as a hybrid gate.
 
@@ -343,7 +375,7 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
             for phi_n, n in zip(angles, fock_states):
                 SelectiveNumberArbitraryPhase(phi_n, n, wires)
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
@@ -438,7 +470,7 @@ class JaynesCummings(Operation, Hybrid):
         JC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_- \ad + e^{-i\varphi}\sigma_+ a)]
 
     where :math:`\sigma_+` (:math:`\sigma_-`) is the raising (lowering) operator of the qubit, and
-    :math:`\theta, \varphi \in [0, 2\pi)` (see Table III.3 of [1]_).
+    :math:`\theta, \varphi \in [0, 2\pi)` (Table III.3 [1]_).
 
     .. note::
 
@@ -450,7 +482,7 @@ class JaynesCummings(Operation, Hybrid):
 
         :py:class:`~.AntiJaynesCummings`
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
@@ -509,7 +541,7 @@ r"""Red sideband gate
 class AntiJaynesCummings(Operation, Hybrid):
     r"""Anti-Jaynes-cummings gate :math:`AJC(\theta, \varphi)`, also known as Blue-Sideband
 
-    This is given by the expression (see Table III.3 of [1]_)
+    This is given by the expression (Table III.3 [1]_)
 
     .. math::
 
@@ -528,7 +560,7 @@ class AntiJaynesCummings(Operation, Hybrid):
 
         :py:class:`~.JaynesCummings`
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
@@ -593,9 +625,9 @@ class Rabi(Operation, Hybrid):
 
         RB(\theta) = \exp[-i\sigma_x (\theta \ad + \theta^*a)]
 
-    where :math:`\theta = re^{i\varphi} \in \mathbb{C}` (see Table III.3 of [1]_).
+    where :math:`\theta = re^{i\varphi} \in \mathbb{C}` (Table III.3 [1]_).
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
@@ -644,13 +676,19 @@ class ConditionalBeamsplitter(Operation, Hybrid):
         CBS(\theta, \varphi) &= \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b + e^{-i\varphi} ab^\dagger)] \\
                              &= \ket{0}\bra{0} \otimes BS(\theta, \varphi) + \ket{1}\bra{1} \otimes BS(-\theta, \varphi)
 
-    where :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, \pi)` (see Table III.3 of [1]_).
+    where :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, \pi)` (Table III.3 [1]_). There exists a decomposition in terms
+    of :class:`.ConditionalParity` and :class:`~hybridlane.ops.cv.Beamsplitter` gates (eq. 19 [2]_)
+
+    .. math::
+
+        CBS_{ijk}(\theta, \varphi) = CP_{ij} BS_{jk}(\theta, \varphi + \pi/2) CP_{ij}^\dagger 
 
     .. seealso::
 
         :py:class:`~hybridlane.ops.cv.Beamsplitter`
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
     """
 
     num_params = 2
@@ -687,6 +725,15 @@ class ConditionalBeamsplitter(Operation, Hybrid):
 
         return ConditionalBeamsplitter(theta, phi, self.wires)
 
+    @staticmethod
+    def compute_decomposition(*params, wires=None, **hyperparameters):
+        theta, phi = params
+        return [
+            ConditionalParity(wires[:2]).adjoint(),
+            cv.Beamsplitter(theta, phi + math.pi / 2, wires[1:]),
+            ConditionalParity(wires[:2]),
+        ]
+
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "CBS", cache=cache
@@ -703,7 +750,12 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
         CTMS(\xi) &= \exp[\sigma_z (\xi \ad b^\dagger - \xi^* ab)] \\
                   &= \ket{0}\bra{0} \otimes TMS(\xi) + \ket{1}\bra{1} \otimes TMS(-\xi)
 
-    where :math:`\xi = re^{i\phi} \in \mathbb{C}` (see Table III.3 of [1]_).
+    where :math:`\xi = re^{i\phi} \in \mathbb{C}` (Table III.3 [1]_). There exists a decomposition in terms of
+    :class:`.ConditionalParity` and :class:`~hybridlane.ops.cv.TwoModeSqueezing` gates (eq. 20 [2]_)
+
+    .. math::
+
+        CTMS_{ijk}(\xi) = CP_{ij} TMS_{jk}(i\xi) CP_{ij}^\dagger
 
     .. note::
 
@@ -713,7 +765,8 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
 
         :py:class:`~hybridlane.ops.cv.TwoModeSqueezing`
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
     """
 
     num_params = 2
@@ -743,12 +796,21 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
         return [ConditionalTwoModeSqueezing(-self.data[0], self.data[1], self.wires)]
 
     def simplify(self):
-        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+        r, phi = self.data[0], self.data[1] % (2 * math.pi)
 
-        if _can_replace(a, 0):
+        if _can_replace(r, 0):
             return qml.Identity(self.wires)
 
-        return ConditionalTwoModeSqueezing(a, phi, self.wires)
+        return ConditionalTwoModeSqueezing(r, phi, self.wires)
+
+    @staticmethod
+    def compute_decomposition(*params, wires=None, **hyperparameters):
+        r, phi = params
+        return [
+            ConditionalRotation(math.pi / 2, wires[:2]).adjoint(),
+            cv.TwoModeSqueezing(r, phi + math.pi / 2, wires[1:]),
+            ConditionalRotation(math.pi / 2, wires[:2]),
+        ]
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -766,13 +828,13 @@ class ConditionalTwoModeSum(Operation, Hybrid):
         CSUM(\lambda) &= \exp[\frac{\lambda}{2}\sigma_z(a + \ad)(b^\dagger - b)] \\
                       &= \ket{0}\bra{0} \otimes SUM(\lambda) + \ket{1}\bra{1} \otimes SUM(-\lambda)
 
-    with :math:`\lambda \in \mathbb{R}` (see Table III.3 of [1]_).
+    with :math:`\lambda \in \mathbb{R}` (Table III.3 [1]_).
 
     .. seealso::
 
         :py:class:`~hybridlane.ops.cv.TwoModeSum`
 
-    .. [1] Y. Liu et al, 2024. `arXiv <https://arxiv.org/abs/2407.10381>`_
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1

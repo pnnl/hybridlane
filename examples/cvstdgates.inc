@@ -52,7 +52,7 @@ gate cv_sqr(θ, φ, n) q, m {}
 gate cv_snap(φ, n) q, m { cv_sqr(π, φ, n) q, m; cv_sqr(-π, φ, n) q, m; }
 
 // Swap gate
-gate cv_swap m1, m2 { cv_bs(π, π/2) m1, m2; }
+gate cv_swap m1, m2 { cv_bs(π, 0) m1, m2; cv_r(-π/2) m1; cv_r(-π/2) m2; }
 
 // Jaynes-Cummings gate
 gate cv_jc(θ, φ) q, m {}
