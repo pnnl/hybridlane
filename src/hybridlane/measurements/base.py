@@ -3,7 +3,8 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 from abc import ABC, abstractmethod
-from typing import Dict, Hashable, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Hashable
 
 import pennylane as qml
 from pennylane.measurements import (
@@ -36,9 +37,9 @@ class SampleResult(Mapping):
 
     def __init__(
         self,
-        basis_states: Optional[Dict[Hashable, TensorLike]] = None,
-        eigvals: Optional[TensorLike] = None,
-        schema: Optional[sa.BasisSchema] = None,
+        basis_states: dict[Hashable, TensorLike] | None = None,
+        eigvals: TensorLike | None = None,
+        schema: sa.BasisSchema | None = None,
     ):
         r"""
         Args:
@@ -207,10 +208,10 @@ class CountsResult(BaseModel):
     counts: dict[int | float | tuple[int | float | complex, ...], int]
     """Histogram of basis states or eigenvalues and their frequency"""
 
-    wire_order: Optional[Wires] = Field(None)
+    wire_order: Wires | None = Field(None)
     """The order of the wires in each basis state"""
 
-    basis_schema: Optional[sa.BasisSchema] = Field(None)
+    basis_schema: sa.BasisSchema | None = Field(None)
     """Schema determining the basis each wire is measured in"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -280,7 +281,7 @@ class SampleMeasurement(MeasurementProcess):
     _shortname = "sample"
 
     def __init__(
-        self, obs=None, schema: Optional[sa.BasisSchema] = None, eigvals=None, id=None
+        self, obs=None, schema: sa.BasisSchema | None = None, eigvals=None, id=None
     ):
         """
         Args:
@@ -319,8 +320,8 @@ class SampleMeasurement(MeasurementProcess):
         self,
         samples: SampleResult,
         wire_order: Wires,
-        shot_range: Optional[tuple[int, ...]] = None,
-        bin_size: Optional[int] = None,
+        shot_range: tuple[int, ...] | None = None,
+        bin_size: int | None = None,
     ):
         r"""Calculate the measurement given the samples
 

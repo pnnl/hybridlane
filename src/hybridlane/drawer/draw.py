@@ -4,10 +4,11 @@
 # See the LICENSE.txt file for full license text.
 
 from __future__ import annotations
-from unittest.mock import patch
 
+from collections.abc import Sequence
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Literal, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Callable, Literal
+from unittest.mock import patch
 
 import pennylane as qml
 
@@ -18,18 +19,19 @@ if TYPE_CHECKING:
 
 
 def draw_mpl(
-    qnode: Union[QNode, Callable],
-    wire_order: Optional[Sequence] = None,
+    qnode: QNode | Callable,
+    wire_order: Sequence | None = None,
     show_all_wires: bool = False,
     show_wire_types: bool = True,
-    decimals: Optional[int] = None,
-    style: Optional[str] = None,
+    decimals: int | None = None,
+    style: str | None = None,
     *,
-    max_length: Optional[int] = None,
+    max_length: int | None = None,
     fig=None,
-    level: Union[
-        None, Literal["top", "user", "device", "gradient"], int, slice
-    ] = "gradient",
+    level: Literal["top", "user", "device", "gradient"]
+    | int
+    | slice
+    | None = "gradient",
     **kwargs,
 ):
     r"""Draws a circuit using matplotlib

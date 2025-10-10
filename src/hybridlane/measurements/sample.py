@@ -2,8 +2,8 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
+from collections.abc import Sequence
 from functools import reduce
-from typing import Optional, Sequence, Union
 
 import pennylane as qml
 from pennylane.measurements import MeasurementValue
@@ -20,8 +20,8 @@ from .base import CountsResult, SampleMeasurement, SampleResult
 
 
 def sample(
-    op: Optional[Union[Operator, MeasurementValue, Sequence[MeasurementValue]]] = None,
-    schema: Optional[BasisSchema] = None,
+    op: Operator | MeasurementValue | Sequence[MeasurementValue] | None = None,
+    schema: BasisSchema | None = None,
 ):
     r"""Samples the supplied observable or the wires in a provided schema
 
@@ -50,7 +50,7 @@ class SampleMP(SampleMeasurement):
     def numeric_type(self):
         return float
 
-    def shape(self, shots: Optional[int] = None, num_device_wires: int = 0) -> tuple:
+    def shape(self, shots: int | None = None, num_device_wires: int = 0) -> tuple:
         return (shots,)
 
     def process_samples(

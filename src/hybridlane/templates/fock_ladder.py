@@ -4,13 +4,13 @@
 # See the LICENSE.txt file for full license text.
 
 import math
-from typing import Optional, cast
+from typing import cast
 
 import pennylane as qml
 from pennylane.ops import Operation
 from pennylane.wires import Wires, WiresLike
 
-from ..ops import Hybrid, Red, Blue
+from ..ops import Blue, Hybrid, Red
 
 
 class FockLadder(Operation, Hybrid):
@@ -28,7 +28,7 @@ class FockLadder(Operation, Hybrid):
 
     resource_keys = {"fock_level"}
 
-    def __init__(self, n: int, wires: WiresLike = None, id: Optional[str] = None):
+    def __init__(self, n: int, wires: WiresLike = None, id: str | None = None):
         super().__init__(n, wires=wires, id=id)
 
     @property

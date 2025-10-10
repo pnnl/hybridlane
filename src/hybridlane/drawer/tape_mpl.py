@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 from unittest.mock import patch
 
 from pennylane.drawer import tape_mpl as pl_tape_mpl
@@ -114,7 +115,7 @@ def _draw_icons(
     tape: QuantumScript,
     wire_order,
     show_all_wires=False,
-    wire_icon_colors: Optional[dict[Any, str]] = None,
+    wire_icon_colors: dict[Any, str] | None = None,
 ):
     sa_res = sa.analyze(tape)
 
@@ -135,14 +136,14 @@ def _draw_icons(
 
 def tape_mpl(
     tape: QuantumScript,
-    wire_order: Optional[Sequence] = None,
+    wire_order: Sequence | None = None,
     show_all_wires: bool = False,
     show_wire_types: bool = True,
-    decimals: Optional[int] = None,
-    style: Optional[str] = None,
+    decimals: int | None = None,
+    style: str | None = None,
     *,
-    fig: Optional["mpl.figure.Figure"] = None,
-    max_length: Optional[int] = None,
+    fig: "mpl.figure.Figure" | None = None,
+    max_length: int | None = None,
     **kwargs,
 ):
     """Draws a quantum circuit using matplotlib
@@ -162,7 +163,7 @@ def tape_mpl(
 
         show_wire_types: If True, draw qumode/qubit icons next to each wire
 
-        wire_icon_colors (Optional[dict]): A dict of wires -> colors to use for each wire icon. If a wire
+        wire_icon_colors (dict | None): A dict of wires -> colors to use for each wire icon. If a wire
             is not provided, a default color will be used (``mediumseagreen`` for qumodes and ``darkorchid``
             for qubits). Colors are anything compatible with Matplotlib.
 

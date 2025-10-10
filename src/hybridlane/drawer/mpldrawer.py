@@ -4,7 +4,7 @@
 # See the LICENSE.txt file for full license text.
 
 import warnings
-from typing import Literal, Optional
+from typing import Literal
 
 import matplotlib.colors as mc
 import numpy as np
@@ -28,7 +28,7 @@ class HybridMPLDrawer(MPLDrawer):
         self._instances.append(self)
 
     def wire_icons(
-        self, icons: list[Literal["qumode", "qubit"]], colors: Optional[list] = None
+        self, icons: list[Literal["qumode", "qubit"]], colors: list | None = None
     ):
         # Shift the left side over to make room for the icons
         left = self._ax.get_xlim()[0]
@@ -50,7 +50,7 @@ class HybridMPLDrawer(MPLDrawer):
                 case "qubit":
                     self._qubit_icon(icon_x, wire, options=options)
 
-    def _qumode_icon(self, icon_x, wire, options: Optional[dict] = None):
+    def _qumode_icon(self, icon_x, wire, options: dict | None = None):
         # For a parabola with the icon centered at x0, y0, and width w, h, we have
         #  - the base of the parabola f(x0) = y0 - h/2
         #  - the top edges of the parabola f(x0 +/- w/2) = y0 + h/2
@@ -93,7 +93,7 @@ class HybridMPLDrawer(MPLDrawer):
             dx = _parabola_width(poly, y_pos)
             plt.plot([x - dx / 2, x + dx / 2], [y_pos, y_pos], color=color, zorder=3)
 
-    def _qubit_icon(self, icon_x, wire, options: Optional[dict] = None):
+    def _qubit_icon(self, icon_x, wire, options: dict | None = None):
         # Draw a circle with an = inside it
         options = options or {}
         x = icon_x

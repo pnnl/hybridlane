@@ -6,7 +6,6 @@
 r"""Module containing the native bosonic gates of the ion trap"""
 
 import math
-from typing import Optional
 
 import pennylane as qml
 from pennylane.operation import Operation
@@ -49,7 +48,7 @@ class ConditionalXDisplacement(Operation, Hybrid):
         beta_re: TensorLike,
         beta_im: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         r"""
         Args:
@@ -112,7 +111,7 @@ class ConditionalXSqueezing(Operation, Hybrid):
         self,
         ratio: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         r"""
         Args:
@@ -150,7 +149,7 @@ class SidebandProbe(Operation, Hybrid):
         sign: TensorLike,
         detuning: TensorLike,
         wires: WiresLike = None,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(duration_us, phase, sign, detuning, wires=wires, id=id)
 
@@ -182,7 +181,7 @@ class FockStatePrep(Operation, Hybrid):
 
     resource_keys = set()
 
-    def __init__(self, n: int, wires: WiresLike = None, id: Optional[str] = None):
+    def __init__(self, n: int, wires: WiresLike = None, id: str | None = None):
         super().__init__(n, wires=wires, id=id)
 
     @property
@@ -213,7 +212,7 @@ class NativeBeamsplitter(Operation, Hybrid):
         duration: TensorLike,
         phase: TensorLike,
         wires: WiresLike = None,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(detuning1, detuning2, duration, phase, wires=wires, id=id)
 
@@ -241,7 +240,7 @@ class R(Operation):
 
     resource_keys = set()
 
-    def __init__(self, theta, phi, wires: WiresLike = None, id: Optional[str] = None):
+    def __init__(self, theta, phi, wires: WiresLike = None, id: str | None = None):
         super().__init__(theta, phi, wires=wires, id=id)
 
     def adjoint(self):

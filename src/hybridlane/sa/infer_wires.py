@@ -3,12 +3,12 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import functools
-from typing import Hashable, Optional
+from typing import Hashable
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
-from pennylane.ops import CompositeOp, SymbolicOp, ControlledOp
+from pennylane.ops import CompositeOp, ControlledOp, SymbolicOp
 from pennylane.ops.cv import CVObservable, CVOperation
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
@@ -18,15 +18,14 @@ from ..measurements import (
     SampleMeasurement,
     StateMeasurement,
 )
+from ..ops.mixins import Hybrid, Spectral
+from .base import BasisSchema, ComputationalBasis, StaticAnalysisResult
 from .exceptions import StaticAnalysisError
-from ..ops.mixins import Hybrid
-from ..ops.mixins import Spectral
-from .base import BasisSchema, StaticAnalysisResult, ComputationalBasis
 
 
 @functools.lru_cache(maxsize=128)
 def analyze(
-    tape: QuantumScript, fill_missing: Optional[str] = None
+    tape: QuantumScript, fill_missing: str | None = None
 ) -> StaticAnalysisResult:
     """Static circuit analysis pass to identify wire types and measurement schemas
 
@@ -125,7 +124,7 @@ def _aliased_wire_msg_helper(
 
 
 def infer_wire_types(
-    tape: QuantumScript, fill_missing: Optional[str] = None
+    tape: QuantumScript, fill_missing: str | None = None
 ) -> tuple[Wires, Wires]:
     """Statically analyzes a tape to partition wires into qumodes and qubits
 

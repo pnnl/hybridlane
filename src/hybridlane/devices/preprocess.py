@@ -2,8 +2,6 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-from typing import Optional
-
 import pennylane as qml
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
@@ -13,7 +11,7 @@ from .. import sa
 
 @qml.transform
 def static_analyze_tape(
-    tape: QuantumScript, fill_missing: Optional[str] = None
+    tape: QuantumScript, fill_missing: str | None = None
 ) -> tuple[QuantumScriptBatch, PostprocessingFn]:
     """Circuit pass that validates a wire is only used as a qubit or a qumode
 

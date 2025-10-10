@@ -6,10 +6,10 @@
 r"""Device definition for Sandia Qscout ion trap"""
 
 import math
-import re
+from collections.abc import Sequence
 from dataclasses import replace
 from functools import partial, singledispatch
-from typing import Hashable, Optional, Sequence, cast
+from typing import Hashable, cast
 
 import numpy as np
 import pennylane as qml
@@ -151,9 +151,9 @@ class QscoutIonTrap(Device):
 
     def __init__(
         self,
-        wires: Optional[int | Sequence[Hashable]] = None,
-        shots: Optional[int] = None,
-        n_qubits: Optional[int] = None,
+        wires: int | Sequence[Hashable] | None = None,
+        shots: int | None = None,
+        n_qubits: int | None = None,
         optimize: bool = True,
         use_com_modes: bool = False,
         use_hardware_wires: bool = False,
@@ -337,8 +337,8 @@ def validate_gates_supported_on_hardware(tape: QuantumScript):
 @qml.transform
 def layout_wires(
     tape: QuantumScript,
-    sa_res: Optional[sa.StaticAnalysisResult] = None,
-    max_qubits: Optional[int] = None,
+    sa_res: sa.StaticAnalysisResult | None = None,
+    max_qubits: int | None = None,
     use_com_modes: bool = False,
 ):
     if sa_res is None:
@@ -369,44 +369,6 @@ def layout_wires(
             "No layout was found that could implement the gates in the circuit"
         )
 
-    # wire_map = {}
-    # occupied_qumodes = {axis: set() for axis in (0, 1)}
-
-    # # If any qumodes match the convention m<mode>a<axis>, keep them, enabling users to
-    # # be specific about what mode they want to target
-    # unmapped_qumodes = []
-    # qumode_pattern = re.compile(r"^a([01])m(\d+)$")
-    # for wire in qumodes:
-    #     if isinstance(wire, str) and (match := qumode_pattern.match(wire)):
-    #         axis = int(match.group(1))
-    #         i = int(match.group(2))
-    #         occupied_qumodes[axis].add(i)
-    #         wire_map[wire] = wire
-    #     else:
-    #         unmapped_qumodes.append(wire)
-
-    # # Generic algorithmic qumodes will get mapped to the lowest available index
-    # min_qumode_idx = 1 - use_com_modes
-    # i = min_qumode_idx
-    # axis = 0
-
-    # def transition():
-    #     return (i + axis, (axis + 1) % 2)
-
-    # for wire in sorted(unmapped_qumodes):
-    #     found = False
-    #     while not found:
-    #         if i not in occupied_qumodes[axis]:
-    #             found = True
-    #             occupied_qumodes[axis].add(i)
-    #             wire_map[wire] = f"a{axis}m{i}"
-
-    #         i, axis = transition()
-
-    # # Just assign qubits indices 0..n
-    # for i, wire in enumerate(sorted(qubits)):
-    #     wire_map[wire] = i
-
     def null_postprocessing(results):
         return results[0]
 
@@ -417,7 +379,7 @@ def layout_wires(
 def _constrained_layout(
     tape: QuantumScript,
     sa_res: sa.StaticAnalysisResult,
-    max_qubits: Optional[int] = None,
+    max_qubits: int | None = None,
     use_com_modes: bool = False,
 ) -> dict | None:
     max_qubits = max_qubits or len(sa_res.qubits)

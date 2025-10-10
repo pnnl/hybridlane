@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import Callable, Optional
+from typing import Callable
 
 import c2qa as bq
 import c2qa.operators
@@ -99,7 +99,7 @@ def analytic_var(
 
 
 def analytic_probs(
-    state: Statevector, result: QiskitResult, obs: Optional[np.ndarray] = None
+    state: Statevector, result: QiskitResult, obs: np.ndarray | None = None
 ) -> np.ndarray:
     # todo: somehow we need to take the statevector of 2^{num_qubits} and reshape/process it to
     # have shape (d1, ..., dn) with di being the dimension of system i. Then we'll also need to

@@ -108,7 +108,7 @@ Output with ``strict=True``
 
 import textwrap
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
@@ -126,12 +126,12 @@ from ..transforms import from_pennylane
 def to_openqasm(
     qnode,
     rotations: bool = True,
-    precision: Optional[int] = None,
+    precision: int | None = None,
     strict: bool = False,
     float_bits: int = 32,
     int_bits: int = 32,
     indent: int = 4,
-    level: Optional[str] = "user",
+    level: str | None = "user",
 ) -> Callable[[Any], str]:
     r"""Converts a circuit to an OpenQASM 3.0 program
 
@@ -260,7 +260,7 @@ def get_cv_calibration_definition():
 def tape_to_openqasm(
     tape: QuantumScript,
     rotations: bool = True,
-    precision: Optional[int] = None,
+    precision: int | None = None,
     strict: bool = False,
     float_bits: int = 32,
     int_bits: int = 32,
@@ -398,7 +398,7 @@ def tape_to_openqasm(
 
 
 def _format_gate(
-    op: Operator, wire_to_str: dict[Any, str], precision: Optional[int] = None
+    op: Operator, wire_to_str: dict[Any, str], precision: int | None = None
 ) -> str:
     if (gate_name := all_gates.get(op.name)) is None:
         raise ValueError(f"Unsupported gate {op.name}")
