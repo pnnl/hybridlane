@@ -15,7 +15,8 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
-from ...ops.hybrid import Hybrid, _can_replace
+from ...ops.hybrid.parametric_ops_single_qumode import _can_replace
+from ...ops.mixins import Hybrid
 
 Red = hqml.Red
 Blue = hqml.Blue
@@ -24,13 +25,13 @@ Blue = hqml.Blue
 class ConditionalXDisplacement(Operation, Hybrid):
     r"""Symmetric conditional displacement gate :math:`C_xD(\alpha)`
 
-    This is the qubit-conditioned version of the :py:class:`~pennylane.ops.cv.Displacement` gate, given by
+    This is the qubit-conditioned version of the :py:class:`~hybridlane.ops.Displacement` gate, given by
 
     .. math::
 
         CD(\beta) &= \exp[\sigma_x(\beta \ad - \beta^* a)]
 
-    which differs from :class:`~hybridlane.ops.hybrid.ConditionalDisplacement` due to the :math:`\sigma_x` factor
+    which differs from :class:`~hybridlane.ops.ConditionalDisplacement` due to the :math:`\sigma_x` factor
     instead of :math:`\sigma_z`.
 
     This is represented by the hardware instruction ``SDF``, and it can only be used on hardware qumode ``a0m1``
@@ -94,7 +95,7 @@ class ConditionalXSqueezing(Operation, Hybrid):
 
         CS(\beta) &= \exp\left[\frac{1}{2}\sigma_x (\beta^* a^2 - \beta (\ad)^2)\right]
 
-    which differs from :class:`~hybridlane.ops.hybrid.ConditionalSqueezing` due to the :math:`\sigma_x` factor
+    which differs from :class:`~hybridlane.ops.ConditionalSqueezing` due to the :math:`\sigma_x` factor
     instead of :math:`\sigma_z`.
 
     This is represented by the hardware instruction ``RampUp``, and it can only be used on hardware qumode ``a0m1``

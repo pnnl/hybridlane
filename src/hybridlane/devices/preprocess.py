@@ -38,7 +38,7 @@ def static_analyze_tape(
             to provide for unidentified wires
 
     Raises:
-        :py:class:`~.sa.StaticAnalysisError` if any wire is used as both a qubit and a qumode across the circuit, or
+        :py:class:`~hybridlane.sa.StaticAnalysisError` if any wire is used as both a qubit and a qumode across the circuit, or
         if its type cannot be inferred and no default is provided.
     """
 

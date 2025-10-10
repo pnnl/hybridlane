@@ -5,18 +5,17 @@
 import math
 
 import pennylane as qml
-from pennylane import numpy as np
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
-    make_pow_decomp_with_period,
     pow_rotation,
 )
 from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-from . import cv
-from .mixins import Hybrid
+from ..mixins import Hybrid
+from ..qumode import Displacement, Squeezing
+from .non_parametric_ops import ConditionalParity
 
 
 class ConditionalRotation(Operation, Hybrid):
@@ -77,83 +76,10 @@ qml.add_decomps("Adjoint(ConditionalRotation)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalRotation)", pow_rotation)
 
 
-class ConditionalParity(Operation, Hybrid):
-    r"""Qubit-conditioned number parity gate :math:`CP`
-
-    This gate is a special case of the :py:class:`~.ConditionalRotation` gate, with :math:`CP = CR(\pi)`, resulting
-    in the unitary expression
-
-    .. math::
-
-        CP &= \exp[-i\frac{\pi}{2}\sigma_z \hat{n}] \\
-           &= \ket{0}\bra{0} \otimes F + \ket{1}\bra{1} \otimes F^\dagger
-
-    This gate can also be viewed as the "conditioned" version of the :class:`~hybridlane.ops.cv.Fourier` gate.
-
-    .. seealso::
-
-        :py:class:`~.ConditionalRotation`
-    """
-
-    num_params = 0
-    num_wires = 2
-    num_qumodes = 1
-
-    resource_keys = set()
-
-    def __init__(self, wires: WiresLike, id: str | None = None):
-        super().__init__(wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
-
-    @staticmethod
-    def compute_decomposition(wires, **_):
-        return [ConditionalRotation(math.pi, wires)]
-
-    def adjoint(self):
-        return ConditionalRotation(-math.pi, self.wires)
-
-    def pow(self, z: int | float) -> list[Operation]:
-        z_mod4 = z % 4
-
-        if np.allclose(z_mod4, 0):
-            return []
-
-        return [ConditionalRotation(math.pi * z_mod4, self.wires)]
-
-    def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CΠ", cache=cache
-        )
-
-
-@qml.register_resources({ConditionalRotation: 1})
-def _cp_to_cr(wires, **_):
-    ConditionalRotation(math.pi, wires)
-
-
-@qml.register_resources({ConditionalRotation: 1})
-def _adjoint_cp_to_cr(wires, **_):
-    ConditionalRotation(-math.pi, wires)
-
-
-@qml.register_resources({ConditionalRotation: 1})
-def _pow_cp_to_cr(wires, z, **_):
-    z_mod4 = z % 4
-    qml.pow(ConditionalRotation(math.pi * z_mod4, wires=wires), z)
-
-
-qml.add_decomps(ConditionalParity, _cp_to_cr)
-qml.add_decomps("Adjoint(ConditionalParity)", _adjoint_cp_to_cr)
-qml.add_decomps("Pow(ConditionalParity)", make_pow_decomp_with_period(4), _pow_cp_to_cr)
-
-
 class ConditionalDisplacement(Operation, Hybrid):
     r"""Symmetric conditional displacement gate :math:`CD(\alpha)`
 
-    This is the qubit-conditioned version of the :py:class:`~pennylane.ops.cv.Displacement` gate, given by
+    This is the qubit-conditioned version of the :py:class:`~hybridlane.Displacement` gate, given by
 
     .. math::
 
@@ -161,7 +87,7 @@ class ConditionalDisplacement(Operation, Hybrid):
                    &= \ket{0}\bra{0} \otimes D(\alpha) + \ket{1}\bra{1} \otimes D(-\alpha)
 
     where :math:`\alpha = ae^{i\phi} \in \mathbb{C}` (Box III.7 [1]_). There also exists a decomposition
-    in terms of :py:class:`~.ConditionalParity` gates (eq. 20 [2]_),
+    in terms of :py:class:`~hybridlane.ConditionalParity` gates (eq. 20 [2]_),
 
     .. math::
 
@@ -171,7 +97,7 @@ class ConditionalDisplacement(Operation, Hybrid):
 
     .. seealso::
 
-        :py:class:`~hybridlane.ops.cv.Displacement`
+        :py:class:`~hybridlane.ops.Displacement`
 
     .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
@@ -216,7 +142,7 @@ class ConditionalDisplacement(Operation, Hybrid):
         a, phi = params
         return [
             ConditionalParity(wires).adjoint(),
-            cv.Displacement(a, phi + math.pi / 2, wires[1]),
+            Displacement(a, phi + math.pi / 2, wires[1]),
             ConditionalParity(wires),
         ]
 
@@ -226,10 +152,10 @@ class ConditionalDisplacement(Operation, Hybrid):
         )
 
 
-@qml.register_resources({cv.Displacement: 1, ConditionalParity: 2})
+@qml.register_resources({Displacement: 1, ConditionalParity: 2})
 def _cd_parity_decomp(a, phi, wires, **_):
     qml.adjoint(ConditionalParity)(wires)
-    cv.Displacement(a, phi + math.pi / 2, wires[1])
+    Displacement(a, phi + math.pi / 2, wires[1])
     ConditionalParity(wires)
 
 
@@ -254,7 +180,7 @@ class ConditionalSqueezing(Operation, Hybrid):
                   &= \ket{0}\bra{0} \otimes S(\zeta) + \ket{1}\bra{1} \otimes S(-\zeta)
 
     where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (Box IV.3 [1]_). There exists a decomposition in terms
-    of :py:class:`.ConditionalRotation` and :py:class:`~hybridlane.ops.cv.Squeezing` gates
+    of :py:class:`.ConditionalRotation` and :py:class:`~hybridlane.ops.Squeezing` gates
 
     .. math::
 
@@ -262,7 +188,7 @@ class ConditionalSqueezing(Operation, Hybrid):
 
     .. seealso::
 
-        :class:`~hybridlane.ops.cv.Squeezing`
+        :class:`~hybridlane.ops.Squeezing`
     
     .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
@@ -302,7 +228,7 @@ class ConditionalSqueezing(Operation, Hybrid):
         a, phi = params
         return [
             ConditionalRotation(math.pi / 2, wires).adjoint(),
-            cv.Squeezing(a, phi + math.pi / 2, wires[1:]),
+            Squeezing(a, phi + math.pi / 2, wires[1:]),
             ConditionalRotation(math.pi / 2, wires),
         ]
 
@@ -411,7 +337,7 @@ r"""number-Selective Qubit Rotation (SQR) gate`
 
 .. seealso::
 
-    This is an alias for :class:`~.SelectiveQubitRotation`
+    This is an alias for :class:`~hybridlane.SelectiveQubitRotation`
 """
 
 
@@ -529,7 +455,7 @@ r"""Selective Number-dependent Arbitrary Phase (SNAP) gate
 
 .. seealso::
 
-    This is an alias for :class:`~.SelectiveNumberArbitraryPhase`
+    This is an alias for :class:`~hybridlane.SelectiveNumberArbitraryPhase`
 """
 
 
@@ -563,7 +489,7 @@ class JaynesCummings(Operation, Hybrid):
 
     .. seealso::
 
-        :py:class:`~.AntiJaynesCummings`
+        :py:class:`~hybridlane.AntiJaynesCummings`
 
     .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
@@ -617,7 +543,7 @@ r"""Red sideband gate
 
 .. seealso::
 
-    This is an alias of :class:`~.JaynesCummings`
+    This is an alias of :class:`~hybridlane.JaynesCummings`
 """
 
 
@@ -650,7 +576,7 @@ class AntiJaynesCummings(Operation, Hybrid):
 
     .. seealso::
 
-        :py:class:`~.JaynesCummings`
+        :py:class:`~hybridlane.JaynesCummings`
 
     .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
@@ -704,7 +630,7 @@ r"""Blue sideband gate
 
 .. seealso::
 
-    This is an alias of :class:`~.AntiJaynesCummings`
+    This is an alias of :class:`~hybridlane.AntiJaynesCummings`
 """
 
 
@@ -792,517 +718,9 @@ qml.add_decomps("Adjoint(Rabi)", adjoint_rotation)
 qml.add_decomps("Pow(Rabi)", _pow_rb)
 
 
-class ConditionalBeamsplitter(Operation, Hybrid):
-    r"""Qubit-conditioned beamsplitter :math:`CBS(\theta, \varphi)`
-
-    This is a multi-qumode gate conditioned on a qubit. It is given by the expression
-
-    .. math::
-
-        CBS(\theta, \varphi) &= \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b + e^{-i\varphi} ab^\dagger)] \\
-                             &= \ket{0}\bra{0} \otimes BS(\theta, \varphi) + \ket{1}\bra{1} \otimes BS(-\theta, \varphi)
-
-    where :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, \pi)` (Table III.3 [1]_). There exists a decomposition in terms
-    of :class:`.ConditionalParity` and :class:`~hybridlane.ops.cv.Beamsplitter` gates (eq. 19 [2]_)
-
-    .. math::
-
-        CBS_{ijk}(\theta, \varphi) = CP_{ij} BS_{jk}(\theta, \varphi + \pi/2) CP_{ij}^\dagger 
-
-    .. seealso::
-
-        :py:class:`~hybridlane.ops.cv.Beamsplitter`
-
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
-    .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
-    """
-
-    num_params = 2
-    num_wires = 3
-    num_qumodes = 2
-
-    resource_keys = set()
-
-    def __init__(
-        self,
-        theta: TensorLike,
-        phi: TensorLike,
-        wires: WiresLike,
-        id: str | None = None,
-    ):
-        super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
-
-    def adjoint(self):
-        return ConditionalBeamsplitter(-self.data[0], self.data[1], self.wires)
-
-    def pow(self, z: int | float):
-        return [ConditionalBeamsplitter(self.data[0] * z, self.data[1], self.wires)]
-
-    def simplify(self):
-        theta = self.data[0] % (4 * math.pi)
-        phi = self.data[1] % math.pi
-
-        if _can_replace(theta, 0):
-            return qml.Identity(self.wires)
-
-        return ConditionalBeamsplitter(theta, phi, self.wires)
-
-    @staticmethod
-    def compute_decomposition(*params, wires=None, **hyperparameters):
-        theta, phi = params
-        return [
-            ConditionalParity(wires[:2]).adjoint(),
-            cv.Beamsplitter(theta, phi + math.pi / 2, wires[1:]),
-            ConditionalParity(wires[:2]),
-        ]
-
-    def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CBS", cache=cache
-        )
-
-
-@qml.register_resources({cv.Beamsplitter: 1, ConditionalParity: 2})
-def _cbs_parity_decomp(theta, phi, wires, **_):
-    qml.adjoint(ConditionalParity)(wires[:2])
-    cv.Beamsplitter(theta, phi + math.pi / 2, wires[1:])
-    ConditionalParity(wires[:2])
-
-
-@qml.register_resources({ConditionalBeamsplitter: 1})
-def _pow_cbs(theta, phi, wires, z, **_):
-    ConditionalBeamsplitter(theta * z, phi, wires)
-
-
-qml.add_decomps(ConditionalBeamsplitter, _cbs_parity_decomp)
-qml.add_decomps("Adjoint(ConditionalBeamsplitter)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalBeamsplitter)", _pow_cbs)
-
-
-class ConditionalTwoModeSqueezing(Operation, Hybrid):
-    r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
-
-    This is the qubit-conditioned version of the :py:class:`~hybridlane.ops.cv.TwoModeSqueezing` gate, given by
-
-    .. math::
-
-        CTMS(\xi) &= \exp[\sigma_z (\xi \ad b^\dagger - \xi^* ab)] \\
-                  &= \ket{0}\bra{0} \otimes TMS(\xi) + \ket{1}\bra{1} \otimes TMS(-\xi)
-
-    where :math:`\xi = re^{i\phi} \in \mathbb{C}` (Table III.3 [1]_). There exists a decomposition in terms of
-    :class:`.ConditionalParity` and :class:`~hybridlane.ops.cv.TwoModeSqueezing` gates (eq. 20 [2]_)
-
-    .. math::
-
-        CTMS_{ijk}(\xi) = CP_{ij} TMS_{jk}(i\xi) CP_{ij}^\dagger
-
-    .. note::
-
-        This formula differs from the Pennylane implementation by a minus sign (:math:`z \rightarrow -z`).
-
-    .. seealso::
-
-        :py:class:`~hybridlane.ops.cv.TwoModeSqueezing`
-
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
-    .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
-    """
-
-    num_params = 2
-    num_wires = 3
-    num_qumodes = 2
-
-    resource_keys = set()
-
-    def __init__(
-        self,
-        r: TensorLike,
-        phi: TensorLike,
-        wires: WiresLike,
-        id: str | None = None,
-    ):
-        super().__init__(r, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
-
-    def pow(self, z: int | float):
-        r, phi = self.data
-        return [ConditionalTwoModeSqueezing(r * z, phi, self.wires)]
-
-    def adjoint(self):
-        return [ConditionalTwoModeSqueezing(-self.data[0], self.data[1], self.wires)]
-
-    def simplify(self):
-        r, phi = self.data[0], self.data[1] % (2 * math.pi)
-
-        if _can_replace(r, 0):
-            return qml.Identity(self.wires)
-
-        return ConditionalTwoModeSqueezing(r, phi, self.wires)
-
-    @staticmethod
-    def compute_decomposition(*params, wires=None, **hyperparameters):
-        r, phi = params
-        return [
-            ConditionalRotation(math.pi / 2, wires[:2]).adjoint(),
-            cv.TwoModeSqueezing(r, phi + math.pi / 2, wires[1:]),
-            ConditionalRotation(math.pi / 2, wires[:2]),
-        ]
-
-    def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CTMS", cache=cache
-        )
-
-
-@qml.register_resources({cv.TwoModeSqueezing: 1, ConditionalParity: 2})
-def _ctms_parity_decomp(r, phi, wires, **_):
-    qml.adjoint(ConditionalParity)(wires[:2])
-    cv.TwoModeSqueezing(r, phi + math.pi / 2, wires[1:])
-    ConditionalParity(wires[:2])
-
-
-@qml.register_resources({ConditionalTwoModeSqueezing: 1})
-def _pow_ctms(theta, phi, wires, z, **_):
-    ConditionalTwoModeSqueezing(theta * z, phi, wires)
-
-
-qml.add_decomps(ConditionalTwoModeSqueezing, _ctms_parity_decomp)
-qml.add_decomps("Adjoint(ConditionalTwoModeSqueezing)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalTwoModeSqueezing)", _pow_ctms)
-
-
-class ConditionalTwoModeSum(Operation, Hybrid):
-    r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
-
-    This is a multi-mode gate conditioned on the state of a qubit, given by the expression
-
-    .. math::
-
-        CSUM(\lambda) &= \exp[\frac{\lambda}{2}\sigma_z(a + \ad)(b^\dagger - b)] \\
-                      &= \ket{0}\bra{0} \otimes SUM(\lambda) + \ket{1}\bra{1} \otimes SUM(-\lambda)
-
-    with :math:`\lambda \in \mathbb{R}` (Table III.3 [1]_).
-
-    .. seealso::
-
-        :py:class:`~hybridlane.ops.cv.TwoModeSum`
-
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
-    """
-
-    num_params = 1
-    num_wires = 3
-    num_qumodes = 2
-
-    resource_keys = set()
-
-    def __init__(self, lam: TensorLike, wires: WiresLike, id: str | None = None):
-        super().__init__(lam, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
-
-    def adjoint(self):
-        lambda_ = self.parameters[0]
-        return ConditionalTwoModeSum(-lambda_, wires=self.wires)
-
-    def pow(self, z: int | float):
-        return [ConditionalTwoModeSum(self.data[0] * z, self.wires)]
-
-    def simplify(self):
-        lambda_ = self.data[0]
-        if _can_replace(lambda_, 0):
-            return qml.Identity(self.wires)
-
-        return ConditionalTwoModeSum(lambda_, self.wires)
-
-    def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CSUM", cache=cache
-        )
-
-
-qml.add_decomps("Adjoint(ConditionalTwoModeSum)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalTwoModeSum)", pow_rotation)
-
-
 def _can_replace(x, y):
-    """
-    Convenience function that returns true if x is close to y and if
-    x does not require grad
-    """
     return (
         not qml.math.is_abstract(x)
         and not qml.math.requires_grad(x)
         and qml.math.allclose(x, y)
     )
-
-
-# -----------------------------------
-#              Observables
-# -----------------------------------
-
-# WordType = Union[
-#     PauliWord,
-#     BoseWord,
-#     QuadX,
-#     QuadP,
-#     QuadOperator,
-#     FockStateProjector,
-#     NumberOperator,
-#     TensorN,
-# ]
-# SentenceType = Union[PauliSentence, BoseSentence, PolyXP]
-
-# _cv_words = (
-#     BoseWord,
-#     QuadX,
-#     QuadP,
-#     QuadOperator,
-#     FockStateProjector,
-#     NumberOperator,
-#     TensorN,
-# )
-# _dv_words = (PauliWord,)
-
-
-# def _is_hermitian(w: WordType | "HybridWord"):
-#     if getattr(w, "is_hermitian", False):
-#         return True
-#     elif isinstance(w, (BoseWord, BoseSentence)):
-#         return w == w.adjoint()
-#     return False
-
-
-# # Todo: Do we actually need this?
-# We're going to need a hybrid observable that can compute diagonalizing gates and process results for everything
-# #  - Diagonalizing gates should be the diagonalizing gates of each subword for a HybridWord
-# #  - HybridSentence will require multiple tapes, just like PauliSentence
-# class HybridProd(CVObservable, Hybrid):
-#     r"""Represents a tensor product of CV and DV observables"""
-
-#     def __init__(self, *ops: Union[Operator, CVObservable]):
-#         if not all(op.is_hermitian for op in ops):
-#             raise ValueError("All operators must be observables")
-
-#         for op1, op2 in itertools.combinations(ops, 2):
-#             if op1.wires.shared_wires(op2):
-#                 raise ValueError("All operator terms must be disjoint")
-
-#         self._terms = list(ops)
-
-#     @property
-#     def decomposition(self) -> list[Operator]:
-#         return self._terms
-
-#     @property
-#     def eigval_type(self):
-#         # Measurements in phase space yield real numbers
-#         float_ops = (QuadX, QuadP, QuadOperator)
-#         if any(isinstance(op, float_ops) for op in self._terms):
-#             return float
-
-#         # Qubit and fock-space measurements are discrete
-#         return int
-
-#     @staticmethod
-#     def compute_diagonalizing_gates(
-#         *ops: Operator | CVObservable,
-#         wires: Wires | Iterable[Hashable] | Hashable,
-#         **hyperparams: dict[str, Any],
-#     ) -> list[Operator]:
-#         diagonalizing_gates: list[Operator] = []
-
-#         for op in ops:
-#             if op.has_diagonalizing_gates:
-#                 diagonalizing_gates.extend(op.diagonalizing_gates())
-#             else:
-#                 raise RuntimeError(f"Unable to compute diagonalizing gates for {op}")
-
-#         return diagonalizing_gates
-
-#     @property
-#     def pauli_rep(self):
-#         reps: list[PauliSentence | None] = [op.pauli_rep for op in self._terms]
-
-#         if all(rep is not None for rep in reps):
-#             rep: PauliSentence = reps[0]  # type: ignore
-#             if len(reps) >= 2:
-#                 for rep2 in reps[1:]:
-#                     rep = rep @ rep2
-
-#             return rep
-
-#         return None
-
-#     @property
-#     def ev_order(self):
-#         ev_orders: list[int | None] = [
-#             getattr(op, "ev_order", None) for op in self._terms
-#         ]
-
-#         if all(ev_order is not None for ev_order in ev_orders):
-#             return max(ev_orders)
-
-#         return None
-
-
-# class HybridWord(Hashable):
-#     r"""Represents a single, atomic hybrid observable.
-
-#     A HybridWord is a tensor product of primitive qubit and qumode
-#     observables that can be measured in a single experimental setting.
-
-#     Example: PauliWord({0: 'X'}) @ BoseWord({'a': [(1, 1)]})
-#     """
-
-#     def __init__(self, words: Iterable[WordType | "HybridWord"]):
-#         self._validate_args(words)
-
-#         subwords = set()
-#         for word in words:
-#             if isinstance(word, HybridWord):
-#                 subwords.update(word.subwords)
-#             else:
-#                 subwords.add(word)
-
-#         self._subwords: frozenset[WordType] = frozenset(subwords)
-#         self._wires = Wires.all_wires([w.wires for w in words])
-
-#     @property
-#     def subwords(self) -> frozenset[WordType]:
-#         return self._subwords
-
-#     @property
-#     def wires(self) -> Wires:
-#         return self._wires
-
-#     @property
-#     def is_dv(self) -> bool:
-#         return any(isinstance(w, _dv_words) for w in self.subwords)
-
-#     @property
-#     def is_cv(self) -> bool:
-#         return any(isinstance(w, _cv_words) for w in self.subwords)
-
-#     @property
-#     def is_hybrid(self) -> bool:
-#         return self.is_dv and self.is_cv
-
-#     def operator(self) -> Operator:
-#         r"""Returns an operator representing this object"""
-#         raise NotImplementedError()
-
-#     def commutator(self, other) -> "HybridWord":
-#         r"""Computes the commutator between two objects"""
-#         raise NotImplementedError()  # todo: fill this out
-
-#     def _validate_args(self, words: Iterable[WordType | "HybridWord"]):
-#         for word in words:
-#             if not isinstance(word, (WordType, HybridWord)):
-#                 raise ValueError("Cannot construct hybrid word from non-word types")
-
-#             if not _is_hermitian(word):
-#                 raise ValueError("Word must be hermitian")
-
-#         # Check for wires being disjoint
-#         words = list(words)
-#         if len(words) >= 2:
-#             wires = Wires.all_wires([w.wires for w in words])
-#             expected_wires = sum(len(w.wires) for w in words)
-
-#             if len(wires) != expected_wires:
-#                 raise ValueError("Subwords must act on disjoint wires")
-
-#     def __repr__(self):
-#         s = " @ ".join(map(repr, self.subwords))
-#         return s
-
-#     def __matmul__(self, other):
-#         if isinstance(other, WordType):
-#             return HybridWord(self, other)
-#         elif isinstance(other, SentenceType):
-#             raise NotImplementedError()
-#         else:
-#             raise ValueError(f"Unsupported tensor product with type {type(other)}")
-
-#     def __add__(self, other):
-#         if isinstance(other, HybridWord):
-#             return HybridSentence({self: 1.0, other: 1.0})
-
-#         raise NotImplementedError()
-
-#     def __mul__(self, scalar):
-#         if isinstance(scalar, (int, float)):
-#             return HybridSentence({self: scalar})
-
-#         raise NotImplementedError()
-
-#     def __rmul__(self, scalar):
-#         """Handles scalar * self."""
-#         return self.__mul__(scalar)
-
-#     def __hash__(self):
-#         return hash(self._subwords)
-
-
-# class HybridSentence(Operator):
-#     """Represents a linear combination of HybridWord observables."""
-
-#     @property
-#     def is_hermitian(self):
-#         return True
-
-#     def __init__(self, hword_map: dict[HybridWord, float]):
-#         self.hword_map = hword_map
-
-#         # The wires are the union of all wires from all words in the sentence
-#         all_wires = qml.wires.Wires.all_wires([hw.wires for hw in hword_map.keys()])
-#         super().__init__(wires=all_wires)
-
-#     def operator(self) -> Operator:
-#         items = list(self.hword_map.items())
-#         ops, coeffs = list(zip(*items))
-#         return qml.LinearCombination(coeffs, ops)
-
-#     def __repr__(self):
-#         return " + ".join([f"{coeff} * {hw}" for hw, coeff in self.hword_map.items()])
-
-#     def __add__(self, other):
-#         new_map = self.hword_map.copy()
-
-#         if isinstance(other, HybridSentence):
-#             for hw, coeff in other.hword_map.items():
-#                 new_map[hw] = new_map.get(hw, 0) + coeff
-#         elif isinstance(other, HybridWord):
-#             new_map[other] = new_map.get(other, 0) + 1.0
-#         else:
-#             raise NotImplementedError()
-
-#         return HybridSentence(new_map)
-
-#     def __mul__(self, scalar):
-#         """Handles scaling by a number."""
-#         if isinstance(scalar, (int, float)):
-#             new_map = {hw: coeff * scalar for hw, coeff in self.hword_map.items()}
-#             return HybridSentence(new_map)
-#         raise NotImplementedError()
-
-#     def __rmul__(self, scalar):
-#         """Handles scalar * self."""
-#         return self.__mul__(scalar)
-
-#     def simplify(self, tol=1e-8):
-#         """Removes terms with coefficients close to zero."""
-#         simplified_map = {
-#             hw: coeff for hw, coeff in self.hword_map.items() if abs(coeff) > tol
-#         }
-#         return HybridSentence(simplified_map)

@@ -3,7 +3,7 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 from . import attributes
-from .cv import (
+from .qumode import (
     Beamsplitter,
     CubicPhase,
     Displacement,

@@ -13,9 +13,9 @@ from pennylane.wires import Wires
 from hybridlane.measurements.base import (
     SampleResult,
 )
-from hybridlane.sa.base import BasisSchema, ComputationalBasis
 from hybridlane.measurements.sample import SampleMP
-from hybridlane.ops.cv import NumberOperator, QuadX
+from hybridlane.ops import NumberOperator, QuadX
+from hybridlane.sa.base import BasisSchema, ComputationalBasis
 
 
 class TestSampleMP:
