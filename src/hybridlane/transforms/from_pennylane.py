@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 from functools import partial, singledispatch
-from typing import Any, Optional, Union
+from typing import Any
 
 import pennylane as qml
 import pennylane.measurements as pl_mp
@@ -37,7 +37,7 @@ optional_qumode_measurements = {
 
 @qml.transform
 def from_pennylane(
-    tape: QuantumScript, default_qumode_measurement: Optional[str] = None
+    tape: QuantumScript, default_qumode_measurement: str | None = None
 ) -> tuple[QuantumScriptBatch, PostprocessingFn]:
     """Transformation that converts pennylane objects to hybridlane ones
 
@@ -202,8 +202,8 @@ def _(obs: qml.FockStateProjector):
 def convert_measurement_process(
     mp: MeasurementProcess,
     *,
-    default_qumode_measurement: Optional[str] = None,
-    cache: Optional[dict[str, Any]] = None,
+    default_qumode_measurement: str | None = None,
+    cache: dict[str, Any] | None = None,
 ) -> MeasurementProcess:
     return mp
 
@@ -212,10 +212,10 @@ def convert_measurement_process(
 @convert_measurement_process.register(pl_mp.ExpectationMP)
 @convert_measurement_process.register(hl_mp.ExpectationMP)
 def _(
-    mp: Union[pl_mp.ExpectationMP, hl_mp.ExpectationMP],
+    mp: pl_mp.ExpectationMP | hl_mp.ExpectationMP,
     *,
-    default_qumode_measurement: Optional[str] = None,
-    cache: Optional[dict[str, Any]] = None,
+    default_qumode_measurement: str | None = None,
+    cache: dict[str, Any] | None = None,
 ) -> hl_mp.ExpectationMP:
     if mp.obs:
         return hl_mp.ExpectationMP(obs=convert_observable(mp.obs), id=mp.id)
@@ -225,10 +225,10 @@ def _(
 @convert_measurement_process.register(pl_mp.VarianceMP)
 @convert_measurement_process.register(hl_mp.VarianceMP)
 def _(
-    mp: Union[pl_mp.VarianceMP, hl_mp.VarianceMP],
+    mp: pl_mp.VarianceMP | hl_mp.VarianceMP,
     *,
-    default_qumode_measurement: Optional[str] = None,
-    cache: Optional[dict[str, Any]] = None,
+    default_qumode_measurement: str | None = None,
+    cache: dict[str, Any] | None = None,
 ):
     if mp.obs:
         return hl_mp.VarianceMP(obs=convert_observable(mp.obs), id=mp.id)
@@ -239,8 +239,8 @@ def _(
 def _(
     mp: hl_mp.SampleMP,
     *,
-    default_qumode_measurement: Optional[str] = None,
-    cache: Optional[dict[str, Any]] = None,
+    default_qumode_measurement: str | None = None,
+    cache: dict[str, Any] | None = None,
 ):
     if mp.obs:
         return hl_mp.SampleMP(obs=convert_observable(mp.obs), id=mp.id)
@@ -251,8 +251,8 @@ def _(
 def _(
     mp: pl_mp.SampleMP,
     *,
-    default_qumode_measurement: Optional[str] = None,
-    cache: Optional[dict[str, Any]] = None,
+    default_qumode_measurement: str | None = None,
+    cache: dict[str, Any] | None = None,
 ):
     if mp.obs:
         return hl_mp.SampleMP(obs=convert_observable(mp.obs), id=mp.id)

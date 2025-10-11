@@ -18,8 +18,9 @@
 
 
 import importlib.util
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import Hashable, Optional, Sequence
+from typing import Hashable
 
 from pennylane.devices import DefaultExecutionConfig, Device
 from pennylane.devices.execution_config import ExecutionConfig
@@ -125,10 +126,10 @@ class BosonicQiskitDevice(Device):
 
     def __init__(
         self,
-        wires: Optional[Sequence[Hashable]] = None,
-        shots: Optional[int] = None,
-        max_fock_level: Optional[int] = None,
-        truncation: Optional[FockTruncation] = None,
+        wires: Sequence[Hashable] | None = None,
+        shots: int | None = None,
+        max_fock_level: int | None = None,
+        truncation: FockTruncation | None = None,
         hbar: float = 2,
     ):
         r"""Initializes the device

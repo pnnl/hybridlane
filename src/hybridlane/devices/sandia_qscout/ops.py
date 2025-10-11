@@ -6,7 +6,6 @@
 r"""Module containing the native bosonic gates of the ion trap"""
 
 import math
-from typing import Optional
 
 import pennylane as qml
 from pennylane.operation import Operation
@@ -15,19 +14,23 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
-from ...ops.hybrid import Hybrid, _can_replace
+from ...ops.hybrid.parametric_ops_single_qumode import _can_replace
+from ...ops.mixins import Hybrid
+
+Red = hqml.Red
+Blue = hqml.Blue
 
 
 class ConditionalXDisplacement(Operation, Hybrid):
     r"""Symmetric conditional displacement gate :math:`C_xD(\alpha)`
 
-    This is the qubit-conditioned version of the :py:class:`~pennylane.ops.cv.Displacement` gate, given by
+    This is the qubit-conditioned version of the :py:class:`~hybridlane.ops.Displacement` gate, given by
 
     .. math::
 
         CD(\beta) &= \exp[\sigma_x(\beta \ad - \beta^* a)]
 
-    which differs from :class:`~hybridlane.ops.hybrid.ConditionalDisplacement` due to the :math:`\sigma_x` factor
+    which differs from :class:`~hybridlane.ops.ConditionalDisplacement` due to the :math:`\sigma_x` factor
     instead of :math:`\sigma_z`.
 
     This is represented by the hardware instruction ``SDF``, and it can only be used on hardware qumode ``a0m1``
@@ -45,7 +48,7 @@ class ConditionalXDisplacement(Operation, Hybrid):
         beta_re: TensorLike,
         beta_im: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         r"""
         Args:
@@ -91,7 +94,7 @@ class ConditionalXSqueezing(Operation, Hybrid):
 
         CS(\beta) &= \exp\left[\frac{1}{2}\sigma_x (\beta^* a^2 - \beta (\ad)^2)\right]
 
-    which differs from :class:`~hybridlane.ops.hybrid.ConditionalSqueezing` due to the :math:`\sigma_x` factor
+    which differs from :class:`~hybridlane.ops.ConditionalSqueezing` due to the :math:`\sigma_x` factor
     instead of :math:`\sigma_z`.
 
     This is represented by the hardware instruction ``RampUp``, and it can only be used on hardware qumode ``a0m1``
@@ -108,7 +111,7 @@ class ConditionalXSqueezing(Operation, Hybrid):
         self,
         ratio: TensorLike,
         wires: WiresLike,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         r"""
         Args:
@@ -146,7 +149,7 @@ class SidebandProbe(Operation, Hybrid):
         sign: TensorLike,
         detuning: TensorLike,
         wires: WiresLike = None,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(duration_us, phase, sign, detuning, wires=wires, id=id)
 
@@ -164,13 +167,26 @@ class SidebandProbe(Operation, Hybrid):
         )
 
 
-FockStatePrep = hqml.FockLadder
-r"""Prepare a definite Fock state
+class FockStatePrep(Operation, Hybrid):
+    r"""Prepare a definite Fock state
 
-If this is used on the tilt modes (hardware qumodes ``a0m1`` and ``a1m1``), this can
-be represented in terms of a native Jaqal instruction ``FockState``. Otherwise, the
-program will contain custom sequences of Red/Blue sideband gates
-"""
+    This is identical to ``hqml.FockLadder`` except it's only supported on hardware qumodes ``a0m1`` and ``a1m1``.
+    This gate is represented in terms of a native Jaqal instruction ``FockState``.
+    """
+
+    num_params = 1
+    num_wires = 2
+    num_qumodes = 1
+    grad_method = None
+
+    resource_keys = set()
+
+    def __init__(self, n: int, wires: WiresLike = None, id: str | None = None):
+        super().__init__(n, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
 
 
 class NativeBeamsplitter(Operation, Hybrid):
@@ -196,7 +212,7 @@ class NativeBeamsplitter(Operation, Hybrid):
         duration: TensorLike,
         phase: TensorLike,
         wires: WiresLike = None,
-        id: Optional[str] = None,
+        id: str | None = None,
     ):
         super().__init__(detuning1, detuning2, duration, phase, wires=wires, id=id)
 
@@ -224,7 +240,7 @@ class R(Operation):
 
     resource_keys = set()
 
-    def __init__(self, theta, phi, wires: WiresLike = None, id: Optional[str] = None):
+    def __init__(self, theta, phi, wires: WiresLike = None, id: str | None = None):
         super().__init__(theta, phi, wires=wires, id=id)
 
     def adjoint(self):

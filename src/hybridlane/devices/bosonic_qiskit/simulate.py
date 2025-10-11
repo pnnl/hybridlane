@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import Callable, Optional
+import warnings
+from typing import Callable
 
 import c2qa as bq
 import c2qa.operators
@@ -23,7 +24,7 @@ from qiskit.primitives import BitArray
 from qiskit.quantum_info import Statevector
 from qiskit.result import Result as QiskitResult
 from scipy import sparse as sp
-from scipy.sparse import csc_matrix
+from scipy.sparse import SparseEfficiencyWarning, csc_matrix
 
 import hybridlane as hqml
 
@@ -49,6 +50,8 @@ c2qa.operators.sigma_plus[:] = c2qa.operators.sigma_plus.T
 def simulate(
     tape: QuantumScript, truncation: FockTruncation, *, hbar: float
 ) -> tuple[np.ndarray]:
+    warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
+
     qc, regmapper = make_cv_circuit(tape, truncation)
 
     if tape.shots and not len(tape.shots.shot_vector) == 1:
@@ -99,7 +102,7 @@ def analytic_var(
 
 
 def analytic_probs(
-    state: Statevector, result: QiskitResult, obs: Optional[np.ndarray] = None
+    state: Statevector, result: QiskitResult, obs: np.ndarray | None = None
 ) -> np.ndarray:
     # todo: somehow we need to take the statevector of 2^{num_qubits} and reshape/process it to
     # have shape (d1, ..., dn) with di being the dimension of system i. Then we'll also need to
@@ -338,8 +341,8 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
 
         match type(op):
             case hqml.ConditionalRotation:
-                theta = parameters
-                getattr(qc, method)(-theta, *qumodes, *qubits)
+                theta = parameters[0]
+                getattr(qc, method)(-theta / 2, *qumodes, *qubits)
             case hqml.ConditionalDisplacement:
                 a, phi = parameters
                 alpha = a * np.exp(1j * phi)
@@ -463,6 +466,9 @@ def sampled_measurement(
 
     basis_states = {}
     for wire, qubits in regmapper.mapping.items():
+        if wire not in m.wires:
+            continue
+
         # Qumode, convert back to fock space
         if isinstance(qubits, list):
             indices: list[int] = qc.get_qubit_indices(qubits)

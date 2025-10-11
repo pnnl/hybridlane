@@ -57,8 +57,10 @@ class TestModeSwap:
         """Test the decomposition method."""
         op = hqml.ModeSwap(wires=[0, 1])
         decomp = op.decomposition()
-        assert len(decomp) == 1
+        assert len(decomp) == 3
         assert isinstance(decomp[0], hqml.Beamsplitter)
+        assert isinstance(decomp[1], hqml.Rotation)
+        assert isinstance(decomp[2], hqml.Rotation)
 
     def test_adjoint(self):
         """Test the adjoint method."""

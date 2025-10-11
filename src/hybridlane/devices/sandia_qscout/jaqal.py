@@ -7,7 +7,6 @@ r"""Module for exporting circuits compiled to the ion trap to the Jaqal format""
 
 import re
 from functools import singledispatch, wraps
-from typing import Optional, Union
 
 import pennylane as qml
 from pennylane.exceptions import DeviceError
@@ -45,7 +44,7 @@ QUBIT_GATES = {
 BOSON_GATES = {
     "JaynesCummings": "Red",
     "AntiJaynesCummings": "Blue",
-    "FockLadder": "FockState",
+    "FockStatePrep": "FockState",
     "ConditionalXDisplacement": "SDF",
     "ConditionalXSqueezing": "RampUp",
     "NativeBeamsplitter": "Beamsplitter",
@@ -54,7 +53,7 @@ BOSON_GATES = {
 
 
 def to_jaqal(
-    qnode, level: Optional[str | int | slice] = None, precision: Optional[float] = None
+    qnode, level: str | int | slice | None = None, precision: float | None = None
 ):
     from pennylane.workflow import construct_tape
 
@@ -69,9 +68,9 @@ def to_jaqal(
     return wrapper
 
 
-def tape_to_jaqal(tape: QuantumScript, precision: Optional[float] = None):
+def tape_to_jaqal(tape: QuantumScript, precision: float | None = None):
     sa_res = sa.analyze(tape)
-    num_qubits = len(sa_res.qubits)
+    num_qubits = max(sa_res.qubits) + 1
 
     program = f"register q[{num_qubits}]\n\n"
     program += "prepare_all\n"
@@ -83,7 +82,7 @@ def tape_to_jaqal(tape: QuantumScript, precision: Optional[float] = None):
 
 
 @singledispatch
-def tokenize_operation(op: Operation, precision: Optional[float] = None) -> str:
+def tokenize_operation(op: Operation, precision: float | None = None) -> str:
     if gate_id := QUBIT_GATES.get(op.name, None):
         params = _tokenize_params(op.parameters, precision=precision)
         wires = [f"q[{w}]" for w in op.wires]
@@ -93,7 +92,7 @@ def tokenize_operation(op: Operation, precision: Optional[float] = None) -> str:
 
 
 @tokenize_operation.register
-def _(op: native_ops.R, precision: Optional[int] = None):
+def _(op: native_ops.R, precision: int | None = None):
     gate_id = QUBIT_GATES[op.name]
     angle, axis_angle = _tokenize_params(op.parameters, precision=precision)
     qubit = op.wires[0]
@@ -102,12 +101,12 @@ def _(op: native_ops.R, precision: Optional[int] = None):
 
 
 @tokenize_operation.register
-def _(_op: Union[qml.GlobalPhase, qml.Identity], **_):
+def _(_op: qml.GlobalPhase | qml.Identity, **_):
     return ""
 
 
 @tokenize_operation.register
-def _(op: hqml.JaynesCummings, precision: Optional[float] = None):
+def _(op: hqml.JaynesCummings, precision: float | None = None):
     # Has format Red <qubit> <Fock state> <phase> <angle> <axis choice> <mode choice>
     gate_id = BOSON_GATES[op.name]
     params = _tokenize_params(op.parameters, precision=precision)
@@ -123,7 +122,7 @@ def _(op: hqml.JaynesCummings, precision: Optional[float] = None):
 
 
 @tokenize_operation.register
-def _(op: hqml.AntiJaynesCummings, precision: Optional[float] = None):
+def _(op: hqml.AntiJaynesCummings, precision: float | None = None):
     # Has format Blue <qubit> <Fock state> <phase> <angle> <axis choice> <mode choice>
     gate_id = BOSON_GATES[op.name]
     params = _tokenize_params(op.parameters, precision=precision)
@@ -150,7 +149,7 @@ def _(op: native_ops.FockStatePrep, **_):
 
 
 @tokenize_operation.register
-def _(op: native_ops.SidebandProbe, precision: Optional[float] = None):
+def _(op: native_ops.SidebandProbe, precision: float | None = None):
     # Has format Rt_SBProbe <qubit> <phase> <duration_us> <axis> <mode> <sign> <detuning>
     gate_id = BOSON_GATES[op.name]
     [duration_us, phase, detuning] = _tokenize_params(
@@ -164,7 +163,7 @@ def _(op: native_ops.SidebandProbe, precision: Optional[float] = None):
 
 
 @tokenize_operation.register
-def _(op: native_ops.ConditionalXDisplacement, precision: Optional[float] = None):
+def _(op: native_ops.ConditionalXDisplacement, precision: float | None = None):
     # Has format SDF <qubit> <beta_re> <beta_im>
     gate_id = BOSON_GATES[op.name]
     params = _tokenize_params(op.parameters, precision=precision)
@@ -175,7 +174,7 @@ def _(op: native_ops.ConditionalXDisplacement, precision: Optional[float] = None
 
 
 @tokenize_operation.register
-def _(op: native_ops.ConditionalXSqueezing, precision: Optional[float] = None):
+def _(op: native_ops.ConditionalXSqueezing, precision: float | None = None):
     # Has format RampUp <qubit> <blue/red ratio>
     gate_id = BOSON_GATES[op.name]
     params = _tokenize_params(op.parameters, precision=precision)
@@ -186,7 +185,7 @@ def _(op: native_ops.ConditionalXSqueezing, precision: Optional[float] = None):
 
 
 @tokenize_operation.register
-def _(op: native_ops.NativeBeamsplitter, precision: Optional[float] = None):
+def _(op: native_ops.NativeBeamsplitter, precision: float | None = None):
     # Has format Beamsplitter <qubit> <detuning1> <detuning2> <duration> <phase>
     gate_id = BOSON_GATES[op.name]
     params = _tokenize_params(op.parameters, precision=precision)
@@ -196,7 +195,7 @@ def _(op: native_ops.NativeBeamsplitter, precision: Optional[float] = None):
     return f"{gate_id} q[{qubit}] {params[0]} {params[1]} {params[2]} {params[3]}"
 
 
-def _tokenize_params(params, precision: Optional[float] = None):
+def _tokenize_params(params, precision: float | None = None):
     if precision:
         params = list(map(lambda p: f"{p:.{precision}}", params))
     else:

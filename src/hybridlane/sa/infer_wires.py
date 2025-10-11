@@ -3,12 +3,12 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import functools
-from typing import Hashable, Optional
+from typing import Hashable
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
-from pennylane.ops import CompositeOp, SymbolicOp
+from pennylane.ops import CompositeOp, ControlledOp, SymbolicOp
 from pennylane.ops.cv import CVObservable, CVOperation
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
@@ -18,15 +18,14 @@ from ..measurements import (
     SampleMeasurement,
     StateMeasurement,
 )
+from ..ops.mixins import Hybrid, Spectral
+from .base import BasisSchema, ComputationalBasis, StaticAnalysisResult
 from .exceptions import StaticAnalysisError
-from ..ops.mixins import Hybrid
-from ..ops.mixins import Spectral
-from .base import BasisSchema, StaticAnalysisResult, ComputationalBasis
 
 
 @functools.lru_cache(maxsize=128)
 def analyze(
-    tape: QuantumScript, fill_missing: Optional[str] = None
+    tape: QuantumScript, fill_missing: str | None = None
 ) -> StaticAnalysisResult:
     """Static circuit analysis pass to identify wire types and measurement schemas
 
@@ -125,7 +124,7 @@ def _aliased_wire_msg_helper(
 
 
 def infer_wire_types(
-    tape: QuantumScript, fill_missing: Optional[str] = None
+    tape: QuantumScript, fill_missing: str | None = None
 ) -> tuple[Wires, Wires]:
     """Statically analyzes a tape to partition wires into qumodes and qubits
 
@@ -175,22 +174,50 @@ def _infer_wire_types_from_operations(ops: list[Operator]) -> tuple[Wires, Wires
     qumodes, qubits = Wires([]), Wires([])
 
     for op in ops:
-        # For hybrid observables, we defined a function to explicitly
-        # partition qubits and qumodes
-        if isinstance(op, Hybrid):
-            qubit_wires, qumode_wires = op.split_wires()
-            qumodes += qumode_wires
-            qubits += qubit_wires
-
-        # Assume all CV pennylane stuff is qumodes
-        elif isinstance(op, CVOperation):
-            qumodes += op.wires
-
-        # All pennylane DV gates should fall through to here
-        else:
-            qubits += op.wires
+        new_qumodes, new_qubits = _infer_wires_from_operation(op)
+        qumodes += new_qumodes
+        qubits += new_qubits
 
     return qumodes, qubits
+
+
+@functools.singledispatch
+def _infer_wires_from_operation(op: Operator):
+    qumodes, qubits = Wires([]), Wires([])
+
+    if op.has_decomposition:
+        for o in op.decomposition():
+            new_qumodes, new_qubits = _infer_wires_from_operation(o)
+            qumodes += new_qumodes
+            qubits += new_qubits
+
+    else:
+        qubits = op.wires
+
+    return qumodes, qubits
+
+
+@_infer_wires_from_operation.register
+def _(op: CVOperation):
+    return op.wires, Wires([])
+
+
+@_infer_wires_from_operation.register
+def _(op: Hybrid):
+    qubits, qumodes = op.split_wires()
+    return qumodes, qubits
+
+
+@_infer_wires_from_operation.register
+def _(op: SymbolicOp):
+    return _infer_wires_from_operation(op.base)
+
+
+@_infer_wires_from_operation.register
+def _(op: ControlledOp):
+    ctrl_qubits = op.control_wires
+    qumodes, qubits = _infer_wires_from_operation(op.base)
+    return qumodes, qubits + ctrl_qubits
 
 
 def _infer_wire_types_from_measurement(

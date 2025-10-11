@@ -110,14 +110,14 @@ class TestCircuits:
         qasm = hqml.to_openqasm(circuit, precision=5, strict=strict)()
 
         # Beamsplitter gets converted
-        assert "cv_bs(3.1416, -1.5708) m[0], m[1];" in qasm
-        assert "cv_k(-5.0) m[0];" in qasm
+        assert "cv_bs(3.14159, -1.57080) m[0], m[1];" in qasm
+        assert "cv_k(-5.00000) m[0];" in qasm
 
         p = re.compile(r"state_prep\(\);")
         assert len(p.findall(qasm)) == 1
 
         assert "bit[1] c1;" in qasm
-        assert "cv_r(1.5708) m[0];" in qasm
+        assert "cv_r(1.57080) m[0];" in qasm
 
         if strict:
             evaluate_openqasm_compliance(qasm)

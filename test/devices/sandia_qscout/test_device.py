@@ -85,7 +85,7 @@ class TestDevice:
         ),
     )
     def test_beamsplitter_constraints(self, wires, allowed):
-        dev = QscoutIonTrap()
+        dev = QscoutIonTrap(n_qubits=6, use_hardware_wires=True)
 
         @partial(qml.set_shots, shots=10)
         @qml.qnode(dev)
@@ -111,7 +111,7 @@ class TestDevice:
         ),
     )
     def test_rampup_constraints(self, wires, allowed):
-        dev = QscoutIonTrap()
+        dev = QscoutIonTrap(n_qubits=6, use_hardware_wires=True)
 
         @partial(qml.set_shots, shots=10)
         @qml.qnode(dev)
@@ -154,7 +154,7 @@ class TestDevice:
 
 class TestLayout:
     def test_qumode_assignment(self):
-        dev = QscoutIonTrap()
+        dev = QscoutIonTrap(n_qubits=4)
 
         @partial(qml.set_shots, shots=10)
         @qml.qnode(dev)
@@ -166,10 +166,12 @@ class TestLayout:
         tape = construct_tape(circuit, level="device")()
         sa_res = sa.analyze(tape)
 
-        assert sa_res.qumodes == Wires(["a0m1", "a1m1", "a0m2", "a1m2", "a0m3"])
+        assert Wires(["a0m1", "a1m1", "a0m2", "a1m2", "a0m3", "a1m3"]).contains_wires(
+            sa_res.qumodes
+        )
 
     def test_qumode_assignment_with_com(self):
-        dev = QscoutIonTrap(use_com_modes=True)
+        dev = QscoutIonTrap(n_qubits=3, use_com_modes=True)
 
         @partial(qml.set_shots, shots=10)
         @qml.qnode(dev)
@@ -181,12 +183,45 @@ class TestLayout:
         tape = construct_tape(circuit, level="device")()
         sa_res = sa.analyze(tape)
 
-        assert sa_res.qumodes == Wires(["a0m0", "a1m0", "a0m1", "a1m1", "a0m2"])
+        assert Wires(["a0m0", "a1m0", "a0m1", "a1m1", "a0m2", "a1m2"]).contains_wires(
+            sa_res.qumodes
+        )
+
+    def test_no_valid_assignment(self):
+        dev = QscoutIonTrap(n_qubits=3, use_com_modes=True)
+
+        @partial(qml.set_shots, shots=10)
+        @qml.qnode(dev)
+        def circuit():
+            # Both are hardcoded to the tilt modes, but there's only 2 tilt modes, not 3
+            ion.NativeBeamsplitter(0.1, 0.2, 0.3, 0.4, [0, "m1", "m2"])
+            hqml.ConditionalDisplacement(0.5, 0, [1, "m3"])
+
+        with pytest.raises(DeviceError):
+            construct_tape(circuit, level="device")()
+
+    def test_conditional_displacement(self):
+        dev = QscoutIonTrap(n_qubits=3, use_com_modes=True)
+
+        @partial(qml.set_shots, shots=10)
+        @qml.qnode(dev)
+        def circuit():
+            hqml.ConditionalDisplacement(0.5, 0, [1, "m1"])
+
+        tape = construct_tape(circuit, level="device")()
+
+        specs = qml.specs(circuit, level="device")()
+        assert specs["resources"].gate_types["ConditionalXDisplacement"] == 1
+        for op in tape.operations:
+            if isinstance(op, ion.ConditionalXDisplacement):
+                assert op.wires[1] == "a0m1"
 
 
 class TestDecomposition:
     def test_fockladder_and_conditionaldisplacement(self):
-        dev = qml.device("sandiaqscout.hybrid", optimize=True)
+        dev = qml.device(
+            "sandiaqscout.hybrid", optimize=True, use_hardware_wires=True, n_qubits=3
+        )
 
         @partial(qml.set_shots, shots=20)
         @qml.qnode(dev)
@@ -201,8 +236,8 @@ class TestDecomposition:
         op_counts = Counter([type(op) for op in tape.operations])
 
         # First FockLadder has a native instruction, so it should be left alone
-        assert op_counts[hqml.FockLadder] == 1
-        assert isinstance(tape.operations[0], hqml.FockLadder)
+        assert op_counts[ion.FockStatePrep] == 1
+        assert isinstance(tape.operations[0], ion.FockStatePrep)
 
         # Second one is non-native and should be turned into red/blue sideband pulses
         op_types = {type(op) for op in tape.operations[1:6]}

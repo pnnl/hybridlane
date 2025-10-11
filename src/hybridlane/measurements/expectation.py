@@ -2,11 +2,11 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-from typing import Optional, Sequence, Union
+from collections.abc import Sequence
 
-from pennylane.operation import Operator
-from pennylane.measurements.mid_measure import MeasurementValue
 import pennylane as qml
+from pennylane.measurements.mid_measure import MeasurementValue
+from pennylane.operation import Operator
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
@@ -20,7 +20,7 @@ from .base import (
 from .sample import SampleMP
 
 
-def expval(op: Union[Operator, MeasurementValue]) -> "ExpectationMP":
+def expval(op: Operator | MeasurementValue) -> "ExpectationMP":
     """Expectation value of the supplied observable"""
 
     if isinstance(op, MeasurementValue):
@@ -39,13 +39,13 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
     def numeric_type(self):
         return float
 
-    def shape(self, shots: Optional[int] = None, num_device_wires: int = 0) -> tuple:
+    def shape(self, shots: int | None = None, num_device_wires: int = 0) -> tuple:
         return ()
 
     def process_samples(
         self,
         samples: SampleResult,
-        wire_order: Optional[Wires] = None,
+        wire_order: Wires | None = None,
         shot_range: tuple[int, ...] | None = None,
         bin_size: int | None = None,
     ) -> TensorLike | list[TensorLike]:

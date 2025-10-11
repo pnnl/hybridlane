@@ -3,7 +3,7 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 from . import attributes
-from .cv import (
+from .qumode import (
     Beamsplitter,
     CubicPhase,
     Displacement,
@@ -11,7 +11,9 @@ from .cv import (
     Fourier,
     Kerr,
     ModeSwap,
+    N,
     NumberOperator,
+    P,
     QuadOperator,
     QuadP,
     QuadX,
@@ -19,6 +21,7 @@ from .cv import (
     Squeezing,
     TwoModeSqueezing,
     TwoModeSum,
+    X,
 )
 from .hybrid import (
     SNAP,
@@ -71,7 +74,10 @@ __all__ = [
     "ConditionalTwoModeSqueezing",
     "ConditionalTwoModeSum",
     "QuadP",
+    "P",
     "QuadX",
+    "X",
     "NumberOperator",
+    "N",
     "FockStateProjector",
 ]

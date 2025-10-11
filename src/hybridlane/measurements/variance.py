@@ -2,7 +2,7 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-from typing import Optional, Sequence, Union
+from collections.abc import Sequence
 
 import pennylane as qml
 from pennylane.measurements.mid_measure import MeasurementValue
@@ -20,7 +20,7 @@ from .base import (
 from .sample import SampleMP
 
 
-def var(op: Union[Operator, MeasurementValue]) -> "VarianceMP":
+def var(op: Operator | MeasurementValue) -> "VarianceMP":
     """Variance of the supplied observable"""
 
     if isinstance(op, MeasurementValue):
@@ -39,13 +39,13 @@ class VarianceMP(SampleMeasurement, StateMeasurement):
     def numeric_type(self):
         return float
 
-    def shape(self, shots: Optional[int] = None, num_device_wires: int = 0) -> tuple:
+    def shape(self, shots: int | None = None, num_device_wires: int = 0) -> tuple:
         return ()
 
     def process_samples(
         self,
         samples: SampleResult,
-        wire_order: Optional[Wires] = None,
+        wire_order: Wires | None = None,
         shot_range: tuple[int, ...] | None = None,
         bin_size: int | None = None,
     ) -> TensorLike | list[TensorLike]:
