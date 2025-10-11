@@ -1,6 +1,6 @@
 [project]
 name = "hybridlane"
-version = "0.3.0a1"
+version = "0.4.0a1"
 authors = [
     {name = "Jim Furches", email = "james.furches@pnnl.gov"}
 ]
