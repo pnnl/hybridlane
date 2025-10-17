@@ -14,6 +14,9 @@ from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 from ..mixins import Hybrid
+from ..op_math.decompositions.qubit_conditioned_decompositions import (
+    decompose_multiqcond_native,
+)
 from ..qumode import Displacement, Squeezing
 from .non_parametric_ops import ConditionalParity
 
@@ -75,6 +78,7 @@ class ConditionalRotation(Operation, Hybrid):
 
 qml.add_decomps("Adjoint(ConditionalRotation)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalRotation)", pow_rotation)
+qml.add_decomps("qCond(ConditionalRotation)", decompose_multiqcond_native)
 
 
 class ConditionalDisplacement(Operation, Hybrid):
@@ -93,7 +97,7 @@ class ConditionalDisplacement(Operation, Hybrid):
     .. math::
 
         CD(\alpha) = CP D(i\alpha) CP^\dagger
-    
+
     The ``wires`` attribute is assumed to be ``(qubit, qumode)``.
 
     .. seealso::
@@ -169,6 +173,7 @@ def _pow_cd(a, phi, wires, z, **_):
 qml.add_decomps(ConditionalDisplacement, _cd_parity_decomp)
 qml.add_decomps("Adjoint(ConditionalDisplacement)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalDisplacement)", _pow_cd)
+qml.add_decomps("qCond(ConditionalDisplacement)", decompose_multiqcond_native)
 
 
 class ConditionalSqueezing(Operation, Hybrid):
@@ -191,7 +196,7 @@ class ConditionalSqueezing(Operation, Hybrid):
     .. seealso::
 
         :class:`~hybridlane.ops.Squeezing`
-    
+
     .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
@@ -248,6 +253,7 @@ def _pow_cs(r, phi, wires, z, **_):
 
 qml.add_decomps("Adjoint(ConditionalSqueezing)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalSqueezing)", _pow_cs)
+qml.add_decomps("qCond(ConditionalSqueezing)", decompose_multiqcond_native)
 
 
 class SelectiveQubitRotation(Operation, Hybrid):

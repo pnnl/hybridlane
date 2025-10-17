@@ -3,7 +3,7 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 
-from hybridlane import sa, transforms
+from hybridlane import decomposition, ops, sa, transforms
 from hybridlane.drawer import draw_mpl
 from hybridlane.io import to_openqasm
 from hybridlane.measurements import expval, sample, var

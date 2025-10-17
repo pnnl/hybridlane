@@ -3,26 +3,21 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import math
-from collections.abc import Iterable, Sequence
-from functools import reduce
-from typing import Any, Hashable
 
 import numpy as np
 import pennylane as qml
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
-    make_pow_decomp_with_period,
-    pow_involutory,
     pow_rotation,
-    self_adjoint,
 )
-from pennylane.operation import CVOperation, Operator
+from pennylane.operation import CVOperation
 from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
-from pennylane.wires import Wires, WiresLike
+from pennylane.wires import WiresLike
 
-from ...sa import ComputationalBasis
-from ..mixins import Spectral
+import hybridlane as hqml
+
+from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
 # Re-export since it matches the convention of Y. Liu
@@ -85,6 +80,7 @@ def _pow_d(a, phi, wires, z, **_):
 
 qml.add_decomps("Adjoint(Displacement)", adjoint_rotation)
 qml.add_decomps("Pow(Displacement)", _pow_d)
+qml.add_decomps("qCond(Displacement)", to_native_qcond(1))
 
 
 # Modify to use -i convention
@@ -133,6 +129,7 @@ class Rotation(CVOperation):
 
 qml.add_decomps("Adjoint(Rotation)", adjoint_rotation)
 qml.add_decomps("Pow(Rotation)", pow_rotation)
+qml.add_decomps("qCond(Rotation)", to_native_qcond(1))
 
 
 # Re-export since it matches paper convention
@@ -190,6 +187,7 @@ def _pow_s(r, phi, wires, z, **_):
 
 qml.add_decomps("Adjoint(Squeezing)", adjoint_rotation)
 qml.add_decomps("Pow(Squeezing)", _pow_s)
+qml.add_decomps("qCond(Squeezing)", to_native_qcond(1))
 
 
 # Modify to have -i convention

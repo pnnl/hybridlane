@@ -6,7 +6,7 @@ from typing import Iterable, Sequence
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
-from ..sa.base import ComputationalBasis
+import hybridlane as hqml
 
 
 class Spectral:
@@ -18,7 +18,7 @@ class Spectral:
     """
 
     @property
-    def natural_basis(self) -> ComputationalBasis:
+    def natural_basis(self) -> "hqml.sa.ComputationalBasis":
         raise NotImplementedError(
             "Observable did not define its best basis to measure in"
         )

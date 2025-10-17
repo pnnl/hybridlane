@@ -14,8 +14,9 @@ from pennylane.decomposition.symbolic_decomposition import (
 from pennylane.operation import CVOperation
 from pennylane.wires import WiresLike
 
-from .parametric_ops_multi_qumode import Beamsplitter
-from .parametric_ops_single_qumode import Rotation
+import hybridlane as hqml
+
+from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
 class Fourier(CVOperation):
@@ -40,10 +41,10 @@ class Fourier(CVOperation):
     def compute_decomposition(
         *params, wires, **hyperparameters
     ) -> Sequence[CVOperation]:
-        return [Rotation(math.pi / 2, wires)]
+        return [hqml.Rotation(math.pi / 2, wires)]
 
     def adjoint(self):
-        return Rotation(-math.pi / 2, self.wires)
+        return hqml.Rotation(-math.pi / 2, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -51,24 +52,37 @@ class Fourier(CVOperation):
         )
 
 
-@qml.register_resources({Rotation: 1})
+def _f_to_r_resources():
+    return {hqml.Rotation: 1}
+
+
+@qml.register_resources(_f_to_r_resources)
 def _f_to_r(wires, **_):
-    Rotation(math.pi / 2, wires)
+    hqml.Rotation(math.pi / 2, wires)
 
 
-@qml.register_resources({Rotation: 1})
+def _adjoint_f_to_r_resources():
+    return {hqml.Rotation: 1}
+
+
+@qml.register_resources(_adjoint_f_to_r_resources)
 def _adjoint_f_to_r(wires, **_):
-    Rotation(-math.pi / 2, wires)
+    hqml.Rotation(-math.pi / 2, wires)
 
 
-@qml.register_resources({Rotation: 1})
+def _pow_f_to_r_resources(z, **_):
+    return {hqml.Rotation: 1}
+
+
+@qml.register_resources(_pow_f_to_r_resources)
 def _pow_f_to_r(wires, z, **_):
-    Rotation(math.pi / 2 * z, wires)
+    hqml.Rotation(math.pi / 2 * z, wires)
 
 
 qml.add_decomps(Fourier, _f_to_r)
 qml.add_decomps("Adjoint(Fourier)", _adjoint_f_to_r)
 qml.add_decomps("Pow(Fourier)", make_pow_decomp_with_period(4), _pow_f_to_r)
+qml.add_decomps("qCond(Fourier)", to_native_qcond(1))
 
 
 class ModeSwap(CVOperation):
@@ -95,9 +109,9 @@ class ModeSwap(CVOperation):
     @staticmethod
     def compute_decomposition(*params, wires, **hyperparameters):
         return [
-            Beamsplitter(math.pi, 0, wires),
-            Rotation(-math.pi / 2, wires[0]),
-            Rotation(-math.pi / 2, wires[1]),
+            hqml.Beamsplitter(math.pi, 0, wires),
+            hqml.Rotation(-math.pi / 2, wires[0]),
+            hqml.Rotation(-math.pi / 2, wires[1]),
         ]
 
     def adjoint(self):
@@ -115,11 +129,18 @@ class ModeSwap(CVOperation):
             return [ModeSwap(self.wires)]
 
 
-@qml.register_resources({Beamsplitter: 1, Rotation: 2})
+def _swap_to_bs_resources():
+    return {
+        hqml.Beamsplitter: 1,
+        hqml.Rotation: 2,
+    }
+
+
+@qml.register_resources(_swap_to_bs_resources)
 def _swap_to_bs(wires, **_):
-    Beamsplitter(math.pi, 0, wires)
-    Rotation(-math.pi / 2, wires[0])
-    Rotation(-math.pi / 2, wires[1])
+    hqml.Beamsplitter(math.pi, 0, wires)
+    hqml.Rotation(-math.pi / 2, wires[0])
+    hqml.Rotation(-math.pi / 2, wires[1])
 
 
 qml.add_decomps(ModeSwap, _swap_to_bs)

@@ -14,6 +14,9 @@ from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 from ..mixins import Hybrid
+from ..op_math.decompositions.qubit_conditioned_decompositions import (
+    decompose_multiqcond_native,
+)
 from ..qumode import Beamsplitter, TwoModeSqueezing
 from .non_parametric_ops import ConditionalParity
 from .parametric_ops_single_qumode import ConditionalRotation
@@ -34,7 +37,7 @@ class ConditionalBeamsplitter(Operation, Hybrid):
 
     .. math::
 
-        CBS_{ijk}(\theta, \varphi) = CP_{ij} BS_{jk}(\theta, \varphi + \pi/2) CP_{ij}^\dagger 
+        CBS_{ijk}(\theta, \varphi) = CP_{ij} BS_{jk}(\theta, \varphi + \pi/2) CP_{ij}^\dagger
 
     .. seealso::
 
@@ -109,6 +112,7 @@ def _pow_cbs(theta, phi, wires, z, **_):
 qml.add_decomps(ConditionalBeamsplitter, _cbs_parity_decomp)
 qml.add_decomps("Adjoint(ConditionalBeamsplitter)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalBeamsplitter)", _pow_cbs)
+qml.add_decomps("qCond(ConditionalBeamsplitter)", decompose_multiqcond_native)
 
 
 class ConditionalTwoModeSqueezing(Operation, Hybrid):
@@ -205,6 +209,7 @@ def _pow_ctms(theta, phi, wires, z, **_):
 qml.add_decomps(ConditionalTwoModeSqueezing, _ctms_parity_decomp)
 qml.add_decomps("Adjoint(ConditionalTwoModeSqueezing)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalTwoModeSqueezing)", _pow_ctms)
+qml.add_decomps("qCond(ConditionalTwoModeSqueezing)", decompose_multiqcond_native)
 
 
 class ConditionalTwoModeSum(Operation, Hybrid):
@@ -262,6 +267,7 @@ class ConditionalTwoModeSum(Operation, Hybrid):
 
 qml.add_decomps("Adjoint(ConditionalTwoModeSum)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalTwoModeSum)", pow_rotation)
+qml.add_decomps("qCond(ConditionalTwoModeSum)", decompose_multiqcond_native)
 
 
 def _can_replace(x, y):

@@ -1,0 +1,11 @@
+[
+    {
+        "label": "Python: Debug Tests",
+        "adapter": "Debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": ["$ZED_WORKTREE_ROOT/test/ops/op_math"],
+        "justMyCode": false,
+        "purpose": ["debug-test"]
+    }
+]

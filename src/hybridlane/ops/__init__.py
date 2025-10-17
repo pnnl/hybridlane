@@ -42,6 +42,7 @@ from .hybrid import (
     SelectiveQubitRotation,
 )
 from .mixins import Hybrid
+from .op_math import QubitConditioned, qcond
 
 __all__ = [
     "attributes",
@@ -80,4 +81,6 @@ __all__ = [
     "NumberOperator",
     "N",
     "FockStateProjector",
+    "QubitConditioned",
+    "qcond",
 ]
