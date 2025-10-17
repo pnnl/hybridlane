@@ -8,7 +8,7 @@ from typing import Hashable
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
-from pennylane.ops import CompositeOp, ControlledOp, SymbolicOp
+from pennylane.ops import CompositeOp, Controlled, ControlledOp, SymbolicOp
 from pennylane.ops.cv import CVObservable, CVOperation
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
@@ -18,9 +18,12 @@ from ..measurements import (
     SampleMeasurement,
     StateMeasurement,
 )
+from ..ops import QubitConditioned
 from ..ops.mixins import Hybrid, Spectral
 from .base import BasisSchema, ComputationalBasis, StaticAnalysisResult
 from .exceptions import StaticAnalysisError
+
+import hybridlane as hqml
 
 
 @functools.lru_cache(maxsize=128)
@@ -214,7 +217,7 @@ def _(op: SymbolicOp):
 
 
 @_infer_wires_from_operation.register
-def _(op: ControlledOp):
+def _(op: Controlled | ControlledOp | QubitConditioned):
     ctrl_qubits = op.control_wires
     qumodes, qubits = _infer_wires_from_operation(op.base)
     return qumodes, qubits + ctrl_qubits
