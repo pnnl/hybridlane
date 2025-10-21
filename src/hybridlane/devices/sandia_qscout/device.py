@@ -13,11 +13,7 @@ from typing import Hashable, cast
 
 import numpy as np
 import pennylane as qml
-from pennylane.decomposition import (
-    add_decomps,
-    register_resources,
-)
-from pennylane.devices import DefaultExecutionConfig, Device
+from pennylane.devices import Device
 from pennylane.devices.execution_config import ExecutionConfig
 from pennylane.devices.modifiers import single_tape_support
 from pennylane.devices.preprocess import (
@@ -205,7 +201,7 @@ class QscoutIonTrap(Device):
     def execute(  # type: ignore
         self,
         circuits: Sequence[QuantumScript],
-        execution_config: ExecutionConfig = DefaultExecutionConfig,
+        execution_config: ExecutionConfig | None = None,
     ):
         # We can't actually execute anything, instead this device is just meant
         # as a compilation target.
@@ -225,13 +221,13 @@ class QscoutIonTrap(Device):
 
         updated_values["device_options"] = dict(config.device_options)  # copy
 
-        if circuit and updated_values["device_options"].get("n_qubits") is None:
-            sa_res = sa.analyze(circuit)
-            updated_values["device_options"]["n_qubits"] = len(sa_res.qubits)
-
         for option in self._device_options:
             if option not in updated_values["device_options"]:
                 updated_values["device_options"][option] = getattr(self, f"_{option}")
+
+        if circuit and updated_values["device_options"].get("n_qubits") is None:
+            sa_res = sa.analyze(circuit)
+            updated_values["device_options"]["n_qubits"] = len(sa_res.qubits)
 
         return replace(config, **updated_values)
 
@@ -414,9 +410,10 @@ def _construct_csp(
     # All virtual wires must have unique hardware assignments
     problem.addConstraint(AllDifferentConstraint())
 
-    def constraint(*hw_wires, virtual_op):
-        hw_op = virtual_op.__class__(
-            *virtual_op.parameters, wires=hw_wires, **virtual_op.hyperparameters
+    def constraint(*hw_wires, virtual_op: Operator):
+        data, (_, *hashable_hyperparameters) = virtual_op._flatten()  # pyright: ignore[reportPrivateUsage]
+        hw_op = virtual_op._unflatten(
+            data, (Wires(hw_wires), *hashable_hyperparameters)
         )
         return is_gate_supported(hw_op)
 
@@ -454,7 +451,7 @@ def map_supported_fockstate(tape: QuantumScript, use_native_instruction: bool = 
 # in pennylane in terms of R{x,y,z} gates, which are native.
 
 
-@register_resources({qml.IsingXX: 1, qml.RY: 2, qml.RX: 2})
+@qml.register_resources({qml.IsingXX: 1, qml.RY: 2, qml.RX: 2})
 def _cnot_decomp(wires, **_):
     # Taken from https://en.wikipedia.org/wiki/Mølmer–Sørensen_gate#Description
     qml.RY(math.pi / 2, wires[0])
@@ -464,20 +461,20 @@ def _cnot_decomp(wires, **_):
     qml.RY(-math.pi / 2, wires[0])
 
 
-add_decomps(qml.CNOT, _cnot_decomp)
+qml.add_decomps(qml.CNOT, _cnot_decomp)
 
 
-@register_resources({qml.GlobalPhase: 1, ops.R: 2})
+@qml.register_resources({qml.GlobalPhase: 1, ops.R: 2})
 def _rot_decomp(phi, theta, omega, wires, **_):
     ops.R(theta - math.pi, math.pi / 2 - phi, wires=wires)
     ops.R(math.pi, (omega - phi) / 2 + math.pi / 2, wires=wires)
     qml.GlobalPhase((phi + omega) / 2)
 
 
-add_decomps(qml.Rot, _rot_decomp)
+qml.add_decomps(qml.Rot, _rot_decomp)
 
 
-@register_resources({ConditionalXDisplacement: 1, qml.H: 2})
+@qml.register_resources({ConditionalXDisplacement: 1, qml.H: 2})
 def _conditionaldisplacement_decomp(*params, wires, **_):
     r, phi = params
     beta = r * np.exp(1j * phi)
@@ -487,7 +484,7 @@ def _conditionaldisplacement_decomp(*params, wires, **_):
     qml.H(wires[0])
 
 
-add_decomps(hqml.ConditionalDisplacement, _conditionaldisplacement_decomp)
+qml.add_decomps(hqml.ConditionalDisplacement, _conditionaldisplacement_decomp)
 
 # Currently unknown how to decompose normal squeezing parameters to red/blue sideband ratios
 # @register_resources({ConditionalXSqueezing: 1, qml.H: 2})

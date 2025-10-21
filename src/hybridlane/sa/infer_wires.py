@@ -7,9 +7,8 @@ from typing import Hashable
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
-from pennylane.operation import Operator
+from pennylane.operation import CV, Operator
 from pennylane.ops import CompositeOp, ControlledOp, SymbolicOp
-from pennylane.ops.cv import CVObservable, CVOperation
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
@@ -198,7 +197,7 @@ def _infer_wires_from_operation(op: Operator):
 
 
 @_infer_wires_from_operation.register
-def _(op: CVOperation):
+def _(op: CV):
     return op.wires, Wires([])
 
 
@@ -268,7 +267,7 @@ def _infer_wire_types_from_observable(obs: Operator) -> tuple[Wires, Wires]:
     elif obs.pauli_rep:
         return Wires([]), obs.wires  # qubit
 
-    elif isinstance(obs, CVObservable):
+    elif isinstance(obs, CV):
         return obs.wires, Wires([])  # qumode
 
     else:

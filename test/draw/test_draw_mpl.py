@@ -15,7 +15,7 @@ from hybridlane.drawer.tape_mpl import default_qubit_color, default_qumode_color
 from hybridlane.drawer.mpldrawer import icon_face_color  # noqa: E402
 
 
-dev = qml.device("bosonicqiskit.hybrid")
+dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
 
 @qml.qnode(dev)

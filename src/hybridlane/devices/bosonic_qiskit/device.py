@@ -22,7 +22,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 from typing import Hashable
 
-from pennylane.devices import DefaultExecutionConfig, Device
+from pennylane.devices import Device
 from pennylane.devices.execution_config import ExecutionConfig
 from pennylane.devices.modifiers import single_tape_support
 from pennylane.devices.preprocess import (
@@ -167,10 +167,11 @@ class BosonicQiskitDevice(Device):
     def execute(  # type: ignore
         self,
         circuits: Sequence[QuantumScript],
-        execution_config: ExecutionConfig = DefaultExecutionConfig,
+        execution_config: ExecutionConfig | None = None,
     ):
         from .simulate import simulate
 
+        execution_config = execution_config or ExecutionConfig()
         truncation = execution_config.device_options.get("truncation", self._truncation)
         max_fock_level = execution_config.device_options.get(
             "max_fock_level", self._max_fock_level
@@ -218,7 +219,9 @@ class BosonicQiskitDevice(Device):
             updated_values["device_options"].get("truncation") is None
             and circuit is not None
         ):
-            max_fock_level = updated_values["device_options"].get("max_fock_level")
+            max_fock_level = updated_values["device_options"].get(
+                "max_fock_level", self._max_fock_level
+            )
             res = sa.analyze(circuit)
             if (truncation := _infer_truncation(res, max_fock_level)) is None:
                 raise DeviceError(

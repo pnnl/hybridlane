@@ -88,7 +88,7 @@ def tokenize_operation(op: Operation, precision: float | None = None) -> str:
         wires = [f"q[{w}]" for w in op.wires]
         return " ".join(map(str, [gate_id, *wires, *params]))
 
-    raise DeviceError(f"Unregistered operation: {op}")
+    raise DeviceError(f"Cannot serialize non-native gate to Jaqal: {op}")
 
 
 @tokenize_operation.register

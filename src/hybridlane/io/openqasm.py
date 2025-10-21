@@ -111,10 +111,10 @@ from functools import wraps
 from typing import Any, Callable
 
 import pennylane as qml
+from pennylane.io.to_openqasm import OPENQASM_GATES
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
 from pennylane.tape import QuantumScript
-from pennylane.tape.qscript import OPENQASM_GATES
 from pennylane.wires import Wires
 
 import hybridlane as hqml

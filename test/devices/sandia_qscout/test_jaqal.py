@@ -4,17 +4,22 @@
 # See the LICENSE.txt file for full license text.
 
 import math
-from functools import partial
 import textwrap
 
 import pennylane as qml
+import pytest
 
 import hybridlane as hqml
 from hybridlane.devices.sandia_qscout import QscoutIonTrap, to_jaqal
 from hybridlane.devices.sandia_qscout import ops as ion
 from hybridlane.devices.sandia_qscout.jaqal import tokenize_operation
 
-qml.decomposition.enable_graph()
+
+@pytest.fixture(scope="class", autouse=True)
+def graph_enabled():
+    qml.decomposition.enable_graph()
+    yield
+    qml.decomposition.disable_graph()
 
 
 class TestTokenizer:
@@ -71,7 +76,7 @@ class TestToJaqal:
     def test_sample_qubit_circuit(self):
         dev = QscoutIonTrap()
 
-        @partial(qml.set_shots, shots=20)
+        @qml.set_shots(20)
         @qml.qnode(dev)
         def circuit():
             qml.H(0)

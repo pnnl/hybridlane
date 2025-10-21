@@ -18,9 +18,9 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
-    "pennylane>=0.41.1",
+    "pennylane>=0.43.0",
     "pydantic>=2.9.2",
 ]
 
