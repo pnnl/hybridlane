@@ -24,6 +24,8 @@ from ..ops.mixins import Hybrid, Spectral
 from .base import BasisSchema, ComputationalBasis, StaticAnalysisResult
 from .exceptions import StaticAnalysisError
 
+import hybridlane as hqml
+
 
 @functools.lru_cache(maxsize=128)
 def analyze(
