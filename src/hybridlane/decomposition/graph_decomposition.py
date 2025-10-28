@@ -8,7 +8,7 @@ from pennylane.decomposition import DecompositionGraph as PLDG
 from ..ops.op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multi_qcond,
 )
-from .symbolic_decomposition import ctrl_from_qcond, make_qcond_decomp
+from .symbolic_decomposition import ctrl_from_qcond, make_qcond_decomp, flip_pow_qcond
 
 import hybridlane as hqml
 
@@ -52,6 +52,17 @@ class DecompositionGraph(PLDG):
         rules.append(decompose_multi_qcond)
 
         return rules
+
+    @override
+    def _get_pow_decompositions(
+        self, op_node: CompressedResourceOp
+    ) -> list[DecompositionRule]:
+        decomps = super()._get_pow_decompositions(op_node)
+
+        if op_node.params["base_class"] in (hqml.ops.QubitConditioned,):
+            decomps.append(flip_pow_qcond)
+
+        return decomps
 
 
 _ = patch(

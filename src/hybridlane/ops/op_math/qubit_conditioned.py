@@ -136,7 +136,7 @@ class QubitConditioned(SymbolicOp):
             )
 
         self.hyperparameters["control_wires"] = control_wires
-        self.name: str = f"qCond({base.name})"
+        self.name: str = f"QubitConditioned({base.name})"
 
         super().__init__(base, id)
 

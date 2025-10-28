@@ -18,7 +18,7 @@ def graph_enabled():
 class TestQubitConditioned:
     def test_name(self):
         op = QubitConditioned(hqml.Rotation(0.5, 0), 1)
-        assert op.name == "qCond(Rotation)"
+        assert op.name == "QubitConditioned(Rotation)"
 
     def test_overlapping_wires(self):
         with pytest.raises(ValueError):
@@ -208,6 +208,60 @@ class TestGraphDecomposition:
             qml.CNOT([2, 3]),
             qml.CNOT([3, 0]),
             hqml.ConditionalDisplacement(0.5, 0, [0, 1]),
+            qml.CNOT([3, 0]),
+            qml.CNOT([2, 3]),
+        ]
+
+    def test_cond_pow_cr(self, graph_enabled):
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+
+        @partial(
+            qml.transforms.decompose,
+            gate_set={hqml.ConditionalRotation, qml.CNOT},
+        )
+        @qml.qnode(dev)
+        def circuit():
+            hqml.qcond(qml.pow(hqml.ConditionalRotation(0.5, [0, 1]), 5), [2, 3])
+
+        tape = qml.workflow.construct_tape(circuit)()
+        assert tape.operations == [
+            qml.CNOT([2, 3]),
+            qml.CNOT([3, 0]),
+            hqml.ConditionalRotation(2.5, [0, 1]),
+            qml.CNOT([3, 0]),
+            qml.CNOT([2, 3]),
+        ]
+
+    def test_pow_adj_cr(self, graph_enabled):
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+
+        @partial(
+            qml.transforms.decompose,
+            gate_set={hqml.ConditionalRotation},
+        )
+        @qml.qnode(dev)
+        def circuit():
+            qml.pow(qml.adjoint(hqml.ConditionalRotation(0.5, [0, 1])), 5)
+
+        tape = qml.workflow.construct_tape(circuit)()
+        assert tape.operations == [hqml.ConditionalRotation(-2.5, [0, 1])]
+
+    def test_pow_cond_cr(self, graph_enabled):
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+
+        @partial(
+            qml.transforms.decompose,
+            gate_set={hqml.ConditionalRotation, qml.CNOT},
+        )
+        @qml.qnode(dev)
+        def circuit():
+            qml.pow(hqml.qcond(hqml.ConditionalRotation(0.5, [0, 1]), [2, 3]), 5)
+
+        tape = qml.workflow.construct_tape(circuit)()
+        assert tape.operations == [
+            qml.CNOT([2, 3]),
+            qml.CNOT([3, 0]),
+            hqml.ConditionalRotation(2.5, [0, 1]),
             qml.CNOT([3, 0]),
             qml.CNOT([2, 3]),
         ]

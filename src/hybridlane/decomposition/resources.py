@@ -1,10 +1,32 @@
 from typing import Any
+from unittest.mock import patch
 
 import pennylane as qml
 from pennylane.decomposition import CompressedResourceOp
 from pennylane.operation import Operator
 
 import hybridlane as hqml
+
+# Patch to handle things like qCond(Pow(...))
+_qml_resource_rep = qml.resource_rep
+
+
+def resource_rep(op_type: type[Operator], **params) -> CompressedResourceOp:
+    if issubclass(op_type, hqml.ops.QubitConditioned):
+        base_rep = resource_rep(params["base_class"], **params["base_params"])
+        params["base_class"] = base_rep.op_type
+        params["base_params"] = base_rep.params
+
+    return _qml_resource_rep(op_type, **params)
+
+
+_ = patch("pennylane.decomposition.resources.resource_rep", resource_rep).start()
+_ = patch(
+    "pennylane.decomposition.decomposition_graph.resource_rep", resource_rep
+).start()
+_ = patch(
+    "pennylane.decomposition.symbolic_decomposition.resource_rep", resource_rep
+).start()
 
 
 def qubit_conditioned_resource_rep(
