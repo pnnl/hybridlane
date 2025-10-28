@@ -1,3 +1,7 @@
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
 import pennylane as qml
 from pennylane.decomposition import DecompositionRule
 from pennylane.decomposition.resources import adjoint_resource_rep, pow_resource_rep

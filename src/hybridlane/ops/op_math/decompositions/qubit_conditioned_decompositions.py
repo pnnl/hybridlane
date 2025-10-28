@@ -1,5 +1,9 @@
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
 import pennylane as qml
-from pennylane.operation import Operator
+
 import hybridlane as hqml
 
 from ....decomposition.resources import qubit_conditioned_resource_rep

@@ -1,3 +1,7 @@
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
 import warnings
 from functools import partial
 
@@ -6,7 +10,6 @@ import pytest
 from pennylane.decomposition.symbolic_decomposition import pow_rotation
 from pennylane.operation import Operation
 from pennylane.templates import QuantumPhaseEstimation
-from pennylane.wires import Wires
 
 import hybridlane as hqml
 from hybridlane.ops.mixins import Hybrid
