@@ -7,7 +7,7 @@ from enum import Enum
 from functools import reduce
 from typing import Hashable, Sequence
 
-from pennylane.wires import WireError, Wires
+from pennylane.wires import WireError, Wires, WiresLike
 
 
 class ComputationalBasis(Enum):
@@ -54,25 +54,25 @@ class ComputationalBasis(Enum):
 class BasisSchema:
     r"""Utility class for representing the computational basis that wires are measured in"""
 
-    def __init__(self, wire_map: dict[Wires, ComputationalBasis]):
-        self._wire_map: dict[Hashable, ComputationalBasis] = {}
+    def __init__(self, wire_map: dict[WiresLike, ComputationalBasis]):
+        self._wire_map: dict[Wires, ComputationalBasis] = {}
         for wires, basis in wire_map.items():
             if not isinstance(basis, ComputationalBasis):
                 raise ValueError("All bases must be a ComputationalBasis object")
 
-            for wire in wires:
+            for wire in Wires(wires):
                 self._wire_map[wire] = basis
 
-    def get_basis(self, wire: Hashable) -> ComputationalBasis:
+    def get_basis(self, wire: WiresLike) -> ComputationalBasis:
         r"""Gets the basis a particular wire is measured in"""
         return self._wire_map[wire]
 
-    def get_type(self, wire: Hashable) -> type:
+    def get_type(self, wire: WiresLike) -> type:
         r"""Gets the primitive data type for a wire"""
         return self._wire_map[wire].return_type
 
     @property
-    def wires(self):
+    def wires(self) -> Wires:
         return Wires.all_wires(self._wire_map.keys())
 
     @staticmethod
@@ -101,9 +101,7 @@ class BasisSchema:
             if self.get_basis(w) != other.get_basis(w):
                 raise WireError(f"Incompatible schemas on wire {w}")
 
-        return BasisSchema(
-            {Wires(k): v for k, v in (self._wire_map | other._wire_map).items()}
-        )
+        return BasisSchema(self._wire_map | other._wire_map)
 
     def difference(self, other: "BasisSchema") -> "BasisSchema":
         wires = self.wires - other.wires
@@ -117,7 +115,7 @@ class BasisSchema:
         if unspecified_wires := wires - self.wires:
             raise WireError(f"Schema does not contain wires {unspecified_wires}")
 
-        new_wiremap = {Wires(w): self.get_basis(w) for w in wires}
+        new_wiremap = {w: self.get_basis(w) for w in wires}
         return BasisSchema(new_wiremap)
 
     def __bool__(self):

@@ -411,9 +411,7 @@ class FockTruncation(Truncation, BaseModel):
     @classmethod
     def all_fock_space(cls, wires: Sequence[Hashable], dim_sizes: dict[Hashable, int]):
         wires = Wires.all_wires(wires)
-        schema = sa.BasisSchema(
-            {Wires(w): sa.ComputationalBasis.Discrete for w in wires}
-        )
+        schema = sa.BasisSchema({w: sa.ComputationalBasis.Discrete for w in wires})
         return cls(basis_schema=schema, dim_sizes=dim_sizes)
 
     def __eq__(self, other):

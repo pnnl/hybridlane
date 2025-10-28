@@ -78,9 +78,7 @@ class TestApplications:
             estimation_wires = range(n_bits)
             QuantumPhaseEstimation(U, estimation_wires=estimation_wires)
 
-            schema = BasisSchema(
-                {Wires(w): ComputationalBasis.Discrete for w in estimation_wires}
-            )
+            schema = BasisSchema({estimation_wires: ComputationalBasis.Discrete})
             return hqml.sample(schema=schema)
 
         # Decomposition raises a warning if it can't find a decomposition
