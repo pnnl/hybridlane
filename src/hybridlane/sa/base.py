@@ -2,12 +2,51 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
+from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 from functools import reduce
-from typing import Hashable, Sequence
+from typing import Sequence
 
 from pennylane.wires import WireError, Wires, WiresLike
+
+
+@dataclass(frozen=True)
+class Qubit:
+    """Type representing a qubit"""
+
+    @property
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+        return (ComputationalBasis.Discrete,)
+
+
+# Put here for the future; currently unused. Will require rethinking how
+# to define wire type signatures in each operator
+@dataclass(frozen=True)
+class Qudit:
+    """Type representing a qudit with specified dimension"""
+
+    dim: int
+
+    @property
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+        return (ComputationalBasis.Discrete,)
+
+
+@dataclass(frozen=True)
+class Qumode:
+    """Type representing a qumode"""
+
+    @property
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+        return (
+            ComputationalBasis.Discrete,
+            ComputationalBasis.Position,
+            ComputationalBasis.Coherent,
+        )
+
+
+WireType = Qubit | Qudit | Qumode
 
 
 class ComputationalBasis(Enum):
@@ -153,14 +192,20 @@ class BasisSchema:
 class StaticAnalysisResult:
     """Represents the result of static analysis on a quantum circuit."""
 
-    qumodes: Wires
-    """The inferred qumodes in the circuit"""
-
-    qubits: Wires
-    """The inferred qubits in the circuit"""
+    wire_types: OrderedDict[WiresLike, WireType]
+    """The inferred type of each wire"""
 
     schemas: list[BasisSchema | None]
     """The inferred schemas for each measurement process, in the same order as the circuit"""
 
-    wire_order: Wires
-    """The wire order for the original tape"""
+    @property
+    def qubits(self) -> Wires:
+        return Wires([w for w, t in self.wire_types.items() if t == Qubit()])
+
+    @property
+    def qumodes(self) -> Wires:
+        return Wires([w for w, t in self.wire_types.items() if t == Qumode()])
+
+    @property
+    def wire_order(self) -> Wires:
+        return Wires(self.wire_types)
