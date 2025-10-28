@@ -4,7 +4,8 @@
 # See the LICENSE.txt file for full license text.
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
+
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 

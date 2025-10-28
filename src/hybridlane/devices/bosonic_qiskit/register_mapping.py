@@ -4,7 +4,8 @@
 # See the LICENSE.txt file for full license text.
 import math
 from collections import OrderedDict
-from typing import Hashable, Mapping, Union
+from collections.abc import Mapping
+from typing import Hashable
 
 import c2qa as bq
 import qiskit as qk
@@ -34,7 +35,7 @@ class RegisterMapping(Mapping):
 
     def _prepare(
         self, sa_result: sa.StaticAnalysisResult
-    ) -> OrderedDict[Hashable, Union[Qubit, QumodeType]]:
+    ) -> OrderedDict[Hashable, Qubit | QumodeType]:
         mapping = OrderedDict()
         self.axes_map = {}
 
@@ -89,7 +90,7 @@ class RegisterMapping(Mapping):
 
     def __getitem__(
         self, wire_or_wires: Hashable | Wires
-    ) -> Union[Qubit, QumodeType] | list[Union[Qubit, QumodeType]]:
+    ) -> Qubit | QumodeType | list[Qubit | QumodeType]:
         if isinstance(wire_or_wires, Wires):
             # Unbatch wires if possible
             if len(wire_or_wires) == 1:

@@ -3,10 +3,10 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 from collections import OrderedDict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from functools import reduce
-from typing import Sequence
 
 from pennylane.wires import WireError, Wires, WiresLike
 
