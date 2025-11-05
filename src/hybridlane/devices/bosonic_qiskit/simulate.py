@@ -335,9 +335,10 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
                 getattr(qc, method)(*parameters, *qumodes)
 
     elif isinstance(op, Hybrid) and (method := hybrid_gate_map.get(type(op))):
-        qubits, qumodes = op.split_wires()
-        qumodes = [regmapper.get(w) for w in qumodes]
-        qubits = [regmapper.get(w) for w in qubits]
+        wire_types = op.wire_types()
+
+        qumodes = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qumode()]
+        qubits = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qubit()]
 
         match type(op):
             case hqml.ConditionalRotation:

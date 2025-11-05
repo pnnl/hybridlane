@@ -3,28 +3,37 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import functools
+from collections import OrderedDict
 from typing import Hashable
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import CV, Operator
-from pennylane.ops import CompositeOp, ControlledOp, SymbolicOp
+from pennylane.ops import CompositeOp, Controlled, ControlledOp, SymbolicOp
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
-from pennylane.wires import Wires
+from pennylane.wires import WiresLike
 
 from ..measurements import (
     SampleMeasurement,
     StateMeasurement,
 )
+from ..ops import QubitConditioned
 from ..ops.mixins import Hybrid, Spectral
-from .base import BasisSchema, ComputationalBasis, StaticAnalysisResult
+from .base import (
+    BasisSchema,
+    ComputationalBasis,
+    Qubit,
+    Qumode,
+    StaticAnalysisResult,
+    WireType,
+)
 from .exceptions import StaticAnalysisError
 
 
 @functools.lru_cache(maxsize=128)
 def analyze(
-    tape: QuantumScript, fill_missing: str | None = None
+    tape: QuantumScript, fill_missing: WireType | None = None
 ) -> StaticAnalysisResult:
     """Static circuit analysis pass to identify wire types and measurement schemas
 
@@ -43,8 +52,7 @@ def analyze(
     Args:
         tape: The quantum circuit to analyze
 
-        fill_missing: An optional string of ``("qubits", "qumodes")`` specifying what default
-            to provide for unidentified wires
+        fill_missing: An optional wire type specifying what default to provide for unidentified wires
 
     Raises:
         :py:class:`~hybridlane.sa.exceptions.StaticAnalysisError` if there's any error in analyzing the circuit
@@ -57,221 +65,134 @@ def analyze(
     #  3. There may be wires we can't find a type for (which means it likely doesn't even participate
     #     in the circuit in a meaningful way.. why was it even defined?)
 
-    valid_options = ("qubit", "qumode", None)
-    if fill_missing not in valid_options:
-        raise ValueError(
-            f"Unrecognized fill option {fill_missing}, must be one of {valid_options}"
-        )
-
-    qumodes, qubits = _infer_wire_types_from_operations(tape.operations)
-
-    if common_wires := qumodes & qubits:
-        raise StaticAnalysisError(
-            f"Wires {common_wires} were determined to be both qumodes and qubits from the operations"
-        )
+    wire_types = _infer_wire_types_from_operators(tape.operations)
 
     measurement_schemas: list[BasisSchema | None] = []
     if tape.measurements:
         for m in tape.measurements:
             schema = infer_schema_from_measurement(m)
             measurement_schemas.append(schema)
+            m_wires = _infer_wire_types_from_measurement(m)
 
-            m_qumodes, m_qubits = _infer_wire_types_from_measurement(m)
+            if before_after := _validate_aliased_wires(wire_types, m_wires):
+                raise StaticAnalysisError(_aliased_wire_msg_helper(before_after, m=m))
 
-            if common_wires := m_qumodes & m_qubits:
-                raise StaticAnalysisError(
-                    f"Measurement treats wires {common_wires} as both qubit and qumode"
-                )
+            wire_types |= m_wires
 
-            were_qumodes = qumodes & m_qubits
-            were_qubits = qubits & m_qumodes
-            if were_qumodes or were_qubits:
-                raise StaticAnalysisError(
-                    _aliased_wire_msg_helper(were_qumodes, were_qubits, m)
-                )
-
-            qumodes += m_qumodes
-            qubits += m_qubits
-
-    if missing_wires := tape.wires - (qumodes + qubits):
+    if missing_wires := tape.wires - wire_types.keys():
         if fill_missing is not None:
-            if fill_missing == "qubit":
-                qubits += missing_wires
-            elif fill_missing == "qumode":
-                qumodes += missing_wires
+            wire_types |= {w: fill_missing for w in missing_wires}
         else:
             raise StaticAnalysisError(f"Unable to infer wire types for {missing_wires}")
 
-    return StaticAnalysisResult(qumodes, qubits, measurement_schemas, tape.wires)
+    # Order the wire types to match the tape wire order
+    ordered_wire_types = OrderedDict()
+    for w in tape.wires:
+        ordered_wire_types[w] = wire_types[w]
+
+    return StaticAnalysisResult(ordered_wire_types, measurement_schemas)
 
 
-def _aliased_wire_msg_helper(
-    were_qumodes: Wires, were_qubits: Wires, m: MeasurementProcess
-) -> str:
-    msg = f"Measurement {m} is incompatible with previous circuit operations or measurements: "
-
-    if were_qumodes:
-        msg += f"The wires {were_qumodes} were previously inferred to be qumodes, but are now treated as qubits."
-
-    if were_qubits:
-        if were_qumodes:
-            msg += " "
-
-        msg += f"The wires {were_qubits} were previously inferred to be qubits, but are now treated as qumodes."
-
-    return msg
-
-
-def infer_wire_types(
-    tape: QuantumScript, fill_missing: str | None = None
-) -> tuple[Wires, Wires]:
-    """Statically analyzes a tape to partition wires into qumodes and qubits
-
-    This function doesn't provide any validation for some possible errors that might arise
-    from a poorly specified tape:
-
-    1. A wire may appear in both ``qumodes`` and ``qubits`` if the tape performed any aliasing.
-
-    2. If the type of a wire cannot be inferred from the tape - because no operation is defined on it, or
-    the measurements don't provide enough information - it will be missing from both ``qumodes`` and ``qubits``.
-    Missing wires can optionally be given a type through the ``fill_missing`` keyword.
-
-    Args:
-        tape: The quantum circuit to analyze
-
-        fill_missing: An optional string of ``("qubits", "qumodes")`` specifying what default
-            to provide for unidentified wires
-    """
-
-    qumodes, qubits = _infer_wire_types_from_operations(tape.operations)
-
-    if tape.measurements:
-        measurement_sets = list(
-            map(_infer_wire_types_from_measurement, tape.measurements)
-        )
-        qumode_sets, qubit_sets = list(zip(*measurement_sets))
-        qumodes += Wires.all_wires(qumode_sets)
-        qubits += Wires.all_wires(qubit_sets)
-
-    if fill_missing is not None:
-        valid_options = ("qubit", "qumode")
-        if fill_missing not in valid_options:
-            raise ValueError(
-                f"Unrecognized fill option {fill_missing}, must be one of {valid_options}"
-            )
-
-        missing_wires = tape.wires - (qumodes + qubits)
-        if fill_missing == "qubit":
-            qubits += missing_wires
-        elif fill_missing == "qumode":
-            qumodes += missing_wires
-
-    return qumodes, qubits
-
-
-def _infer_wire_types_from_operations(ops: list[Operator]) -> tuple[Wires, Wires]:
-    qumodes, qubits = Wires([]), Wires([])
+def _infer_wire_types_from_operators(ops: list[Operator]) -> dict[WiresLike, WireType]:
+    wire_types: dict[WiresLike, WireType] = {}
 
     for op in ops:
-        new_qumodes, new_qubits = _infer_wires_from_operation(op)
-        qumodes += new_qumodes
-        qubits += new_qubits
+        new_wire_types = _infer_wire_types_from_operator(op)
 
-    return qumodes, qubits
+        if before_after := _validate_aliased_wires(wire_types, new_wire_types):
+            raise StaticAnalysisError(_aliased_wire_msg_helper(before_after, op=op))
+
+        wire_types |= new_wire_types
+
+    return wire_types
 
 
 @functools.singledispatch
-def _infer_wires_from_operation(op: Operator):
-    qumodes, qubits = Wires([]), Wires([])
-
+def _infer_wire_types_from_operator(op: Operator) -> dict[WiresLike, WireType]:
     if op.has_decomposition:
-        for o in op.decomposition():
-            new_qumodes, new_qubits = _infer_wires_from_operation(o)
-            qumodes += new_qumodes
-            qubits += new_qubits
+        return _infer_wire_types_from_operators(op.decomposition())
 
-    else:
-        qubits = op.wires
-
-    return qumodes, qubits
+    return {w: Qubit() for w in op.wires}
 
 
-@_infer_wires_from_operation.register
+@_infer_wire_types_from_operator.register
 def _(op: CV):
-    return op.wires, Wires([])
+    return {w: Qumode() for w in op.wires}
 
 
-@_infer_wires_from_operation.register
+@_infer_wire_types_from_operator.register
 def _(op: Hybrid):
-    qubits, qumodes = op.split_wires()
-    return qumodes, qubits
+    return op.wire_types()
 
 
-@_infer_wires_from_operation.register
+@_infer_wire_types_from_operator.register
 def _(op: SymbolicOp):
-    return _infer_wires_from_operation(op.base)
+    return _infer_wire_types_from_operator(op.base)
 
 
-@_infer_wires_from_operation.register
-def _(op: ControlledOp):
-    ctrl_qubits = op.control_wires
-    qumodes, qubits = _infer_wires_from_operation(op.base)
-    return qumodes, qubits + ctrl_qubits
+@_infer_wire_types_from_operator.register
+def _(op: CompositeOp):
+    return _infer_wire_types_from_operators(op.operands)
+
+
+@_infer_wire_types_from_operator.register
+def _(op: Controlled | ControlledOp | QubitConditioned):
+    wire_types = {w: Qubit() for w in op.control_wires}
+    wire_types |= _infer_wire_types_from_operator(op.base)
+    return wire_types
 
 
 def _infer_wire_types_from_measurement(
     m: MeasurementProcess,
-) -> tuple[Wires, Wires]:
+) -> dict[WiresLike, WireType]:
     if m.obs is not None:
         return _infer_wire_types_from_observable(m.obs)
 
     # Fixme: State measurements with no observable don't have enough information, we'd have
     # to obtain the truncation too
     elif isinstance(m, StateMeasurement):
-        return Wires([]), Wires([])
+        return {}
 
     elif isinstance(m, SampleMeasurement):
         return _infer_wire_types_from_schema(m.schema)
 
-    # Fall through
-    return Wires([]), Wires([])
+    return {}
 
 
-def _infer_wire_types_from_schema(schema: BasisSchema) -> tuple[Wires, Wires]:
-    qumodes, qubits = Wires([]), Wires([])
+def _infer_wire_types_from_schema(schema: BasisSchema) -> dict[WiresLike, WireType]:
+    wire_types = {}
 
     for wire in schema.wires:
         match schema.get_basis(wire):
             case ComputationalBasis.Position | ComputationalBasis.Coherent:
-                qumodes += wire
+                wire_types[wire] = Qumode()
             case ComputationalBasis.Discrete:
                 # Not enough information to infer, since DV measurements could be qubit or Fock
                 pass
 
-    return qumodes, qubits
+    return wire_types
 
 
-def _infer_wire_types_from_observable(obs: Operator) -> tuple[Wires, Wires]:
-    if isinstance(obs, CompositeOp):
-        wire_types = list(map(_infer_wire_types_from_observable, obs.operands))
-        qumode_sets, qubit_sets = list(zip(*wire_types))
-        return Wires.all_wires(qumode_sets), Wires.all_wires(qubit_sets)
+@functools.singledispatch
+def _infer_wire_types_from_observable(obs: Operator) -> dict[WiresLike, WireType]:
+    return _infer_wire_types_from_operator(obs)
 
-    elif isinstance(obs, SymbolicOp):
-        return _infer_wire_types_from_observable(obs.base)
 
-    # Specifically doesn't tell us anything since it can apply to any quantum object
-    elif isinstance(obs, qml.Identity):
-        return Wires([]), Wires([])
+@_infer_wire_types_from_observable.register
+def _(obs: CompositeOp):
+    # Override to have a custom message
+    wire_types = {}
+    for op in obs.operands:
+        new_wire_types = _infer_wire_types_from_operator(op)
 
-    elif obs.pauli_rep:
-        return Wires([]), obs.wires  # qubit
+        if before_after := _validate_aliased_wires(wire_types, new_wire_types):
+            raise StaticAnalysisError(
+                f"Observable {obs} treats wires {list(before_after.keys())} as multiple types"
+            )
 
-    elif isinstance(obs, CV):
-        return obs.wires, Wires([])  # qumode
+        wire_types |= new_wire_types
 
-    else:
-        raise StaticAnalysisError(f"Unknown how to infer qumodes for observable {obs}")
+    return wire_types
 
 
 # todo: maybe incorporate the attributes.diagonal_in_fock_basis and attributes.diagonal_in_position_basis?
@@ -308,11 +229,6 @@ def infer_schema_from_measurement(m: MeasurementProcess) -> BasisSchema | None:
     # State measurements with no observables reach here
     return None
 
-    # raise StaticAnalysisError(
-    #     f"Unable to determine schema for measurement {m} because it doesn't "
-    #     "have an observable or schema"
-    # )
-
 
 def infer_schema_from_tensors(tensors: dict[Hashable, TensorLike]) -> BasisSchema:
     r"""Constructs a schema from the provided tensors using their data types
@@ -336,6 +252,36 @@ def infer_schema_from_tensors(tensors: dict[Hashable, TensorLike]) -> BasisSchem
         else:
             raise StaticAnalysisError(f"Unrecognized dtype: {dtype}")
 
-        wire_map[Wires(wire)] = basis
+        wire_map[wire] = basis
 
     return BasisSchema(wire_map)
+
+
+def _validate_aliased_wires(
+    wire_types: dict[WiresLike, WireType], new_wire_types: dict[WiresLike, WireType]
+) -> dict[WiresLike, tuple[WireType, WireType]]:
+    before_after = {}
+    aliased_wires = new_wire_types.keys() & wire_types.keys()
+    for wire in aliased_wires:
+        # For repeated wire usage e.g. X(0) Z(0), it could be correct. We have to iterate to
+        # see if any wires are different from previously decided types.
+        if wire_types[wire] != new_wire_types[wire]:
+            before_after[wire] = (wire_types[wire], new_wire_types[wire])
+
+    return before_after
+
+
+def _aliased_wire_msg_helper(
+    before_after: dict[WiresLike, tuple[WireType, WireType]],
+    op: Operator | None = None,
+    m: MeasurementProcess | None = None,
+) -> str:
+    if m:
+        msg = f"Measurement {m} is incompatible with previous circuit operations or measurements.\n"
+    elif op:
+        msg = f"Operation {op} is incompatible with previous circuit operations.\n"
+
+    for wire, (before, after) in before_after.items():
+        msg += f" - Wire {wire} was previously inferred as {before}, but is now inferred as {after}"
+
+    return msg

@@ -259,7 +259,7 @@ def _(
 
     sa_res: sa.StaticAnalysisResult = cache["sa_res"]
     schema = sa.BasisSchema(
-        {Wires(q): sa.ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
+        {q: sa.ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
     )
     if sa_res.qumodes:
         if default_qumode_measurement is None:
@@ -269,7 +269,7 @@ def _(
             )
         fill_value = optional_qumode_measurements[default_qumode_measurement]
         qumode_schema = sa.BasisSchema(
-            {Wires(m): fill_value for m in mp.wires & sa_res.qumodes}
+            {m: fill_value for m in mp.wires & sa_res.qumodes}
         )
         schema |= qumode_schema
 

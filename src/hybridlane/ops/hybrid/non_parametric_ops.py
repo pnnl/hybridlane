@@ -7,14 +7,17 @@ import math
 import pennylane as qml
 from pennylane import numpy as np
 from pennylane.decomposition.symbolic_decomposition import (
-    adjoint_rotation,
     make_pow_decomp_with_period,
-    pow_rotation,
 )
 from pennylane.operation import Operation
 from pennylane.wires import WiresLike
 
+import hybridlane as hqml
+
 from ..mixins import Hybrid
+from ..op_math.decompositions.qubit_conditioned_decompositions import (
+    decompose_multiqcond_native,
+)
 
 
 class ConditionalParity(Operation, Hybrid):
@@ -50,24 +53,18 @@ class ConditionalParity(Operation, Hybrid):
 
     @staticmethod
     def compute_decomposition(wires, **_):
-        from .parametric_ops_single_qumode import ConditionalRotation
-
-        return [ConditionalRotation(math.pi, wires)]
+        return [hqml.ConditionalRotation(math.pi, wires)]
 
     def adjoint(self):
-        from .parametric_ops_single_qumode import ConditionalRotation
-
-        return ConditionalRotation(-math.pi, self.wires)
+        return hqml.ConditionalRotation(-math.pi, self.wires)
 
     def pow(self, z: int | float) -> list[Operation]:
-        from .parametric_ops_single_qumode import ConditionalRotation
-
         z_mod4 = z % 4
 
         if np.allclose(z_mod4, 0):
             return []
 
-        return [ConditionalRotation(math.pi * z_mod4, self.wires)]
+        return [hqml.ConditionalRotation(math.pi * z_mod4, self.wires)]
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -75,34 +72,27 @@ class ConditionalParity(Operation, Hybrid):
         )
 
 
-def _cp_resources():
-    from .parametric_ops_single_qumode import ConditionalRotation
-
-    return {ConditionalRotation: 1}
+def _cp_resources(**_):
+    return {hqml.ConditionalRotation: 1}
 
 
 @qml.register_resources(_cp_resources)
 def _cp_to_cr(wires, **_):
-    from .parametric_ops_single_qumode import ConditionalRotation
-
-    ConditionalRotation(math.pi, wires)
+    hqml.ConditionalRotation(math.pi, wires)
 
 
 @qml.register_resources(_cp_resources)
 def _adjoint_cp_to_cr(wires, **_):
-    from .parametric_ops_single_qumode import ConditionalRotation
-
-    ConditionalRotation(-math.pi, wires)
+    hqml.ConditionalRotation(-math.pi, wires)
 
 
 @qml.register_resources(_cp_resources)
 def _pow_cp_to_cr(wires, z, **_):
-    from .parametric_ops_single_qumode import ConditionalRotation
-
     z_mod4 = z % 4
-    qml.pow(ConditionalRotation(math.pi * z_mod4, wires=wires), z)
+    hqml.ConditionalRotation(math.pi * z_mod4, wires=wires)
 
 
 qml.add_decomps(ConditionalParity, _cp_to_cr)
 qml.add_decomps("Adjoint(ConditionalParity)", _adjoint_cp_to_cr)
 qml.add_decomps("Pow(ConditionalParity)", make_pow_decomp_with_period(4), _pow_cp_to_cr)
+qml.add_decomps("qCond(ConditionalParity)", decompose_multiqcond_native)

@@ -3,26 +3,19 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import math
-from collections.abc import Iterable, Sequence
-from functools import reduce
-from typing import Any, Hashable
 
 import numpy as np
 import pennylane as qml
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
-    make_pow_decomp_with_period,
-    pow_involutory,
     pow_rotation,
-    self_adjoint,
 )
-from pennylane.operation import CVOperation, Operator
+from pennylane.operation import CVOperation
 from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
-from pennylane.wires import Wires, WiresLike
+from pennylane.wires import WiresLike
 
-from ...sa import ComputationalBasis
-from ..mixins import Spectral
+from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
 # Change to match convention
@@ -92,6 +85,7 @@ def _pow_bs(theta, phi, wires, z, **_):
 
 qml.add_decomps("Adjoint(Beamsplitter)", adjoint_rotation)
 qml.add_decomps("Pow(Beamsplitter)", _pow_bs)
+qml.add_decomps("qCond(Beamsplitter)", to_native_qcond(1))
 
 
 # Re-export flipping sign of r, equivalent to φ -> φ + π
@@ -162,6 +156,7 @@ def _pow_tms(r, phi, wires, z, **_):
 
 qml.add_decomps("Adjoint(TwoModeSqueezing)", adjoint_rotation)
 qml.add_decomps("Pow(TwoModeSqueezing)", _pow_tms)
+qml.add_decomps("qCond(TwoModeSqueezing)", to_native_qcond(1))
 
 
 class TwoModeSum(CVOperation):
@@ -220,6 +215,7 @@ class TwoModeSum(CVOperation):
 
 qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
 qml.add_decomps("Pow(TwoModeSum)", pow_rotation)
+qml.add_decomps("qCond(TwoModeSum)", to_native_qcond(1))
 
 
 def _can_replace(x, y):

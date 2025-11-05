@@ -7,27 +7,21 @@ from collections.abc import Iterable, Sequence
 from functools import reduce
 from typing import Any, Hashable
 
-import numpy as np
 import pennylane as qml
-from pennylane.decomposition.symbolic_decomposition import (
-    adjoint_rotation,
-    make_pow_decomp_with_period,
-    pow_involutory,
-    pow_rotation,
-    self_adjoint,
-)
-from pennylane.operation import CVOperation, Operator
-from pennylane.ops.cv import _rotation, _two_term_shift_rule
+from pennylane.operation import Operator
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
-from ...sa import ComputationalBasis
+import hybridlane as hqml
+
 from ..mixins import Spectral
 from .parametric_ops_single_qumode import Rotation
 
 
 class QuadX(qml.QuadX, Spectral):
-    natural_basis = ComputationalBasis.Position  # type: ignore
+    @property
+    def natural_basis(self):
+        return hqml.sa.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -51,7 +45,9 @@ r"""Position operator :math:`\hat{x}`
 
 
 class QuadP(qml.QuadP, Spectral):
-    natural_basis = ComputationalBasis.Position  # type: ignore
+    @property
+    def natural_basis(self):
+        return hqml.sa.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[qml.operation.Operator]:
@@ -87,7 +83,9 @@ class QuadOperator(qml.QuadOperator, Spectral):
     the mean displacement in the phase space along axis at angle :math:`\phi`.
     """
 
-    natural_basis = ComputationalBasis.Position  # type: ignore
+    @property
+    def natural_basis(self):
+        return hqml.sa.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(
@@ -107,7 +105,9 @@ class QuadOperator(qml.QuadOperator, Spectral):
 
 
 class NumberOperator(qml.NumberOperator, Spectral):
-    natural_basis = ComputationalBasis.Discrete  # type: ignore
+    @property
+    def natural_basis(self):
+        return hqml.sa.ComputationalBasis.Discrete
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -131,7 +131,9 @@ r"""Number operator :math:`\hat{n}`
 
 
 class FockStateProjector(qml.FockStateProjector, Spectral):
-    natural_basis = ComputationalBasis.Discrete  # type: ignore
+    @property
+    def natural_basis(self):
+        return hqml.sa.ComputationalBasis.Discrete
 
     @property
     def num_wires(self):

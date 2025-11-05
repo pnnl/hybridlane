@@ -2,12 +2,51 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
+from collections import OrderedDict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from functools import reduce
-from typing import Hashable, Sequence
 
-from pennylane.wires import WireError, Wires
+from pennylane.wires import WireError, Wires, WiresLike
+
+
+@dataclass(frozen=True)
+class Qubit:
+    """Type representing a qubit"""
+
+    @property
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+        return (ComputationalBasis.Discrete,)
+
+
+# Put here for the future; currently unused. Will require rethinking how
+# to define wire type signatures in each operator
+@dataclass(frozen=True)
+class Qudit:
+    """Type representing a qudit with specified dimension"""
+
+    dim: int
+
+    @property
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+        return (ComputationalBasis.Discrete,)
+
+
+@dataclass(frozen=True)
+class Qumode:
+    """Type representing a qumode"""
+
+    @property
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+        return (
+            ComputationalBasis.Discrete,
+            ComputationalBasis.Position,
+            ComputationalBasis.Coherent,
+        )
+
+
+WireType = Qubit | Qudit | Qumode
 
 
 class ComputationalBasis(Enum):
@@ -54,25 +93,25 @@ class ComputationalBasis(Enum):
 class BasisSchema:
     r"""Utility class for representing the computational basis that wires are measured in"""
 
-    def __init__(self, wire_map: dict[Wires, ComputationalBasis]):
-        self._wire_map: dict[Hashable, ComputationalBasis] = {}
+    def __init__(self, wire_map: dict[WiresLike, ComputationalBasis]):
+        self._wire_map: dict[Wires, ComputationalBasis] = {}
         for wires, basis in wire_map.items():
             if not isinstance(basis, ComputationalBasis):
                 raise ValueError("All bases must be a ComputationalBasis object")
 
-            for wire in wires:
+            for wire in Wires(wires):
                 self._wire_map[wire] = basis
 
-    def get_basis(self, wire: Hashable) -> ComputationalBasis:
+    def get_basis(self, wire: WiresLike) -> ComputationalBasis:
         r"""Gets the basis a particular wire is measured in"""
         return self._wire_map[wire]
 
-    def get_type(self, wire: Hashable) -> type:
+    def get_type(self, wire: WiresLike) -> type:
         r"""Gets the primitive data type for a wire"""
         return self._wire_map[wire].return_type
 
     @property
-    def wires(self):
+    def wires(self) -> Wires:
         return Wires.all_wires(self._wire_map.keys())
 
     @staticmethod
@@ -101,9 +140,7 @@ class BasisSchema:
             if self.get_basis(w) != other.get_basis(w):
                 raise WireError(f"Incompatible schemas on wire {w}")
 
-        return BasisSchema(
-            {Wires(k): v for k, v in (self._wire_map | other._wire_map).items()}
-        )
+        return BasisSchema(self._wire_map | other._wire_map)
 
     def difference(self, other: "BasisSchema") -> "BasisSchema":
         wires = self.wires - other.wires
@@ -117,7 +154,7 @@ class BasisSchema:
         if unspecified_wires := wires - self.wires:
             raise WireError(f"Schema does not contain wires {unspecified_wires}")
 
-        new_wiremap = {Wires(w): self.get_basis(w) for w in wires}
+        new_wiremap = {w: self.get_basis(w) for w in wires}
         return BasisSchema(new_wiremap)
 
     def __bool__(self):
@@ -155,14 +192,20 @@ class BasisSchema:
 class StaticAnalysisResult:
     """Represents the result of static analysis on a quantum circuit."""
 
-    qumodes: Wires
-    """The inferred qumodes in the circuit"""
-
-    qubits: Wires
-    """The inferred qubits in the circuit"""
+    wire_types: OrderedDict[WiresLike, WireType]
+    """The inferred type of each wire"""
 
     schemas: list[BasisSchema | None]
     """The inferred schemas for each measurement process, in the same order as the circuit"""
 
-    wire_order: Wires
-    """The wire order for the original tape"""
+    @property
+    def qubits(self) -> Wires:
+        return Wires([w for w, t in self.wire_types.items() if t == Qubit()])
+
+    @property
+    def qumodes(self) -> Wires:
+        return Wires([w for w, t in self.wire_types.items() if t == Qumode()])
+
+    @property
+    def wire_order(self) -> Wires:
+        return Wires(self.wire_types)

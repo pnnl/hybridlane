@@ -275,8 +275,10 @@ class TestDecomposition:
             hqml.ModeSwap(wires=["a0m1", "a1m3"])
             return hqml.expval(qml.Z(0))
 
-        with pytest.warns(UserWarning, match="unable to find a decomposition for"):
-            construct_tape(circuit, level="device")()
+        # Emits 2 warnings if it can't find a decomposition
+        with pytest.warns(UserWarning):
+            with pytest.warns(UserWarning, match="unable to find a decomposition for"):
+                construct_tape(circuit, level="device")()
 
     def test_no_squeezing_decomposition(self):
         dev = qml.device("sandiaqscout.hybrid", n_qubits=6, optimize=True)
@@ -288,5 +290,7 @@ class TestDecomposition:
             hqml.ConditionalSqueezing(1, 0, wires=[0, "a0m1"])
             return hqml.expval(qml.Z(0))
 
-        with pytest.warns(UserWarning, match="unable to find a decomposition for"):
-            construct_tape(circuit, level="device")()
+        # Emits 2 warnings if it can't find a decomposition
+        with pytest.warns(UserWarning):
+            with pytest.warns(UserWarning, match="unable to find a decomposition for"):
+                construct_tape(circuit, level="device")()

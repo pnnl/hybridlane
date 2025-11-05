@@ -17,8 +17,8 @@ from hybridlane.sa.base import BasisSchema, ComputationalBasis
 class TestBasisSchema:
     def test_init(self):
         wire_map = {
-            Wires("a"): ComputationalBasis.Discrete,
-            Wires("b"): ComputationalBasis.Position,
+            "a": ComputationalBasis.Discrete,
+            "b": ComputationalBasis.Position,
         }
         schema = BasisSchema(wire_map)
         assert schema.get_basis("a") == ComputationalBasis.Discrete
@@ -26,8 +26,8 @@ class TestBasisSchema:
 
     def test_multi_init(self):
         wire_map = {
-            Wires("a"): ComputationalBasis.Discrete,
-            Wires(["b", "c"]): ComputationalBasis.Position,
+            "a": ComputationalBasis.Discrete,
+            ("b", "c"): ComputationalBasis.Position,
         }
         schema = BasisSchema(wire_map)
         assert schema.get_basis("a") == ComputationalBasis.Discrete
@@ -36,16 +36,16 @@ class TestBasisSchema:
 
     def test_init_error(self):
         with pytest.raises(ValueError):
-            BasisSchema({Wires("a"): "not a basis"})
+            BasisSchema({"a": "not a basis"})
 
     def test_eq(self):
-        schema1 = BasisSchema({Wires("a"): ComputationalBasis.Discrete})
-        schema2 = BasisSchema({Wires("a"): ComputationalBasis.Discrete})
+        schema1 = BasisSchema({"a": ComputationalBasis.Discrete})
+        schema2 = BasisSchema({"a": ComputationalBasis.Discrete})
         assert schema1 == schema2
 
     def test_neq(self):
-        schema1 = BasisSchema({Wires("a"): ComputationalBasis.Discrete})
-        schema2 = BasisSchema({Wires("b"): ComputationalBasis.Discrete})
+        schema1 = BasisSchema({"a": ComputationalBasis.Discrete})
+        schema2 = BasisSchema({"b": ComputationalBasis.Discrete})
         assert schema1 != schema2
 
 
@@ -81,12 +81,7 @@ class TestCountsResult:
     def test_init_basis_states(self):
         counts = {(0, 1): 10, (1, 0): 20}
         wire_order = Wires(["a", "b"])
-        basis_schema = BasisSchema(
-            {
-                Wires("a"): ComputationalBasis.Discrete,
-                Wires("b"): ComputationalBasis.Discrete,
-            }
-        )
+        basis_schema = BasisSchema({wire_order: ComputationalBasis.Discrete})
         result = CountsResult(
             counts=counts, wire_order=wire_order, basis_schema=basis_schema
         )
@@ -105,10 +100,7 @@ class TestCountsResult:
 class TestFockTruncation:
     def test_shape(self):
         schema = BasisSchema(
-            {
-                Wires("a"): ComputationalBasis.Discrete,
-                Wires("b"): ComputationalBasis.Position,
-            }
+            {"a": ComputationalBasis.Discrete, "b": ComputationalBasis.Position}
         )
         truncation = FockTruncation(basis_schema=schema, dim_sizes={"a": 2, "b": 10})
         shape = truncation.shape(Wires(["a", "b"]))

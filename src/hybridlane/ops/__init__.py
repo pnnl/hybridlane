@@ -3,6 +3,27 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 from . import attributes
+from .hybrid import (
+    SNAP,
+    SQR,
+    AntiJaynesCummings,
+    Blue,
+    ConditionalBeamsplitter,
+    ConditionalDisplacement,
+    ConditionalParity,
+    ConditionalRotation,
+    ConditionalSqueezing,
+    ConditionalTwoModeSqueezing,
+    ConditionalTwoModeSum,
+    EchoedConditionalDisplacement,
+    JaynesCummings,
+    Rabi,
+    Red,
+    SelectiveNumberArbitraryPhase,
+    SelectiveQubitRotation,
+)
+from .mixins import Hybrid
+from .op_math import QubitConditioned, qcond
 from .qumode import (
     Beamsplitter,
     CubicPhase,
@@ -23,25 +44,6 @@ from .qumode import (
     TwoModeSum,
     X,
 )
-from .hybrid import (
-    SNAP,
-    SQR,
-    AntiJaynesCummings,
-    Blue,
-    ConditionalBeamsplitter,
-    ConditionalDisplacement,
-    ConditionalParity,
-    ConditionalRotation,
-    ConditionalSqueezing,
-    ConditionalTwoModeSqueezing,
-    ConditionalTwoModeSum,
-    JaynesCummings,
-    Rabi,
-    Red,
-    SelectiveNumberArbitraryPhase,
-    SelectiveQubitRotation,
-)
-from .mixins import Hybrid
 
 __all__ = [
     "attributes",
@@ -73,6 +75,7 @@ __all__ = [
     "ConditionalBeamsplitter",
     "ConditionalTwoModeSqueezing",
     "ConditionalTwoModeSum",
+    "EchoedConditionalDisplacement",
     "QuadP",
     "P",
     "QuadX",
@@ -80,4 +83,6 @@ __all__ = [
     "NumberOperator",
     "N",
     "FockStateProjector",
+    "QubitConditioned",
+    "qcond",
 ]

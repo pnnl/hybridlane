@@ -2,11 +2,14 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-from typing import Iterable, Sequence
-from pennylane.typing import TensorLike
-from pennylane.wires import Wires
+from __future__ import annotations
 
-from ..sa.base import ComputationalBasis
+from collections.abc import Sequence
+
+from pennylane.typing import TensorLike
+from pennylane.wires import Wires, WiresLike
+
+import hybridlane as hqml
 
 
 class Spectral:
@@ -18,7 +21,7 @@ class Spectral:
     """
 
     @property
-    def natural_basis(self) -> ComputationalBasis:
+    def natural_basis(self) -> hqml.sa.ComputationalBasis:
         raise NotImplementedError(
             "Observable did not define its best basis to measure in"
         )
@@ -80,23 +83,34 @@ class Hybrid:
     This mixin is also used in static analysis passes to type-check circuits.
     """
 
-    num_qumodes: int
+    num_qumodes: int | None = None
     """The number of qumodes the gate acts on"""
+
+    type_signature: Sequence[hqml.sa.WireType] | None = None
+    """The ordered type signature of each wire"""
 
     wires: Wires
 
-    def split_wires(self) -> tuple[Wires, Wires]:
-        """Splits the wires into qubits and qumodes
+    def wire_types(self) -> dict[WiresLike, hqml.sa.WireType]:
+        """Identifies the type of each wire in the gate
 
         Returns:
-            qubits: The wires representing the qubits this operator acts on
-
-            qumodes: The wires representing the qumodes this operator acts on
+            A dict mapping wires to their corresponding types
         """
 
-        if not isinstance(self.wires, Iterable):
+        if (self.num_qumodes is None) == (self.type_signature is None):
+            raise ValueError(
+                "Gate is improperly defined. It must specify either num_qumodes or type_signature."
+            )
+
+        if len(self.wires) < 2:
             raise ValueError("Expected a hybrid gate acting on at least 2 objects")
 
-        wires = Wires(self.wires)
-        qubits, qumodes = wires[: -self.num_qumodes], wires[-self.num_qumodes :]
-        return qubits, qumodes
+        type_signature = self.type_signature
+        if self.num_qumodes is not None:
+            qubits = len(self.wires) - self.num_qumodes
+            type_signature = [hqml.sa.Qubit()] * qubits + [
+                hqml.sa.Qumode()
+            ] * self.num_qumodes
+
+        return {w: s for w, s in zip(self.wires, type_signature)}

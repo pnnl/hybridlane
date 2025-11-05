@@ -20,6 +20,7 @@ docs/_build
 
 # IDE stuff
 .vscode/
+.zed/
 
 # Code coverage analysis
 .coverage
