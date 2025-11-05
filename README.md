@@ -54,6 +54,7 @@ pip install hybridlane[extras]
 **Available Extra Flags:**
 *   `[all]`: Installs all extra flags.
 *   `[bq]`: Installs support for the `bosonicqiskit.hybrid` simulation device.
+*   `[qscout]`: Installs support for the `sandiaqscout.hybrid` compilation device.
 
 For more detailed installation instructions and environment setup, please refer to the [Getting Started Guide in our Documentation](https://pnnl.github.io/hybridlane/getting-started.html).
 

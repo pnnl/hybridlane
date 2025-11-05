@@ -11,6 +11,7 @@ The available extra flags are:
 
 - ``all``: Installs all extra flags.
 - ``bq``: Adds support for the ``bosonicqiskit.hybrid`` device.
+- ``qscout``: Installs libraries necessary for `sandiaqscout.hybrid` device.
 
 Developing
 ----------
@@ -32,7 +33,7 @@ Documentation
 The documentation is automatically produced by Sphinx using comments in the code. To build the documentation, run
 
 .. code-block:: bash
-    
+
     cd docs
     uv run make html
 
