@@ -165,12 +165,23 @@ def _cd_parity_decomp(a, phi, wires, **_):
     ConditionalParity(wires)
 
 
+def _cd_to_ecd_resources():
+    # Put in function because ECD isn't defined yet
+    return {qml.X: 1, EchoedConditionalDisplacement: 1}
+
+
+@qml.register_resources(_cd_to_ecd_resources)
+def _cd_to_ecd(a, phi, wires, **_):
+    EchoedConditionalDisplacement(a, phi, wires)
+    qml.X(wires[0])
+
+
 @qml.register_resources({ConditionalDisplacement: 1})
 def _pow_cd(a, phi, wires, z, **_):
     ConditionalDisplacement(z * a, phi, wires=wires)
 
 
-qml.add_decomps(ConditionalDisplacement, _cd_parity_decomp)
+qml.add_decomps(ConditionalDisplacement, _cd_parity_decomp, _cd_to_ecd)
 qml.add_decomps("Adjoint(ConditionalDisplacement)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalDisplacement)", _pow_cd)
 qml.add_decomps("qCond(ConditionalDisplacement)", decompose_multiqcond_native)
@@ -730,6 +741,87 @@ qml.add_decomps(Rabi, _rb_to_cd)
 qml.add_decomps(ConditionalDisplacement, _cd_to_rb)
 qml.add_decomps("Adjoint(Rabi)", adjoint_rotation)
 qml.add_decomps("Pow(Rabi)", _pow_rb)
+
+
+class EchoedConditionalDisplacement(Operation, Hybrid):
+    r"""Echoed conditional displacement gate :math:`ECD(\alpha)`
+
+    This is given by the unitary (p. S9 of [1]_)
+
+    .. math::
+
+        ECD(\alpha) = X~CD(\alpha)
+
+    where :math:`CD(\alpha)` is the :py:class:`~.ConditionalDisplacement` gate. The ``wires`` attribute is assumed
+    to be ``(qubit, qumode)``.
+
+    .. note::
+
+        This results in a state displaced by :math:`2\alpha` instead of :math:`\alpha` since the Hybridlane definition
+        of the :math:`CD(\alpha)` gate differs from the reference [1]_.
+
+    .. [1] A. Eickbusch et al. `Nature Physics 18, 1464–1469 (2022) <https://www.nature.com/articles/s41567-022-01776-9>`_
+    """
+
+    num_params = 2
+    num_wires = 2
+    num_qumodes = 1
+    ndim_params = (0, 0)
+
+    resource_keys = set()
+
+    def __init__(
+        self,
+        a: TensorLike,
+        phi: TensorLike,
+        wires: WiresLike,
+        id: str | None = None,
+    ):
+        super().__init__(a, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
+
+    def pow(self, z: int | float):
+        a, phi = self.data
+        return [EchoedConditionalDisplacement(a * z, phi, self.wires)]
+
+    def adjoint(self):
+        return [EchoedConditionalDisplacement(-self.data[0], self.data[1], self.wires)]
+
+    def simplify(self):
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+
+        if _can_replace(a, 0):
+            return qml.Identity(self.wires)
+
+        return EchoedConditionalDisplacement(a, phi, self.wires)
+
+    @staticmethod
+    def compute_decomposition(*params, wires=None, **hyperparameters):
+        return [ConditionalDisplacement(*params, wires=wires), qml.X(wires[0])]
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "ECD", cache=cache
+        )
+
+
+@qml.register_resources({ConditionalDisplacement: 1, qml.X: 1})
+def _ecd_decomp(a, phi, wires, **_):
+    ConditionalDisplacement(a, phi, wires=wires)
+    qml.X(wires[0])
+
+
+@qml.register_resources({EchoedConditionalDisplacement: 1})
+def _pow_ecd(a, phi, wires, z, **_):
+    EchoedConditionalDisplacement(z * a, phi, wires=wires)
+
+
+qml.add_decomps(EchoedConditionalDisplacement, _ecd_decomp)
+qml.add_decomps("Adjoint(EchoedConditionalDisplacement)", adjoint_rotation)
+qml.add_decomps("Pow(EchoedConditionalDisplacement)", _pow_ecd)
 
 
 def _can_replace(x, y):

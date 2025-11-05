@@ -302,3 +302,28 @@ class TestConditionalTwoModeSum:
         op = hqml.ConditionalTwoModeSum(0, wires=[0, 1, 2])
         simplified_op = op.simplify()
         assert isinstance(simplified_op, qml.Identity)
+
+
+class TestEchoedConditionalDisplacement:
+    def test_init(self):
+        op = hqml.EchoedConditionalDisplacement(0.5, 0, wires=[0, 1])
+        assert op.name == "EchoedConditionalDisplacement"
+        assert op.num_params == 2
+        assert op.num_wires == 2
+        assert op.parameters == [0.5, 0]
+        assert op.wires == qml.wires.Wires([0, 1])
+
+    def test_adjoint(self):
+        op = hqml.EchoedConditionalDisplacement(0.5, 0, wires=[0, 1])
+        adj_op = op.adjoint()[0]
+        assert adj_op.parameters == [-0.5, 0]
+
+    def test_pow(self):
+        op = hqml.EchoedConditionalDisplacement(0.5, 0.123, wires=[0, 1])
+        pow_op = op.pow(4)[0]
+        assert pow_op.parameters == [2, 0.123]
+
+    def test_simplify(self):
+        op = hqml.EchoedConditionalDisplacement(0, 0.123, wires=[0, 1])
+        simplified_op = op.simplify()
+        assert isinstance(simplified_op, qml.Identity)
