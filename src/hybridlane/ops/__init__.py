@@ -43,6 +43,7 @@ from .qumode import (
     TwoModeSqueezing,
     TwoModeSum,
     X,
+    heisenberg,
 )
 
 __all__ = [
@@ -85,4 +86,5 @@ __all__ = [
     "FockStateProjector",
     "QubitConditioned",
     "qcond",
+    "heisenberg",
 ]

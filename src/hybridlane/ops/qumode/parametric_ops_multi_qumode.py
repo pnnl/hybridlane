@@ -11,27 +11,32 @@ from pennylane.decomposition.symbolic_decomposition import (
     pow_rotation,
 )
 from pennylane.operation import CVOperation
-from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
+from typing_extensions import override
 
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
+from .heisenberg import to_phase_space
 
 
-# Change to match convention
+# Change to match convention. See `from_pennylane` transform for more details
 class Beamsplitter(CVOperation):
     r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
+
+    It is given by the unitary (Box IV.4 [1]_)
 
     .. math::
 
         BS(\theta,\varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b + e^{-i\varphi}ab^\dagger)\right]
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
     num_wires = 2
     ndim_params = (0, 0)
-    grad_method = "A"
-    grad_recipe = (_two_term_shift_rule, _two_term_shift_rule)
+    grad_method = qml.Beamsplitter.grad_method
+    grad_recipe = qml.Beamsplitter.grad_recipe
 
     resource_keys = set()
 
@@ -48,30 +53,44 @@ class Beamsplitter(CVOperation):
     def resource_params(self):
         return {}
 
-    # For the beamsplitter, both parameters are rotation-like
-    # Todo: Redo this with new convention
+    @override
     @staticmethod
     def _heisenberg_rep(p):
-        R = _rotation(p[1], bare=True)
-        c = math.cos(p[0])
-        s = math.sin(p[0])
-        U = c * np.eye(5)
-        U[0, 0] = 1
-        U[1:3, 3:5] = -s * R.T
-        U[3:5, 1:3] = s * R
-        return U
+        # Comes from eqs. 170, 171
+        c = np.cos(p[0] / 2)
+        s = np.sin(p[0] / 2)
+        pp = np.exp(1j * p[1])
+        pm = np.conj(pp)
 
+        S = np.array(
+            [
+                [1, 0, 0, 0, 0],
+                [0, c, 0, -1j * s * pp, 0],
+                [0, 0, c, 0, 1j * s * pm],
+                [0, -1j * s * pm, 0, c, 0],
+                [0, 0, 1j * s * pp, 0, c],
+            ]
+        )
+        return to_phase_space(S)
+
+    @override
     def adjoint(self):
         theta, phi = self.parameters
         return Beamsplitter(-theta, phi, wires=self.wires)
 
+    @override
+    def pow(self, z: int | float):
+        return [Beamsplitter(z * self.data[0], self.data[1], self.wires)]
+
+    @override
     def simplify(self):
-        theta, phi = self.data
+        theta, phi = self.data[0] % (4 * np.pi), self.data[1] % (2 * np.pi)
         if _can_replace(theta, 0):
             return qml.Identity(wires=self.wires)
 
-        return self
+        return Beamsplitter(theta, phi, self.wires)
 
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "BS", cache=cache
@@ -92,23 +111,20 @@ qml.add_decomps("qCond(Beamsplitter)", to_native_qcond(1))
 class TwoModeSqueezing(CVOperation):
     r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
 
+    It is given by the unitary (Box IV.5 [1]_)
+
     .. math::
 
-        TMS(r, \varphi) = \exp\left[r (e^{i\phi} \ad b^\dagger - e^{-i\phi} ab\right].
+        TMS(r, \varphi) = \exp\left[r (e^{i\phi} \ad b^\dagger - e^{-i\phi} ab\right]
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
     num_wires = 2
     ndim_params = (0, 0)
-    grad_method = "A"
-
-    shift = 0.1
-    multiplier = 0.5 / math.sinh(shift)
-    a = 1
-    grad_recipe = (
-        [[multiplier, a, shift], [-multiplier, a, -shift]],
-        _two_term_shift_rule,
-    )
+    grad_method = qml.TwoModeSqueezing.grad_method
+    grad_recipe = qml.TwoModeSqueezing.grad_recipe
 
     resource_keys = set()
 
@@ -119,30 +135,36 @@ class TwoModeSqueezing(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     @staticmethod
     def _heisenberg_rep(p):
-        R = _rotation(p[1] + np.pi, bare=True)
+        # See eq. 182, given in fock space
+        S = math.cosh(p[0]) * np.identity(5, dtype=complex)
+        S[0, 0] = 1
+        S[(1, 2, 3, 4), (4, 3, 2, 1)] = math.sinh(p[0]) * np.exp(
+            1j * p[1] * np.array([1, -1, 1, -1])
+        )
 
-        S = math.sinh(p[0]) * np.diag([1, -1])
-        U = math.cosh(p[0]) * np.identity(5)
+        return to_phase_space(S)
 
-        U[0, 0] = 1
-        U[1:3, 3:5] = S @ R.T
-        U[3:5, 1:3] = S @ R.T
-        return U
-
+    @override
     def adjoint(self):
         r, phi = self.parameters
-        new_phi = (phi + np.pi) % (2 * np.pi)
-        return TwoModeSqueezing(r, new_phi, wires=self.wires)
+        return TwoModeSqueezing(-r, phi, wires=self.wires)
 
+    @override
+    def pow(self, z: int | float):
+        return [TwoModeSqueezing(z * self.data[0], self.data[1], self.wires)]
+
+    @override
     def simplify(self):
-        r = self.data[0]
+        r, phi = self.data[0], self.data[1] % (2 * np.pi)
         if _can_replace(r, 0):
             return qml.Identity(self.wires)
 
-        return self
+        return TwoModeSqueezing(r, phi, self.wires)
 
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "TMS", cache=cache
@@ -168,7 +190,9 @@ class TwoModeSum(CVOperation):
 
         SUM(\lambda) = \exp[\frac{\lambda}{2}(a + \ad)(b^\dagger - b)]
 
-    where :math:`\lambda \in \mathbb{R}` is a real parameter. The action on the wavefunction is given by
+    where :math:`\lambda \in \mathbb{R}` is a real parameter. Note that this is in Wigner units.
+
+    The action on the wavefunction is given by
 
     .. math::
 
@@ -193,13 +217,16 @@ class TwoModeSum(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     def adjoint(self):
         lambda_ = self.parameters[0]
         return TwoModeSum(-lambda_, wires=self.wires)
 
+    @override
     def pow(self, z: int | float):
         return [TwoModeSum(self.data[0] * z, self.wires)]
 
+    @override
     def simplify(self):
         lambda_ = self.data[0]
         if _can_replace(lambda_, 0):
@@ -207,6 +234,24 @@ class TwoModeSum(CVOperation):
 
         return TwoModeSum(lambda_, self.wires)
 
+    @override
+    @staticmethod
+    def _heisenberg_rep(p):
+        # Defined in fock space, eq. B3
+        l = p[0]
+        S = np.array(
+            [
+                [1, 0, 0, 0, 0],
+                [0, 1, 0, -l / 2, +l / 2],
+                [0, 0, 1, l / 2, -l / 2],
+                [0, l / 2, l / 2, 1, 0],
+                [0, l / 2, l / 2, 0, 1],
+            ]
+        )
+
+        return to_phase_space(S)
+
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "SUM", cache=cache

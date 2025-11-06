@@ -3,8 +3,8 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import math
-from collections.abc import Sequence
 
+import numpy as np
 import pennylane as qml
 from pennylane.decomposition.symbolic_decomposition import (
     make_pow_decomp_with_period,
@@ -13,16 +13,25 @@ from pennylane.decomposition.symbolic_decomposition import (
 )
 from pennylane.operation import CVOperation
 from pennylane.wires import WiresLike
+from typing_extensions import override
 
 import hybridlane as hqml
 
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
+from .heisenberg import rotation
 
 
 class Fourier(CVOperation):
     r"""Continuous-variable Fourier gate :math:`F`
 
-    This gate is a special case of the CV :py:class:`~hybridlane.Rotation` gate with :math:`\theta = \pi/2`
+    This gate is a special case of the CV :py:class:`~hybridlane.Rotation` gate with :math:`\theta = \pi/2`.
+
+    It has the symplectic representation
+
+    .. math::
+
+        F^\dagger\hat{x}F = \hat{p} \\
+        F^\dagger\hat{p}F = -\hat{x}
     """
 
     num_params = 0
@@ -34,18 +43,25 @@ class Fourier(CVOperation):
         super().__init__(wires=wires, id=id)
 
     @property
+    @override
     def resource_params(self):
         return {}
 
+    @override
     @staticmethod
-    def compute_decomposition(
-        *params, wires, **hyperparameters
-    ) -> Sequence[CVOperation]:
+    def compute_decomposition(*params, wires=None, **hyperparameters):  # pyright: ignore[reportIncompatibleMethodOverride]
         return [hqml.Rotation(math.pi / 2, wires)]
 
+    @override
     def adjoint(self):
         return hqml.Rotation(-math.pi / 2, self.wires)
 
+    @override
+    @staticmethod
+    def _heisenberg_rep(p):  # pyright: ignore[reportIncompatibleMethodOverride]
+        return rotation(np.pi / 2)
+
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "F", cache=cache
@@ -106,18 +122,34 @@ class ModeSwap(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     @staticmethod
-    def compute_decomposition(*params, wires, **hyperparameters):
+    def _heisenberg_rep(p):
+        return np.array(
+            [
+                [1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 1],
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, 0],
+            ]
+        )
+
+    @override
+    @staticmethod
+    def compute_decomposition(*params, wires=None, **hyperparameters):  # pyright: ignore[reportIncompatibleMethodOverride]
         return [
             hqml.Beamsplitter(math.pi, 0, wires),
             hqml.Rotation(-math.pi / 2, wires[0]),
             hqml.Rotation(-math.pi / 2, wires[1]),
         ]
 
+    @override
     def adjoint(self):
         return ModeSwap(self.wires)  # self-adjoint up to a global phase of -1
 
-    def pow(self, z: int | float):
+    @override
+    def pow(self, z: int | float):  # pyright: ignore[reportIncompatibleMethodOverride]
         if isinstance(z, float):
             raise NotImplementedError("Unknown formula for fractional powers")
         elif z < 0:

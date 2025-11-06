@@ -746,7 +746,7 @@ qml.add_decomps("Pow(Rabi)", _pow_rb)
 class EchoedConditionalDisplacement(Operation, Hybrid):
     r"""Echoed conditional displacement gate :math:`ECD(\alpha)`
 
-    This is given by the unitary (p. S9 of [1]_)
+    This is given by the unitary (p. S9 [1]_)
 
     .. math::
 
@@ -758,7 +758,7 @@ class EchoedConditionalDisplacement(Operation, Hybrid):
     .. note::
 
         This results in a state displaced by :math:`2\alpha` instead of :math:`\alpha` since the Hybridlane definition
-        of the :math:`CD(\alpha)` gate differs from the reference [1]_.
+        of the :math:`CD(\alpha)` gate differs from the reference.
 
     .. [1] A. Eickbusch et al. `Nature Physics 18, 1464–1469 (2022) <https://www.nature.com/articles/s41567-022-01776-9>`_
     """

@@ -11,13 +11,13 @@ from pennylane.decomposition.symbolic_decomposition import (
     pow_rotation,
 )
 from pennylane.operation import CVOperation
-from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
+from typing_extensions import override
 
-import hybridlane as hqml
 
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
+from .heisenberg import rotation
 
 
 # Re-export since it matches the convention of Y. Liu
@@ -27,22 +27,22 @@ class Displacement(CVOperation):
     .. math::
        D(\alpha) = \exp[\alpha \ad -\alpha^* a]
 
-    where :math:`\alpha = ae^{i\phi}`. The result of applying a displacement to the vacuum
-    is a coherent state :math:`D(\alpha)\ket{0} = \ket{\alpha}`.
+    where :math:`\alpha = ae^{i\phi}` (see Box IV.1 [1]_). The result of applying a displacement to the vacuum
+    is a coherent state :math:`D(\alpha)\ket{0} = \ket{\alpha}`. It has the symplectic representation
+
+    .. math::
+
+        D^\dagger(\alpha)\hat{x}D(\alpha) = \hat{x} + \mathrm{Re}[\alpha] \\
+        D^\dagger(\alpha)\hat{p}D(\alpha) = \hat{p} + \mathrm{Im}[\alpha]
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
     num_wires = 1
     ndim_params = (0, 0)
-    grad_method = "A"
-
-    shift = 0.1
-    multiplier = 0.5 / shift
-    a = 1
-    grad_recipe = (
-        [[multiplier, a, shift], [-multiplier, a, -shift]],
-        _two_term_shift_rule,
-    )
+    grad_method = qml.Displacement.grad_method
+    grad_recipe = qml.Displacement.grad_recipe
 
     resource_keys = set()
 
@@ -55,18 +55,39 @@ class Displacement(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     @staticmethod
-    def _heisenberg_rep(p):
-        c = math.cos(p[1])
-        s = math.sin(p[1])
-        scale = 2  # sqrt(2 * hbar)
-        return np.array([[1, 0, 0], [scale * c * p[0], 1, 0], [scale * s * p[0], 0, 1]])
+    def _heisenberg_rep(p):  # pyright: ignore[reportIncompatibleMethodOverride]
+        a = p[0]
+        c = np.cos(p[1])
+        s = np.sin(p[1])
+        return np.array(
+            [
+                [1, 0, 0],
+                [a * c, 1, 0],
+                [a * s, 0, 1],
+            ]
+        )
 
+    @override
     def adjoint(self):
         a, phi = self.parameters
-        new_phi = (phi + math.pi) % (2 * math.pi)
-        return Displacement(a, new_phi, wires=self.wires)
+        return Displacement(-a, phi, wires=self.wires)
 
+    @override
+    def pow(self, z: int | float):
+        return [Displacement(z * self.data[0], self.data[1], self.wires)]
+
+    @override
+    def simplify(self):
+        a, phi = self.data[0], self.data[1] % (2 * np.pi)
+
+        if _can_replace(a, 0):
+            return qml.Identity(wires=self.wires)
+
+        return Displacement(a, phi, self.wires)
+
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "D", cache=cache
@@ -85,18 +106,30 @@ qml.add_decomps("qCond(Displacement)", to_native_qcond(1))
 
 # Modify to use -i convention
 class Rotation(CVOperation):
-    r"""Phase space rotation gate :math:`R(\theta)`
+    r"""Phase-space rotation gate :math:`R(\theta)`
+
+    It is given by the unitary
 
     .. math::
 
         R(\theta) = \exp[-i\theta \hat{n}]
+
+    where :math:`\theta \in [0, 2\pi)` (Box IV.2 [1]_). It has the symplectic representation
+
+    .. math::
+
+        \begin{pmatrix} \hat{x}(\theta) \\ \hat{p}(\theta) \end{pmatrix} =
+        \begin{pmatrix} \cos(\theta) & \sin(\theta) \\ -\sin(\theta) & \cos(\theta) \end{pmatrix}
+        \begin{pmatrix} \hat{x} \\ \hat{p} \end{pmatrix}
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
-    num_wires = 1
     ndim_params = (0,)
-    grad_method = "A"
-    grad_recipe = (_two_term_shift_rule,)
+    num_wires = 1
+    grad_method = qml.Rotation.grad_method
+    grad_recipe = qml.Rotation.grad_recipe
 
     resource_keys = set()
 
@@ -107,20 +140,28 @@ class Rotation(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     @staticmethod
-    def _heisenberg_rep(p):
-        return _rotation(-p[0])
+    def _heisenberg_rep(p):  # pyright: ignore[reportIncompatibleMethodOverride]
+        return rotation(p[0])
 
+    @override
     def adjoint(self):
         return Rotation(-self.parameters[0], wires=self.wires)
 
+    @override
+    def pow(self, z: int | float):
+        return [Rotation(z * self.data[0], self.wires)]
+
+    @override
     def simplify(self):
-        theta = self.data[0]
+        theta = self.data[0] % (2 * np.pi)
         if _can_replace(theta, 0):
             return qml.Identity(wires=self.wires)
 
-        return self
+        return Rotation(theta, self.wires)
 
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "R", cache=cache
@@ -136,24 +177,26 @@ qml.add_decomps("qCond(Rotation)", to_native_qcond(1))
 class Squeezing(CVOperation):
     r"""Phase space squeezing gate :math:`S(\zeta)`
 
+    It is given by the unitary
+
     .. math::
         S(\zeta) = \exp\left[\frac{1}{2}(\zeta^* a^2 - \zeta(\ad)^2)\right].
 
-    where :math:`\zeta = r e^{i\phi}`.
+    where :math:`\zeta = r e^{i\phi}` (Box IV.3 [1]_). It has the symplectic representation
+
+    .. math::
+
+        (\cos\theta \hat{x} + \sin\theta \hat{p}) \rightarrow e^{-r} (\cos\theta \hat{x} + \sin\theta \hat{p}) \\
+        (-\sin\theta \hat{x} + \cos\theta \hat{p}) \rightarrow e^{+r} (-\sin\theta \hat{x} + \cos\theta \hat{p})
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 2
     num_wires = 1
     ndim_params = (0, 0)
-    grad_method = "A"
-
-    shift = 0.1
-    multiplier = 0.5 / math.sinh(shift)
-    a = 1
-    grad_recipe = (
-        [[multiplier, a, shift], [-multiplier, a, -shift]],
-        _two_term_shift_rule,
-    )
+    grad_method = qml.Squeezing.grad_method
+    grad_recipe = qml.Squeezing.grad_recipe
 
     resource_keys = set()
 
@@ -164,16 +207,31 @@ class Squeezing(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     @staticmethod
-    def _heisenberg_rep(p):
-        R = _rotation(p[1] / 2)
+    def _heisenberg_rep(p):  # pyright: ignore[reportIncompatibleMethodOverride]
+        R = rotation(p[1])
         return R @ np.diag([1, math.exp(-p[0]), math.exp(p[0])]) @ R.T
 
+    @override
     def adjoint(self):
         r, phi = self.parameters
-        new_phi = (phi + np.pi) % (2 * np.pi)
-        return Squeezing(r, new_phi, wires=self.wires)
+        return Squeezing(-r, phi, wires=self.wires)
 
+    @override
+    def pow(self, z: int | float):
+        return [Squeezing(z * self.data[0], self.data[1], self.wires)]
+
+    @override
+    def simplify(self):
+        r, phi = self.data[0], self.data[1] % (2 * np.pi)
+
+        if _can_replace(r, 0):
+            return qml.Identity(wires=self.wires)
+
+        return Squeezing(r, phi, self.wires)
+
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "S", cache=cache
@@ -194,9 +252,22 @@ qml.add_decomps("qCond(Squeezing)", to_native_qcond(1))
 class Kerr(CVOperation):
     r"""Kerr gate :math:`K(\kappa)`
 
+    It is given by the unitary
+
     .. math::
 
         K(\kappa) = \exp[-i \kappa \hat{n}^2].
+
+    Note that this differs from the self-Kerr interaction (eq. A25 [1]_) by an overall phase-space
+    rotation gate, since
+
+    .. math::
+
+        e^{-i\kappa \ad\ad aa} &= e^{-i\kappa \hat{n}(\hat{n} - 1)} \\
+                               &= e^{-i\kappa\hat{n}^2}e^{-i\kappa\hat{n}} \\
+                               &= K(\kappa)R(\kappa)
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
@@ -213,9 +284,15 @@ class Kerr(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     def adjoint(self):
         return Kerr(-self.parameters[0], wires=self.wires)
 
+    @override
+    def pow(self, z: int | float):
+        return [Kerr(z * self.data[0], self.wires)]
+
+    @override
     def simplify(self):
         kappa = self.data[0]
         if _can_replace(kappa, 0):
@@ -223,6 +300,7 @@ class Kerr(CVOperation):
 
         return self
 
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "K", cache=cache
@@ -237,9 +315,13 @@ qml.add_decomps("Pow(Kerr)", pow_rotation)
 class CubicPhase(CVOperation):
     r"""Cubic phase shift gate :math:`C(r)`
 
+    It is given by the unitary (Table IV.2 [1]_)
+
     .. math::
 
-        C(r) = e^{-i r \hat{x}^3}.
+        C(r) = e^{-i r \hat{x}^3}
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """
 
     num_params = 1
@@ -256,9 +338,15 @@ class CubicPhase(CVOperation):
     def resource_params(self):
         return {}
 
+    @override
     def adjoint(self):
         return CubicPhase(-self.parameters[0], wires=self.wires)
 
+    @override
+    def pow(self, z: int | float):
+        return [CubicPhase(z * self.data[0], self.wires)]
+
+    @override
     def simplify(self):
         r = self.data[0]
         if _can_replace(r, 0):
@@ -266,6 +354,7 @@ class CubicPhase(CVOperation):
 
         return self
 
+    @override
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "C", cache=cache
