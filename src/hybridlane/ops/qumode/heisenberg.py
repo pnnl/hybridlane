@@ -8,8 +8,8 @@ r"""A utility module to simplify working with the symplectic representations of 
 from typing import Literal
 
 import numpy as np
+import pennylane as qml
 from numpy.typing import NDArray
-from scipy.linalg import block_diag
 
 
 def rotation(theta: float, include_constant: bool = True) -> NDArray[np.floating]:
@@ -35,7 +35,7 @@ def rotation(theta: float, include_constant: bool = True) -> NDArray[np.floating
 
     if include_constant:
         const = np.atleast_2d(1)
-        r = block_diag(const, r)
+        r = qml.math.block_diag((const, r))
 
     return r
 
@@ -64,7 +64,7 @@ def _symplectic_conversion_matrix(
     if include_constant:
         args = (np.atleast_2d(1),) + args
 
-    M = block_diag(*args)
+    M = qml.math.block_diag(args)
     return M
 
 
@@ -162,7 +162,7 @@ def get_antisymmetric_matrix(
     if include_constant:
         args = (np.atleast_2d(0),) + args
 
-    omega = block_diag(*args)
+    omega = qml.math.block_diag(args)
     return omega
 
 
