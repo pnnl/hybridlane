@@ -4,5 +4,6 @@
 # See the LICENSE.txt file for full license text.
 
 from .from_pennylane import from_pennylane
+from .gaussian_fusion import gaussian_fusion
 
-__all__ = ["from_pennylane"]
+__all__ = ["from_pennylane", "gaussian_fusion"]

@@ -12,11 +12,11 @@ from pennylane.decomposition.symbolic_decomposition import (
 )
 from pennylane.operation import CVOperation
 from pennylane.typing import TensorLike
-from pennylane.wires import WiresLike
+from pennylane.wires import Wires, WiresLike
 from typing_extensions import override
 
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
-from .heisenberg import to_phase_space
+from .heisenberg import is_symplectic, to_phase_space
 
 
 # Change to match convention. See `from_pennylane` transform for more details
@@ -261,6 +261,100 @@ class TwoModeSum(CVOperation):
 qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
 qml.add_decomps("Pow(TwoModeSum)", pow_rotation)
 qml.add_decomps("qCond(TwoModeSum)", to_native_qcond(1))
+
+
+class Gaussian(CVOperation):
+    r"""General multi-qumode gaussian operation
+
+    This gate is specified by a symplectic matrix :math:`\mathbf{S}` that transforms the quadrature
+    operators
+
+    .. math::
+
+        \begin{pmatrix} \mathbf{x}' = \mathbf{S}\mathbf{x} \end{pmatrix}
+
+    where :math:`\mathbf{x} = (1~x_1~p_1\dots x_n~p_n)^T`. Note that compared to the notation of eq. 101 [1]_,
+    we instead incorporate the displacement term into an extra homogenous coordinate.
+
+    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    """
+
+    num_params = 1
+
+    resource_keys = {"num_wires"}
+
+    def __init__(self, s: TensorLike, wires: WiresLike, id: str | None = None):
+        r"""
+        Args:
+            s: A symplectic matrix of shape ``(2n+1, 2n+1)``, where ``n`` is the number of wires
+
+            wires: The wires this gate acts on
+
+            id: An optional identifying label
+        """
+        shape = qml.math.shape(s)
+
+        if shape[0] % 2 != 1:
+            raise ValueError("The symplectic matrix is missing a homogenous coordinate")
+
+        if not is_symplectic(s):
+            raise ValueError("The Gaussian gate requires a symplectic matrix")
+
+        wires = Wires(wires)
+        if shape[0] // 2 != len(wires):
+            word = "few" if len(wires) < shape[0] // 2 else "many"
+            raise ValueError(
+                f"The gate was given too {word} wires for the input matrix"
+            )
+
+        self.hyperparameters["num_wires"] = len(wires)
+        super().__init__(s, wires=wires, id=id)
+
+    @property
+    @override
+    def ndim_params(self):
+        return (2,)
+
+    @property
+    @override
+    def num_wires(self):
+        return len(self._wires)
+
+    @property
+    def resource_params(self):
+        return {"num_wires": self.hyperparameters["num_wires"]}
+
+    @override
+    def adjoint(self):
+        # Haven't found a `qml.math.inv` function, but we might still do it tensor-agnostic
+        # using the array api
+        from array_api_compat import array_namespace
+
+        s = self.data[0]
+        xp = array_namespace(s)
+        sinv = xp.linalg.inv(s)
+        return Gaussian(sinv, self.wires)
+
+    @override
+    def simplify(self):
+        s = self.data[0]
+        shape = qml.math.shape(s)
+
+        if _can_replace(s, qml.math.eye(*shape, like=s)):
+            return qml.Identity(self.wires)
+
+        return self
+
+    @override
+    @staticmethod
+    def _heisenberg_rep(p):
+        return p[0]
+
+    @override
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "G", cache=cache
+        )
 
 
 def _can_replace(x, y):

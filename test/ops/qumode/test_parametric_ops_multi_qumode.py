@@ -4,6 +4,7 @@
 # See the LICENSE.txt file for full license text.
 import numpy as np
 import pennylane as qml
+import pytest
 
 import hybridlane as hqml
 
@@ -93,3 +94,58 @@ class TestTwoModeSum:
         op = hqml.TwoModeSum(0.5, [0, 1])
         S = op.heisenberg_tr(op.wires)
         assert hqml.heisenberg.is_symplectic(S)
+
+
+class TestGaussian:
+    def test_init(self):
+        s = np.eye(5)
+        op = hqml.Gaussian(s, [0, 1])
+        assert op.name == "Gaussian"
+        assert op.num_wires == 2
+        assert op.num_params == 1
+        assert qml.math.allclose(op.heisenberg_tr(op.wires), s)
+        assert op.label() == "G"
+
+        # Too few wires
+        with pytest.raises(ValueError):
+            op = hqml.Gaussian(s, 0)
+
+        # Too many wires
+        with pytest.raises(ValueError):
+            op = hqml.Gaussian(s, [0, 1, 2])
+
+        # Missing homogenous coord
+        s = np.eye(4)
+        with pytest.raises(ValueError):
+            op = hqml.Gaussian(s, [0, 1])
+
+        # Non-symplectic
+        s = np.zeros(5)
+        with pytest.raises(ValueError):
+            op = hqml.Gaussian(s, [0, 1])
+
+    def test_simplify(self):
+        op = hqml.Gaussian(np.eye(5), [0, 1])
+        simplified_op = op.simplify()
+        assert simplified_op == qml.Identity([0, 1])
+
+        s = hqml.Displacement._heisenberg_rep([0.5, 0])
+        op = hqml.Gaussian(s, 0)
+        simplified_op = op.simplify()
+        assert op == simplified_op
+
+    @pytest.mark.parametrize(
+        "base_op",
+        (
+            hqml.Displacement(0.5, 0, 0),
+            hqml.Beamsplitter(0.123, 0, [0, 1]),
+            hqml.Squeezing(-0.5, 0, 1),
+        ),
+    )
+    def test_adjoint(self, base_op):
+        s = base_op.heisenberg_tr(base_op.wires)
+        sinv = base_op.adjoint().heisenberg_tr(base_op.wires)
+
+        op = hqml.Gaussian(s, base_op.wires)
+        adj_op = op.adjoint()
+        assert qml.math.allclose(adj_op.data[0], sinv)

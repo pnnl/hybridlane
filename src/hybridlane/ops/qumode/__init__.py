@@ -14,7 +14,12 @@ from .observables import (
     QuadX,
     X,
 )
-from .parametric_ops_multi_qumode import Beamsplitter, TwoModeSqueezing, TwoModeSum
+from .parametric_ops_multi_qumode import (
+    Beamsplitter,
+    Gaussian,
+    TwoModeSqueezing,
+    TwoModeSum,
+)
 from .parametric_ops_single_qumode import (
     CubicPhase,
     Displacement,
@@ -36,6 +41,7 @@ __all__ = [
     "QuadX",
     "X",
     "Beamsplitter",
+    "Gaussian",
     "TwoModeSqueezing",
     "TwoModeSum",
     "Displacement",

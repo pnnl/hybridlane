@@ -189,14 +189,13 @@ def is_symplectic(S: NDArray[np.floating]) -> bool:
         raise ValueError(f"Expected a square matrix, got shape {S.shape}")
 
     n_modes, include_constant = S.shape[0] // 2, bool(S.shape[0] % 2)
-    omega = get_antisymmetric_matrix(n_modes, include_constant)
-
-    # eq. 101 in arXiv:2407.10381
-    res = S.T @ omega @ S
+    omega = get_antisymmetric_matrix(n_modes, include_constant=False)
 
     # Don't compare the constant parts
     if include_constant:
-        res = res[1:, 1:]
-        omega = omega[1:, 1:]
+        S = S[1:, 1:]
+
+    # eq. 101 in arXiv:2407.10381
+    res = S.T @ omega @ S
 
     return np.allclose(res, omega)
