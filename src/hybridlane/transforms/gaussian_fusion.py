@@ -1,7 +1,11 @@
+# Copyright (c) 2025, Battelle Memorial Institute
+
+# This software is licensed under the 2-Clause BSD License.
+# See the LICENSE.txt file for full license text.
 from functools import reduce
 
 import pennylane as qml
-from pennylane.operation import CVOperation, Operation, Operator
+from pennylane.operation import CVOperation, Operator
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
 from pennylane.wires import Wires
