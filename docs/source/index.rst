@@ -11,7 +11,7 @@ hybridlane is a frontend library for expressing and manipulating **hybrid contin
 Quantum computing research is increasingly exploring hybrid (heterogenous) models. hybridlane empowers researchers and developers to:
 
 *   **Design complex hybrid circuits effortlessly:** Mix and match qubits and qumodes in the same circuit without workaround.
-*   **Scale to large circuits:** Define hybrid gate semantics independent of simulation, enabling fast circuit description (we tried up to 10k qumodes).
+*   **Circuit size:** Define hybrid gate semantics independent of simulation, enabling fast, wide, and deep circuit description with minimal memory consumption.
 *   **Integrate with PennyLane:** Leverage existing PennyLane tools for transformations, resource estimation, and device integration.
 
 
