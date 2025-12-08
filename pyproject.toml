@@ -31,7 +31,7 @@ Issues = "https://github.com/pnnl/hybridlane/issues"
 
 [project.optional-dependencies]
 bq = [
-    "bosonic-qiskit>=14.0",
+    "bosonic-qiskit>=15.0",
     "sparse>=0.17.0",
 ]
 all = [

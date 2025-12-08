@@ -9,14 +9,13 @@ import math
 import warnings
 from typing import Callable
 
-import c2qa as bq
-import c2qa.operators
+import bosonic_qiskit as bq
 import numpy as np
 import pennylane as qml
 from pennylane.exceptions import DeviceError
 from pennylane.operation import Operator
-from pennylane.ops import Pow, Prod, SProd, Sum
-from pennylane.ops.cv import CVObservable, CVOperation
+from pennylane.ops import Exp, Pow, Prod, SProd, Sum
+from pennylane.ops.cv import CVOperation
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
@@ -24,7 +23,8 @@ from qiskit.primitives import BitArray
 from qiskit.quantum_info import Statevector
 from qiskit.result import Result as QiskitResult
 from scipy import sparse as sp
-from scipy.sparse import SparseEfficiencyWarning, csc_matrix
+from scipy.linalg import expm, fractional_matrix_power
+from scipy.sparse import SparseEfficiencyWarning, csc_array
 
 import hybridlane as hqml
 
@@ -43,8 +43,8 @@ from .gates import cv_gate_map, dv_gate_map, hybrid_gate_map, misc_gate_map
 from .register_mapping import RegisterMapping
 
 # Patch to flip the conventions from |g> = |1>, |e> = |0> to |g> = |0>, |e> = |1>
-c2qa.operators.sigma_minus[:] = c2qa.operators.sigma_minus.T
-c2qa.operators.sigma_plus[:] = c2qa.operators.sigma_plus.T
+bq.operators.SMINUS[:] = bq.operators.SMINUS.T
+bq.operators.SPLUS[:] = bq.operators.SPLUS.T
 
 
 def simulate(
@@ -123,53 +123,48 @@ analytic_measurement_map: dict[
 }
 
 
-def get_truncated_matrix_generator(
-    obs: Operator, *, hbar: float
-) -> Callable[[int], csc_matrix]:
-    from c2qa.operators import CVOperators
+def get_sparse_observable_matrix(
+    obs: Operator, *cutoffs: int, hbar: float
+) -> csc_array:
+    if not cutoffs:
+        raise ValueError("Expected at least one cutoff")
 
     lam = np.sqrt(hbar / 2)
-    cvops = CVOperators()
+    cvops = bq.operators.CVOperators()
 
-    def get_x(c):
-        return lam * (cvops.get_a(c) + cvops.get_a_dag(c))
+    def get_x(c: int):
+        return lam * (cvops.get_a(c) + cvops.get_ad(c))
 
-    def get_p(c):
-        return lam * -1j * (cvops.get_a(c) - cvops.get_a_dag(c))
+    def get_p(c: int):
+        return lam * -1j * (cvops.get_a(c) - cvops.get_ad(c))
 
     match obs:
         case qml.Identity():
-            return lambda cutoff: sp.eye(cutoff, format="csc")  # type: ignore
+            return cvops.get_eye(cutoffs[0])
 
         case hqml.NumberOperator():
-            return cvops.get_N
+            return cvops.get_N(cutoffs[0])
 
         case hqml.QuadX():
-            return get_x
+            return get_x(cutoffs[0])
 
         case hqml.QuadP():
-            return get_p
+            return get_p(cutoffs[0])
 
-        case hqml.QuadOperator(parameters=params):
-            phi = params[0]
-            return lambda c: np.cos(phi) * get_x(c) + np.sin(phi) * get_p(c)
+        case hqml.QuadOperator(parameters=(phi,)):
+            return np.cos(phi) * get_x(cutoffs[0]) + np.sin(phi) * get_p(cutoffs[0])
 
-        case hqml.FockStateProjector(parameters=params, wires=wires):
-            if len(wires) > 1:
-                raise DeviceError(
-                    "Only support obtaining matrix for single-wire fock projectors"
-                )
-
-            n: int = params[0].item()
-            return lambda cutoff: csc_matrix(
-                ([1.0], ([n], [n])), shape=(cutoff, cutoff)
-            )
+        case hqml.FockStateProjector(parameters=(fock_states,)):
+            mats = [cvops.get_projector(n, c) for n, c in zip(fock_states, cutoffs)]
+            return functools.reduce(sp.kron, mats).asformat("csc")
 
         case _:
-            if obs.has_sparse_matrix:
-                return lambda _: obs.sparse_matrix(format="csc")  # type: ignore
-            else:
-                return lambda _: csc_matrix(obs.matrix())
+            mat = (
+                obs.sparse_matrix(format="csc")
+                if obs.has_sparse_matrix
+                else obs.matrix()
+            )
+            return csc_array(mat)
 
 
 def get_observable_matrix(
@@ -177,60 +172,43 @@ def get_observable_matrix(
 ) -> np.ndarray:
     # Here we need to construct the matrix for the observable in the wire order
     # expected by qiskit.
-    if isinstance(obs, Sum):
-        return sum(
-            c * get_observable_matrix(o, regmapper, hbar=hbar)
-            for c, o in zip(*obs.terms())
-        )
-    elif isinstance(obs, SProd):
-        return obs.scalar * get_observable_matrix(obs.base, regmapper, hbar=hbar)
-    elif isinstance(obs, Pow):
-        return np.linalg.matrix_power(
-            get_observable_matrix(obs.base, regmapper, hbar=hbar), obs.scalar
-        )
-    elif isinstance(obs, Prod) and not util.is_tensor_product(obs):
-        # Todo: this will require unit tests to make sure the matmul order is correct
-        mats = map(
-            lambda x: get_observable_matrix(x, regmapper, hbar=hbar), obs.operands
-        )
-        return functools.reduce(lambda x, y: x @ y, mats)
 
-    # Decompose fock state projectors on multiple qumodes as a proper product
-    elif isinstance(obs, hqml.FockStateProjector) and len(obs.wires) > 1:
-        new_obs = qml.prod(
-            *[
-                hqml.FockStateProjector(n, w)
-                for n, w in zip(obs.parameters[0], obs.wires)
-            ]
-        )
-        return get_observable_matrix(new_obs, regmapper, hbar=hbar)
+    if not obs.is_hermitian:
+        raise DeviceError(f"Got non-hermitian observable {obs}")
+
+    # Handle symbolic observable expressions by traversing the expression tree
+    match obs:
+        case Sum(operands=terms):
+            return sum(get_observable_matrix(o, regmapper, hbar=hbar) for o in terms)
+        case SProd(base=op, scalar=scalar):
+            return scalar * get_observable_matrix(op, regmapper, hbar=hbar)
+        case Exp(base=op, scalar=scalar):
+            return expm(scalar * get_observable_matrix(op, regmapper, hbar=hbar))
+        case Pow(base=op, scalar=pow):
+            mat = get_observable_matrix(op, regmapper, hbar=hbar)
+            try:
+                return np.linalg.matrix_power(mat, pow)
+            except TypeError:  # non-integer power
+                return fractional_matrix_power(mat, pow)
+        case Prod(operands=ops):
+            if not util.is_tensor_product(obs):
+                mats = map(
+                    lambda x: get_observable_matrix(x, regmapper, hbar=hbar), ops
+                )
+                return functools.reduce(lambda x, y: x @ y, mats)
 
     # If we make it here, we should have a simple operator or a tensor product
     # We need to construct the observable matrix for each individual operator, then
     # expand the tensor product in the wire order defined by regmapper.wires to produce a
     # matrix that acts on the full state vector
-    op_list = obs.operands if isinstance(obs, Prod) else [obs]
+    op_list = obs.operands if isinstance(obs, Prod) else (obs,)
 
-    # Get matrices for component operators. Each component should be multi-qubit or one qumode - we assume
-    # prior to this point that circuit transforms reduced multi-qumode or hybrid observables into simpler
-    # observables.
+    # Get matrices for component operators. Each component should act on disjoint wires
     op_mats: list[sp.csc_array] = []
     for op in op_list:
-        mat_func = get_truncated_matrix_generator(op, hbar=hbar)
-
-        cutoff = -1  # dummy value for dv observables
-        if isinstance(op, (CVObservable, Hybrid)):
-            if len(op.wires) > 1:
-                raise DeviceError(
-                    "This device currently does not support general CV or Hybrid observables acting on >=2 wires. "
-                    f"Perhaps your observable was not decomposed using circuit transforms? Got: {op}"
-                )
-
-            cutoff = regmapper.truncation.dim(op.wires[0])
-
-        op_mats.append(
-            mat_func(cutoff)  # type: ignore
-        )
+        cutoffs = tuple(map(regmapper.truncation.dim, op.wires))
+        mat = get_sparse_observable_matrix(op, *cutoffs, hbar=hbar)
+        op_mats.append(mat)
 
     # Get wire dimensions
     statevector_wires = regmapper.wire_order
@@ -289,96 +267,83 @@ def make_cv_circuit(
 
 def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
     wires = op.wires
-    parameters = tuple(map(to_scalar, op.parameters))
 
-    if method := dv_gate_map.get(type(op)):
+    if method := dv_gate_map.get(op.name):
         qubits = [regmapper.get(w) for w in wires]
 
-        match type(op):
+        match op:
             # This is equivalent up to a global phase of e^{-i(φ + ω)/2}
-            case qml.Rot:
-                phi, theta, omega = parameters
+            case qml.Rot(parameters=(phi, theta, omega)):
                 getattr(qc, method)(
                     theta, phi, omega, *qubits
                 )  # note the reordered parameters
             case _:
-                getattr(qc, method)(*parameters, *qubits)
+                getattr(qc, method)(*op.parameters, *qubits)
 
-    elif isinstance(op, CVOperation) and (method := cv_gate_map.get(type(op))):
+    elif isinstance(op, CVOperation) and (method := cv_gate_map.get(op.name)):
         qumodes = [regmapper.get(w) for w in wires]
 
-        match type(op):
+        match op:
             # These gates take complex parameters or differ from bosonic qiskit
-            case hqml.Displacement:
-                a, phi = parameters
-                alpha = a * np.exp(1j * phi)
-                getattr(qc, method)(alpha, *qumodes)
-            case hqml.Rotation:
-                theta = parameters[0]
+            case (
+                hqml.Displacement(parameters=(r, phi))
+                | hqml.Squeezing(parameters=(r, phi))
+            ):
+                arg = r * np.exp(1j * phi)
+                getattr(qc, method)(arg, *qumodes)
+            case hqml.Rotation(parameters=(theta,)):
                 getattr(qc, method)(-theta, *qumodes)
-            case hqml.Squeezing:
-                r, phi = parameters
-                z = r * np.exp(1j * phi)
-                getattr(qc, method)(z, *qumodes)
-            case hqml.Beamsplitter:
-                theta, phi = parameters
+            case hqml.Beamsplitter(parameters=(theta, phi)):
                 new_theta = theta / 2
                 new_phi = phi - np.pi / 2
                 z = new_theta * np.exp(1j * new_phi)
                 getattr(qc, method)(z, *qumodes)
-            case hqml.TwoModeSqueezing:
-                r, phi = parameters
+            case hqml.TwoModeSqueezing(parameters=(r, phi)):
                 new_phi = phi + np.pi / 2
                 z = r * np.exp(1j * new_phi)
                 getattr(qc, method)(z, *qumodes)
             case _:
-                getattr(qc, method)(*parameters, *qumodes)
+                getattr(qc, method)(*op.parameters, *qumodes)
 
-    elif isinstance(op, Hybrid) and (method := hybrid_gate_map.get(type(op))):
+    elif isinstance(op, Hybrid) and (method := hybrid_gate_map.get(op.name)):
         wire_types = op.wire_types()
 
         qumodes = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qumode()]
         qubits = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qubit()]
 
-        match type(op):
-            case hqml.ConditionalRotation:
-                theta = parameters[0]
+        match op:
+            case hqml.ConditionalRotation(parameters=(theta,)):
                 getattr(qc, method)(-theta / 2, *qumodes, *qubits)
-            case hqml.ConditionalDisplacement:
-                a, phi = parameters
-                alpha = a * np.exp(1j * phi)
-                getattr(qc, method)(alpha, *qumodes, *qubits)
-            case hqml.ConditionalSqueezing:
-                z, phi = parameters
-                zeta = z * np.exp(1j * phi)
-                getattr(qc, method)(zeta, *qumodes, *qubits)
-            case hqml.SelectiveQubitRotation:
-                n: int = op.hyperparameters["n"]
+            case (
+                hqml.ConditionalDisplacement(parameters=(r, phi))
+                | hqml.ConditionalSqueezing(parameters=(r, phi))
+            ):
+                arg = r * np.exp(1j * phi)
+                getattr(qc, method)(arg, *qumodes, *qubits)
+            case (
+                hqml.SQR(parameters=parameters, hyperparameters={"n": n})
+                | hqml.SNAP(parameters=parameters, hyperparameters={"n": n})
+            ):
                 getattr(qc, method)(*parameters, n, *qumodes, *qubits)
-            case hqml.SelectiveNumberArbitraryPhase:
-                n: int = op.hyperparameters["n"]
-                getattr(qc, method)(*parameters, n, *qumodes, *qubits)
-            case hqml.ConditionalBeamsplitter:
-                theta, phi = parameters
+            case hqml.ConditionalBeamsplitter(parameters=(theta, phi)):
                 new_theta = theta / 2
                 new_phi = phi - np.pi / 2
                 z = new_theta * np.exp(1j * new_phi)
                 getattr(qc, method)(z, *qumodes)
-            case hqml.ConditionalTwoModeSqueezing:
-                r, phi = parameters
+            case hqml.ConditionalTwoModeSqueezing(parameters=(r, phi)):
                 new_phi = phi + np.pi / 2
                 z = r * np.exp(1j * new_phi)
                 getattr(qc, method)(z, *qumodes, *qubits)
             case _:
-                getattr(qc, method)(*parameters, *qumodes, *qubits)
+                getattr(qc, method)(*op.parameters, *qumodes, *qubits)
 
-    elif method := misc_gate_map.get(type(op)):
+    elif method := misc_gate_map.get(op.name):
         match op:
             case qml.Barrier():
                 pass  # no-op
 
     else:
-        raise DeviceError(f"Unsupported operation {type(op)}")
+        raise DeviceError(f"Unsupported operation {op.name}")
 
 
 # todo: write unit tests for this function
@@ -387,7 +352,7 @@ def permute_subsystems(
     source_wires: Wires,
     destination_wires: Wires,
     regmapper: RegisterMapping,
-    qiskit_order=False,
+    qiskit_order: bool = False,
 ) -> sp.csc_array:
     # Dedicated sparse library that allows for proper nd-arrays unlike scipy.sparse
     import sparse
@@ -471,7 +436,7 @@ def sampled_measurement(
             continue
 
         # Qumode, convert back to fock space
-        if isinstance(qubits, list):
+        if wire in regmapper.sa_res.qumodes:
             indices: list[int] = qc.get_qubit_indices(qubits)
             bitstrings = qiskit_samples.slice_bits(indices)
             factor = 2 ** np.arange(bitstrings.num_bits, dtype=int)

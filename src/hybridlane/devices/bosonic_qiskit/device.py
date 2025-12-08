@@ -7,14 +7,6 @@
 # can choose whether or not to install support for it. However, pennylane will always
 # load this file to register the device from the entrypoints in `pyproject.toml`. Therefore,
 # this file needs to be importable *even if* bosonic qiskit is not installed.
-#
-# To facilitate this, the special dependencies of this device are only imported under the
-# typing.TYPE_CHECKING statement or in the functions that actually need the packages. Currently,
-# those dependencies are
-#   - bosonic qiskit (c2qa)
-#   - qiskit
-#   - sparse (not the scipy.sparse package)
-# + any other files in this directory (hybridlane.devices.bosonic_qiskit)
 
 
 import importlib.util
@@ -119,7 +111,7 @@ class BosonicQiskitDevice(Device):
 
     name = "Bosonic Qiskit"  # type: ignore
     shortname = "bosonic-qiskit"
-    version = "0.1.0"
+    version = "0.2.0"
     author = "PNNL"
 
     _device_options = ("truncation", "hbar")
@@ -149,14 +141,11 @@ class BosonicQiskitDevice(Device):
             hbar: The value for the constant :math:`\bar{h}`.
         """
 
-        if importlib.util.find_spec("c2qa") is None:
+        if importlib.util.find_spec("bosonic_qiskit") is None:
             raise ImportError(
                 f"The {self.name} device depends on bosonic-qiskit, "
-                "which can be installed with `pip install hybrid-circuit[bq]`"
+                "which can be installed with `pip install hybridlane[bq]`"
             )
-
-        if truncation and not isinstance(truncation, FockTruncation):
-            raise DeviceError(f"Only Fock truncations are supported, got {truncation}")
 
         self._truncation = truncation
         self._max_fock_level = max_fock_level
@@ -258,7 +247,7 @@ class BosonicQiskitDevice(Device):
 
         transform_program.add_transform(
             decompose,
-            stopping_condition=lambda o: type(o) in gates.supported_operations,
+            stopping_condition=lambda o: o.name in gates.supported_operations,
         )
 
         return transform_program

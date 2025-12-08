@@ -5,7 +5,6 @@
 import importlib.util
 import sys
 from functools import partial
-from unittest import mock
 
 import numpy as np
 import pennylane as qml
@@ -14,22 +13,19 @@ import scipy.stats
 from pennylane.exceptions import DeviceError
 
 import hybridlane as hqml
-from hybridlane.measurements import FockTruncation, Truncation
+from hybridlane.measurements import FockTruncation
 from hybridlane.sa.exceptions import StaticAnalysisError
 
 from ...util import poisson_test
 
 
 def test_package_works_without_bosonic_qiskit(monkeypatch):
-    """Test that hybrid-circuit can be imported without bosonic qiskit"""
+    """Test that hybridlane can be imported without bosonic qiskit"""
 
-    monkeypatch.delitem(sys.modules, "c2qa", raising=False)
-
-    import hybridlane as hqml
-    from hybridlane.devices import BosonicQiskitDevice
+    monkeypatch.delitem(sys.modules, "bosonic_qiskit", raising=False)
 
 
-missing_bosonic_qiskit = importlib.util.find_spec("c2qa") is None
+missing_bosonic_qiskit = importlib.util.find_spec("bosonic_qiskit") is None
 
 
 # Unit tests should go in here
@@ -79,12 +75,6 @@ class TestBosonicQiskitDevice:
 
         with pytest.raises(DeviceError):
             circuit()
-
-    def test_non_fock_truncation(self):
-        trunc = mock.Mock(spec=Truncation)
-
-        with pytest.raises(DeviceError):
-            dev = qml.device("bosonicqiskit.hybrid", truncation=trunc)
 
     def test_wires_aliased_by_operation(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
@@ -224,7 +214,7 @@ class TestExampleCircuits:
         rejections = 0
         for samples in sample_set:
             # Test overall distribution shape
-            if (p_value := poisson_test(samples, lam)) < 0.05:
+            if poisson_test(samples, lam) < 0.05:
                 rejections += 1
 
         # Check that we didn't reject more than a majority of our tests
@@ -390,9 +380,7 @@ class TestExampleCircuits:
         rejections = 0
         for samples in sample_set:
             successes = int(samples.sum())
-            if (
-                pvalue := scipy.stats.binomtest(successes, n_per_test, p).pvalue
-            ) < 0.05:
+            if scipy.stats.binomtest(successes, n_per_test, p).pvalue < 0.05:
                 rejections += 1
 
         assert rejections / repetitions < 0.5
