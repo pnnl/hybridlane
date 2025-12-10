@@ -7,7 +7,7 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from typing import Hashable
 
-import c2qa as bq
+import bosonic_qiskit as bq
 import qiskit as qk
 from pennylane.wires import Wires
 from qiskit.circuit import Qubit
@@ -31,6 +31,7 @@ class RegisterMapping(Mapping):
         fock_truncation: FockTruncation,
     ):
         self._truncation = fock_truncation
+        self.sa_res = sa_result
         self.mapping = self._prepare(sa_result)
 
     def _prepare(

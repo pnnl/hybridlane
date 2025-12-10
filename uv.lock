@@ -152,7 +152,7 @@ wheels = [
 
 [[package]]
 name = "bosonic-qiskit"
-version = "14.0"
+version = "15.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
@@ -164,9 +164,9 @@ dependencies = [
     { name = "qutip" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/d7/af83f399d0bec6d02eca49ce4bc03649b0011913f687d719847ef04a7d1f/bosonic_qiskit-14.0.tar.gz", hash = "sha256:55b2c5eb5c334c6718b2608c47e39166b2bfe33ce8ff7c5d3d6b4c511296dc97", size = 49307, upload-time = "2025-07-03T16:55:21.843Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/d5/956719f86026bf6f3f0569c7bc4ef76c19ba82331547fdaf58b861162c75/bosonic_qiskit-15.1.tar.gz", hash = "sha256:8110f71d43f98700fd174cbe9dfee5c15c3a074d0e018dc5605918d95cec12af", size = 57276, upload-time = "2025-12-09T17:38:25.707Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/ec/3dfa15390f3b1ce25c3a1b053c033f3733777e17b90f387225c69eee2e9c/bosonic_qiskit-14.0-py3-none-any.whl", hash = "sha256:542f8593fdb42cfbe1ba270d130d65d97fc83e2903ae636f3ff8424d2f004661", size = 39453, upload-time = "2025-07-03T16:55:20.542Z" },
+    { url = "https://files.pythonhosted.org/packages/df/a5/89fb87a76015826be47eaac0377e1467f98faa4ce308e79206b951d6c81d/bosonic_qiskit-15.1-py3-none-any.whl", hash = "sha256:25eeb9eecacb8e9d600d19031b0500c440268097612a34b44913854812db6b60", size = 43853, upload-time = "2025-12-09T17:38:24.432Z" },
 ]
 
 [[package]]
@@ -752,7 +752,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bosonic-qiskit", marker = "extra == 'bq'", specifier = ">=14.0" },
+    { name = "bosonic-qiskit", marker = "extra == 'bq'", specifier = ">=15.0" },
     { name = "hybridlane", extras = ["bq", "qscout"], marker = "extra == 'all'" },
     { name = "pennylane", specifier = ">=0.43.0" },
     { name = "pydantic", specifier = ">=2.9.2" },
