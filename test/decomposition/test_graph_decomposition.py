@@ -5,6 +5,7 @@
 import warnings
 from functools import partial
 
+import numpy as np
 import pennylane as qml
 import pytest
 from pennylane.decomposition.symbolic_decomposition import pow_rotation
@@ -16,7 +17,7 @@ from hybridlane.ops.mixins import Hybrid
 from hybridlane.sa import BasisSchema, ComputationalBasis
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="class", autouse=True)
 def graph_enabled():
     qml.decomposition.enable_graph()
     yield
@@ -55,7 +56,7 @@ qml.add_decomps("Pow(DJCEvo)", pow_rotation)
 
 
 class TestApplications:
-    def test_dispersive_jc_qpe(self, graph_enabled):
+    def test_dispersive_jc_qpe(self):
         omega_r = 1
         omega_q = -1
         chi = 0.1
@@ -93,3 +94,26 @@ class TestApplications:
         assert gate_types["Hadamard"] == 10  # 2 per estimation bit
         assert gate_types["ConditionalRotation"] == 15  # 2 per CR term, 1 per R term
         assert gate_types["Rotation"] == 5  # 1 per R term
+
+
+class TestGateDecompositions:
+    def test_snap_to_sqr(self):
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=32)
+
+        @qml.qnode(dev)
+        def circuit():
+            hqml.Displacement(0.5, 0, 0)
+            hqml.SNAP(0.5, 1, [1, 0])
+            hqml.SNAP(0.5, 2, [1, 0])
+            hqml.SNAP(0.5, 3, [1, 0])
+            hqml.Displacement(-0.5, 0, 0)
+            return hqml.expval(hqml.X(0))
+
+        expval_with_snap = circuit()
+
+        sqr_circuit = qml.transforms.decompose(
+            circuit, gate_set={hqml.Displacement, hqml.SQR}
+        )
+        expval_with_sqr = sqr_circuit()
+
+        assert np.allclose(expval_with_sqr, expval_with_snap)
