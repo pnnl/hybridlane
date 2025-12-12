@@ -440,9 +440,9 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
         phi = params[0]
         n = hyperparameters["n"]
 
-        # Decomposition in terms of SQR (eq. 235 of [1])
+        # Decomposition in terms of SQR (eq. 239 of [1])
         return [
-            SelectiveQubitRotation(math.pi, phi, n, wires),
+            SelectiveQubitRotation(math.pi, 0, n, wires),
             SelectiveQubitRotation(-math.pi, phi, n, wires),
         ]
 
@@ -483,10 +483,11 @@ r"""Selective Number-dependent Arbitrary Phase (SNAP) gate
 
 @qml.register_resources({SQR: 2})
 def _snap_to_sqr(phi, wires, n, **_):
-    SQR(math.pi, phi, n, wires)
+    SQR(math.pi, 0, n, wires)
     SQR(-math.pi, phi, n, wires)
 
 
+qml.add_decomps(SNAP, _snap_to_sqr)
 qml.add_decomps("Adjoint(SelectiveNumberArbitraryPhase)", adjoint_rotation)
 qml.add_decomps("Pow(SelectiveNumberArbitraryPhase)", pow_rotation)
 
