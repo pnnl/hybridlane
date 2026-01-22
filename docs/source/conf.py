@@ -5,6 +5,7 @@
 
 import os
 import sys
+from datetime import datetime
 
 sys.path.insert(0, os.path.abspath("../../src"))
 
@@ -12,7 +13,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Hybridlane"
-copyright = "%Y, Battelle Memorial Institute"
+copyright = f"{datetime.now().year}, Battelle Memorial Institute"
 author = "PNNL"
 
 # -- General configuration ---------------------------------------------------
@@ -22,6 +23,7 @@ extensions = [
     "autoapi.extension",  # For automatic API documentation from docstrings
     "sphinx.ext.autodoc.typehints",
     "sphinx.ext.napoleon",
+    "sphinx.ext.doctest",
     "sphinx.ext.autosummary",  # For generating summary tables of API elements
     "sphinx.ext.mathjax",  # For rendering math in HTML using MathJax/KaTeX
     # "sphinx_math_dollar",  # For inline math using $...$

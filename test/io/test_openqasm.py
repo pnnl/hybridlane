@@ -2,9 +2,10 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
+import re
+
 import numpy as np
 import pennylane as qml
-import re
 import pytest
 
 import hybridlane as hqml
@@ -13,7 +14,7 @@ import hybridlane as hqml
 def evaluate_openqasm_compliance(s: str):
     from openqasm3.parser import parse
 
-    program = parse(s)  # errors if there's syntax mistake
+    parse(s)  # errors if there's syntax mistake
 
 
 class TestCircuits:
@@ -48,7 +49,7 @@ class TestCircuits:
             assert "qubit[1] q;" in qasm
             assert "qumode[1] m;" in qasm
 
-            assert "float[homodyne_precision_bits] c0 = measure_x m[0];" in qasm
+            assert "float c0 = measure_x m[0];" in qasm
             assert "c1[0] = measure q[0];" in qasm
 
     @pytest.mark.parametrize("strict", (True, False))
@@ -87,9 +88,9 @@ class TestCircuits:
             assert "qubit[1] q;" in qasm
             assert "qumode[1] m;" in qasm
 
-            assert "uint[fock_readout_precision_bits] c0 = measure_n m[0];" in qasm
+            assert "uint c0 = measure_n m[0];" in qasm
             assert "c1[0] = measure q[0];" in qasm
-            assert "float[homodyne_precision_bits] c2 = measure_x m[0];" in qasm
+            assert "float c2 = measure_x m[0];" in qasm
 
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_pennylane_gate(self, strict):
@@ -124,5 +125,5 @@ class TestCircuits:
             assert "qubit[1] q;" in qasm
             assert "qumode[2] m;" in qasm
 
-            assert "float[homodyne_precision_bits] c0 = measure_x m[0];" in qasm
+            assert "float c0 = measure_x m[0];" in qasm
             assert "c1[0] = measure q[0];" in qasm

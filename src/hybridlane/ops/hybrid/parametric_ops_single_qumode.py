@@ -387,13 +387,17 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
 
     .. note::
 
-        This definition differs from the vectorized version presented in the CVDV paper, instead applying
-        to a single Fock state. To apply it across multiple Fock modes, consider
+        This definition differs from the vectorized version presented in the CVDV
+        paper, instead applying to a single Fock state. To apply it across multiple
+        Fock modes, consider
 
         .. code:: python
 
+            angles = [0.25, 0.5, 0.75, 1.0]
+            fock_states = [0, 3, 7, 10]
+
             for phi_n, n in zip(angles, fock_states):
-                SelectiveNumberArbitraryPhase(phi_n, n, wires)
+                SelectiveNumberArbitraryPhase(phi_n, n, ['q', 'm'])
 
     .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
     """

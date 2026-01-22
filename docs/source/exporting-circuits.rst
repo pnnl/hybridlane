@@ -3,14 +3,14 @@ Exporting Circuits
 
 To facilitate the integration of simulators and hardware devices, Hybridlane provides an intermediate representation (IR) format based on `OpenQASM 3.0 <https://openqasm.com/index.html>`_, with a few (minimal) modifications to capture hybrid CV-DV programs. We detail the extensions to OpenQASM in a later section to first focus on introducing how to use it.
 
-A quantum program can be exported using the :py:func:`~hybridlane.to_openqasm` function. This function inspects the circuit for qumodes and qubits, and declares them separately in registers `m` and `q`, respectively. Based on the measurements and their observables, it also infers whether to use homodyne (``hqml.QuadX``) or Fock number (``hqml.NumberOperator``) measurements. Finally, noncommuting measurements are run on separate calls to the state preparation circuit, so a single OpenQASM program may contain multiple circuit executions using the function invocation feature of OpenQASM 3.0.
+A quantum program can be exported using the :py:func:`~hybridlane.to_openqasm` function. This function inspects the circuit for qumodes and qubits, and declares them separately in registers `m` and `q`, respectively. Based on the measurements and their observables, it also infers whether to use homodyne (``hqml.X``) or Fock number (``hqml.N``) measurements. Finally, noncommuting measurements are run on separate calls to the state preparation circuit, so a single OpenQASM program may contain multiple circuit executions using the function invocation feature of OpenQASM 3.0.
 
 Example
 -------
 
 Here we give an example of exporting a basic circuit to OpenQASM. Consider the following circuit
 
-.. code:: python
+.. code-block:: python
 
     dev = qml.device("bosonicqiskit.hybrid")
 
@@ -27,21 +27,17 @@ Here we give an example of exporting a basic circuit to OpenQASM. Consider the f
 
 Note that it has DV gates, hybrid gates, and DV and CV measurements. Furthermore, the ``QuadP`` observable is not diagonal in the position basis. This can be exported with
 
-.. code:: python
+.. code-block:: python
 
-    >>> hqml.to_openqasm(circuit, precision=5)(5)
+    qasm = hqml.to_openqasm(circuit, precision=5)(5)
 
 which produces the following IR
 
-.. code::
+.. code-block::
 
     OPENQASM 3.0;
     include "stdgates.inc";
-
-    const int homodyne_precision_bits = 32;
-    const int fock_readout_precision_bits = 32;
     include "cvstdgates.inc";
-
 
     qubit[1] q;
     qumode[1] m;
@@ -63,39 +59,33 @@ which produces the following IR
 
     state_prep();
     cv_r(1.5708) m[0];
-    float[homodyne_precision_bits] c0 = measure_x m[0];
+    float c0 = measure_x m[0];
     bit[1] c1;
     c1[0] = measure q[0];
 
-To measure the momentum operator :math:`\hat{p}`, you can see that the export function added the diagonalizing gates (:math:`R(\pi/2)`). To disable this behavior, you can set ``rotations = False``. Finally, the variables ``int_bits`` and ``float_bits`` control how much precision
-is used for Fock and homodyne measurements, respectively. Their values are inserted into the constants ``fock_readout_precision_bits`` and
-``homodyne_precision_bits``, then subsequently used in each CV measurement.
+To measure the momentum operator :math:`\hat{p}`, you can see that the export function added the diagonalizing gates (:math:`R(\pi/2)`). To disable this behavior, you can set ``rotations = False``. Additionally, CV measurements automatically are stored in a data type at machine precision.
 
 This custom IR format is not compatible with the official OpenQASM parser. If, for some reason, your application needs
 to erase the type information to be compatible with OpenQASM, you can pass the ``strict=True`` flag to produce OpenQASM-compatible
 circuits. This will remove the custom CV-DV extensions.
 
-.. code:: python
+.. code-block:: python
 
-    >>> hqml.to_openqasm(circuit, precision=5, strict=True)(5)
+    qasm = hqml.to_openqasm(circuit, precision=5, strict=True)(5)
 
 produces
 
-.. code::
+.. code-block::
 
     OPENQASM 3.0;
     include "stdgates.inc";
-
-    const int homodyne_precision_bits = 32;
-    const int fock_readout_precision_bits = 32;
     include "cvstdgates.inc";
 
-
     // Position measurement x
-    defcal measure_x m -> float[homodyne_precision_bits] {}
+    defcal measure_x m -> float {}
 
     // Fock measurement n
-    defcal measure_n m -> uint[fock_readout_precision_bits] {}
+    defcal measure_n m -> uint {}
 
     qubit[1] q;
     qubit[1] m;
@@ -117,7 +107,7 @@ produces
 
     state_prep();
     cv_r(1.5708) m[0];
-    float[homodyne_precision_bits] c0 = measure_x(m[0]);
+    float c0 = measure_x(m[0]);
     bit[1] c1;
     c1[0] = measure q[0];
 
