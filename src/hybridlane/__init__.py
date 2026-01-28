@@ -8,5 +8,5 @@ from hybridlane.drawer import draw_mpl  # noqa: F401
 from hybridlane.io import to_openqasm  # noqa: F401
 from hybridlane.measurements import expval, sample, var  # noqa: F401
 from hybridlane.ops import *  # noqa: F403
-from hybridlane.templates import FockLadder  # noqa: F401
+from hybridlane.templates import FockLadder, SqueezedCatState  # noqa: F401
 from hybridlane.transforms import from_pennylane  # noqa: F401
