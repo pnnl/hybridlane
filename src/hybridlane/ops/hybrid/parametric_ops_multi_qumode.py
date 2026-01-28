@@ -19,7 +19,6 @@ from ..op_math.decompositions.qubit_conditioned_decompositions import (
 )
 from ..qumode import Beamsplitter, TwoModeSqueezing
 from .non_parametric_ops import ConditionalParity
-from .parametric_ops_single_qumode import ConditionalRotation
 
 
 class ConditionalBeamsplitter(Operation, Hybrid):
@@ -29,10 +28,8 @@ class ConditionalBeamsplitter(Operation, Hybrid):
 
     .. math::
 
-        CBS(\theta, \varphi) &= \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b
-                                + e^{-i\varphi} ab^\dagger)] \\
-                             &= \ket{0}\bra{0} \otimes BS(\theta, \varphi)
-                                + \ket{1}\bra{1} \otimes BS(-\theta, \varphi)
+        CBS(\theta, \varphi) = \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b
+                                + e^{-i\varphi} ab^\dagger)]
 
     where :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, \pi)` (Table III.3 of
     :footcite:p:`liu2026hybrid`). There exists a decomposition in terms of
@@ -89,15 +86,6 @@ class ConditionalBeamsplitter(Operation, Hybrid):
 
         return ConditionalBeamsplitter(theta, phi, self.wires)
 
-    @staticmethod
-    def compute_decomposition(*params, wires=None, **hyperparameters):
-        theta, phi = params
-        return [
-            ConditionalParity(wires[:2]).adjoint(),
-            Beamsplitter(theta, phi + math.pi / 2, wires[1:]),
-            ConditionalParity(wires[:2]),
-        ]
-
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "CBS", cache=cache
@@ -121,6 +109,19 @@ qml.add_decomps("Adjoint(ConditionalBeamsplitter)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalBeamsplitter)", _pow_cbs)
 qml.add_decomps("qCond(ConditionalBeamsplitter)", decompose_multiqcond_native)
 
+CBS = ConditionalBeamsplitter
+r"""Qubit-conditioned beamsplitter :math:`CBS(\theta, \varphi)`
+
+.. math::
+
+    CBS(\theta, \varphi) = \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b
+                            + e^{-i\varphi} ab^\dagger)]
+
+.. seealso::
+
+    This is an alias for :class:`~hybridlane.ConditionalBeamsplitter`
+"""
+
 
 class ConditionalTwoModeSqueezing(Operation, Hybrid):
     r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
@@ -130,8 +131,7 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
 
     .. math::
 
-        CTMS(\xi) &= \exp[\sigma_z (\xi \ad b^\dagger - \xi^* ab)] \\
-                  &= \ket{0}\bra{0} \otimes TMS(\xi) + \ket{1}\bra{1} \otimes TMS(-\xi)
+        CTMS(\xi) = \exp[\sigma_z (\xi \ad b^\dagger - \xi^* ab)]
 
     where :math:`\xi = re^{i\phi} \in \mathbb{C}` (Table III.3 of
     :footcite:p:`liu2026hybrid`). There exists a decomposition in terms of
@@ -191,15 +191,6 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
 
         return ConditionalTwoModeSqueezing(r, phi, self.wires)
 
-    @staticmethod
-    def compute_decomposition(*params, wires=None, **hyperparameters):
-        r, phi = params
-        return [
-            ConditionalRotation(math.pi / 2, wires[:2]).adjoint(),
-            TwoModeSqueezing(r, phi + math.pi / 2, wires[1:]),
-            ConditionalRotation(math.pi / 2, wires[:2]),
-        ]
-
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "CTMS", cache=cache
@@ -223,6 +214,18 @@ qml.add_decomps("Adjoint(ConditionalTwoModeSqueezing)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalTwoModeSqueezing)", _pow_ctms)
 qml.add_decomps("qCond(ConditionalTwoModeSqueezing)", decompose_multiqcond_native)
 
+CTMS = ConditionalTwoModeSqueezing
+r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
+
+.. math::
+
+    CTMS(\xi) = \exp[\sigma_z (\xi \ad b^\dagger - \xi^* ab)]
+
+.. seealso::
+
+    This is an alias for :class:`~hybridlane.ConditionalTwoModeSqueezing`
+"""
+
 
 class ConditionalTwoModeSum(Operation, Hybrid):
     r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
@@ -232,9 +235,7 @@ class ConditionalTwoModeSum(Operation, Hybrid):
 
     .. math::
 
-        CSUM(\lambda) &= \exp[\frac{\lambda}{2}\sigma_z(a + \ad)(b^\dagger - b)] \\
-                      &= \ket{0}\bra{0} \otimes SUM(\lambda) + \ket{1}\bra{1} \otimes
-                            SUM(-\lambda)
+        CSUM(\lambda) = \exp[\frac{\lambda}{2}\sigma_z(a + \ad)(b^\dagger - b)]
 
     with :math:`\lambda \in \mathbb{R}` (Table III.3 of :footcite:p:`liu2026hybrid`).
 
@@ -285,6 +286,18 @@ class ConditionalTwoModeSum(Operation, Hybrid):
 qml.add_decomps("Adjoint(ConditionalTwoModeSum)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalTwoModeSum)", pow_rotation)
 qml.add_decomps("qCond(ConditionalTwoModeSum)", decompose_multiqcond_native)
+
+CSUM = ConditionalTwoModeSum
+r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
+
+.. math::
+
+    CSUM(\lambda) = \exp[\frac{\lambda}{2}\sigma_z(a + \ad)(b^\dagger - b)]
+
+.. seealso::
+
+    This is an alias for :class:`~hybridlane.ConditionalTwoModeSum`
+"""
 
 
 def _can_replace(x, y):

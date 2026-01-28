@@ -22,18 +22,20 @@ Blue = hqml.Blue
 
 
 class ConditionalXDisplacement(Operation, Hybrid):
-    r"""Symmetric conditional displacement gate :math:`C_xD(\alpha)`
+    r"""Symmetric conditional displacement gate :math:`xCD(\beta)`
 
-    This is the qubit-conditioned version of the :py:class:`~hybridlane.ops.Displacement` gate, given by
+    This is the qubit-conditioned version of the
+    :py:class:`~hybridlane.Displacement` gate, given by
 
     .. math::
 
-        CD(\beta) &= \exp[\sigma_x(\beta \ad - \beta^* a)]
+        xCD(\beta) = \exp[\sigma_x(\beta \ad - \beta^* a)]
 
-    which differs from :class:`~hybridlane.ops.ConditionalDisplacement` due to the :math:`\sigma_x` factor
-    instead of :math:`\sigma_z`.
+    which differs from :class:`~hybridlane.ops.ConditionalDisplacement` due to the
+    :math:`\sigma_x` factor instead of :math:`\sigma_z`.
 
-    This is represented by the hardware instruction ``SDF``, and it can only be used on hardware qumode ``a0m1``
+    This is represented by the hardware instruction ``SDF``, and it can only be used on
+    hardware qumode ``a0m1``
     """
 
     num_params = 2
@@ -77,12 +79,23 @@ class ConditionalXDisplacement(Operation, Hybrid):
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
-            decimals=decimals, base_label=base_label or "SDF", cache=cache
+            decimals=decimals, base_label=base_label or "xCD", cache=cache
         )
 
     @property
     def resource_params(self):
         return {}
+
+
+@qml.register_resources({ConditionalXDisplacement: 1})
+def _xcd_polar_decomp(a, phi, wires, **_):
+    # Convert the hqml.XCD gate (in polar) to cartesian
+    beta_re = a * qml.math.cos(phi)
+    beta_im = a * qml.math.sin(phi)
+    ConditionalXDisplacement(beta_re, beta_im, wires)
+
+
+qml.add_decomps(hqml.XCD, _xcd_polar_decomp)
 
 
 class ConditionalXSqueezing(Operation, Hybrid):
@@ -92,12 +105,13 @@ class ConditionalXSqueezing(Operation, Hybrid):
 
     .. math::
 
-        CS(\beta) &= \exp\left[\frac{1}{2}\sigma_x (\beta^* a^2 - \beta (\ad)^2)\right]
+        CS(\beta) = \exp\left[\frac{1}{2}\sigma_x (\beta^* a^2 - \beta (\ad)^2)\right]
 
-    which differs from :class:`~hybridlane.ops.ConditionalSqueezing` due to the :math:`\sigma_x` factor
-    instead of :math:`\sigma_z`.
+    which differs from :class:`~hybridlane.ops.ConditionalSqueezing` due to the
+    :math:`\sigma_x` factor instead of :math:`\sigma_z`.
 
-    This is represented by the hardware instruction ``RampUp``, and it can only be used on hardware qumode ``a0m1``
+    This is represented by the hardware instruction ``RampUp``, and it can only be used
+    on hardware qumode ``a0m1``
     """
 
     num_params = 1

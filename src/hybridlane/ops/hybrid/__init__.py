@@ -2,20 +2,33 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-from .non_parametric_ops import ConditionalParity
+from .non_parametric_ops import CP, ConditionalParity
 from .parametric_ops_multi_qumode import (
+    CBS,
+    CSUM,
+    CTMS,
     ConditionalBeamsplitter,
     ConditionalTwoModeSqueezing,
     ConditionalTwoModeSum,
 )
 from .parametric_ops_single_qumode import (
+    AJC,
+    CD,
+    CR,
+    CS,
+    ECD,
+    JC,
     SNAP,
     SQR,
+    XCD,
+    YCD,
     AntiJaynesCummings,
     Blue,
     ConditionalDisplacement,
     ConditionalRotation,
     ConditionalSqueezing,
+    ConditionalXDisplacement,
+    ConditionalYDisplacement,
     EchoedConditionalDisplacement,
     JaynesCummings,
     Rabi,
@@ -25,17 +38,31 @@ from .parametric_ops_single_qumode import (
 )
 
 __all__ = [
+    "CP",
     "ConditionalParity",
+    "CBS",
+    "CSUM",
+    "CTMS",
     "ConditionalBeamsplitter",
     "ConditionalTwoModeSqueezing",
     "ConditionalTwoModeSum",
+    "AJC",
+    "CD",
+    "CR",
+    "CS",
+    "ECD",
+    "JC",
     "SNAP",
     "SQR",
+    "XCD",
+    "YCD",
     "AntiJaynesCummings",
     "Blue",
     "ConditionalDisplacement",
     "ConditionalRotation",
     "ConditionalSqueezing",
+    "ConditionalXDisplacement",
+    "ConditionalYDisplacement",
     "EchoedConditionalDisplacement",
     "JaynesCummings",
     "Rabi",

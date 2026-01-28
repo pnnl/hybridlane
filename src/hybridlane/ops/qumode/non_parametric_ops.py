@@ -85,6 +85,18 @@ qml.add_decomps("Adjoint(Fourier)", _adjoint_f_to_r)
 qml.add_decomps("Pow(Fourier)", make_pow_decomp_with_period(4), _pow_f_to_r)
 qml.add_decomps("qCond(Fourier)", to_native_qcond(1))
 
+F = Fourier
+r"""Fourier gate
+
+.. math::
+
+    F = e^{-i\frac{\pi}{2}\hat{n}}
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.JaynesCummings`
+"""
+
 
 class ModeSwap(CVOperation):
     r"""Continuous-variable SWAP between two qumodes
@@ -110,14 +122,6 @@ class ModeSwap(CVOperation):
     @property
     def resource_params(self):
         return {}
-
-    @staticmethod
-    def compute_decomposition(*params, wires, **hyperparameters):
-        return [
-            hqml.Beamsplitter(math.pi, 0, wires),
-            hqml.Rotation(-math.pi / 2, wires[0]),
-            hqml.Rotation(-math.pi / 2, wires[1]),
-        ]
 
     def adjoint(self):
         return ModeSwap(self.wires)  # self-adjoint up to a global phase of -1

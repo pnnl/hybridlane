@@ -5,6 +5,7 @@
 import math
 
 import pennylane as qml
+from pennylane.decomposition.resources import adjoint_resource_rep
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
     pow_rotation,
@@ -29,8 +30,7 @@ class ConditionalRotation(Operation, Hybrid):
 
     .. math::
 
-        CR(\theta) &= \exp[-i \frac{\theta}{2}\sigma_z \hat{n}] \\
-                   &= \ket{0}\bra{0} \otimes R(\theta) + \ket{1}\bra{1} \otimes R(-\theta)
+        CR(\theta) = \exp[-i \frac{\theta}{2}\sigma_z \hat{n}]
 
     where :math:`\sigma_z` is the Z operator acting on the qubit, and
     :math:`\hat{n} = \ad a` is the number operator of the qumode (Box III.8 of
@@ -82,6 +82,16 @@ qml.add_decomps("Adjoint(ConditionalRotation)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalRotation)", pow_rotation)
 qml.add_decomps("qCond(ConditionalRotation)", decompose_multiqcond_native)
 
+CR = ConditionalRotation
+r"""Conditional rotation (CR) gate
+
+.. math::
+
+    CR(\theta) = e^{-i\frac{\theta}{2}\hat{n}Z}
+
+This is an alias for :class:`~hybridlane.ConditionalRotation`
+"""
+
 
 class ConditionalDisplacement(Operation, Hybrid):
     r"""Symmetric conditional displacement gate :math:`CD(\alpha)`
@@ -91,8 +101,7 @@ class ConditionalDisplacement(Operation, Hybrid):
 
     .. math::
 
-        CD(\alpha) &= \exp[\sigma_z(\alpha \ad - \alpha^* a)] \\
-                   &= \ket{0}\bra{0} \otimes D(\alpha) + \ket{1}\bra{1} \otimes D(-\alpha)
+        CD(\alpha) = \exp[\sigma_z(\alpha \ad - \alpha^* a)]
 
     where :math:`\alpha = ae^{i\phi} \in \mathbb{C}` (Box III.7 of
     :footcite:p:`liu2026hybrid`). There also exists a decomposition in terms of
@@ -150,15 +159,6 @@ class ConditionalDisplacement(Operation, Hybrid):
 
         return ConditionalDisplacement(a, phi, self.wires)
 
-    @staticmethod
-    def compute_decomposition(*params, wires=None, **hyperparameters):
-        a, phi = params
-        return [
-            ConditionalParity(wires).adjoint(),
-            Displacement(a, phi + math.pi / 2, wires[1]),
-            ConditionalParity(wires),
-        ]
-
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "CD", cache=cache
@@ -179,7 +179,7 @@ def _cd_to_ecd_resources():
 
 @qml.register_resources(_cd_to_ecd_resources)
 def _cd_to_ecd(a, phi, wires, **_):
-    EchoedConditionalDisplacement(a, phi, wires)
+    EchoedConditionalDisplacement(2 * a, phi, wires)
     qml.X(wires[0])
 
 
@@ -193,6 +193,178 @@ qml.add_decomps("Adjoint(ConditionalDisplacement)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalDisplacement)", _pow_cd)
 qml.add_decomps("qCond(ConditionalDisplacement)", decompose_multiqcond_native)
 
+CD = ConditionalDisplacement
+r"""Conditional displacement (CD) gate
+
+.. math::
+
+    CD(\alpha) = e^{(\alpha\ad - \alpha^*a)Z}
+
+This is an alias for :class:`~hybridlane.ConditionalDisplacement`
+"""
+
+
+class ConditionalXDisplacement(Operation, Hybrid):
+    r"""X-Conditional displacement gate :math:`xCD(\alpha)`
+
+    This is the conditional displacement gate, conditioned on the :math:`X` eigenstates
+    of the qubit instead of the usual :math:`Z` eigenstates.
+
+    .. math::
+
+        xCD(\alpha) = H~CD(\alpha)~H
+    """
+
+    num_params = 2
+    num_wires = 2
+    num_qumodes = 1
+    ndim_params = (0, 0)
+
+    resource_keys = set()
+
+    def __init__(
+        self,
+        a: TensorLike,
+        phi: TensorLike,
+        wires: WiresLike,
+        id: str | None = None,
+    ):
+        super().__init__(a, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
+
+    def pow(self, z: int | float):
+        a, phi = self.data
+        return [ConditionalXDisplacement(a * z, phi, self.wires)]
+
+    def adjoint(self):
+        return ConditionalXDisplacement(-self.data[0], self.data[1], self.wires)
+
+    def simplify(self):
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+
+        if _can_replace(a, 0):
+            return qml.Identity(self.wires)
+
+        return ConditionalXDisplacement(a, phi, self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "xCD", cache=cache
+        )
+
+
+@qml.register_resources({ConditionalDisplacement: 1, qml.H: 2})
+def _xcd_decomp(a, phi, wires, **_):
+    qml.H(wires[0])
+    ConditionalDisplacement(a, phi, wires)
+    qml.H(wires[0])
+
+
+@qml.register_resources({ConditionalXDisplacement: 1})
+def _pow_xcd(a, phi, wires, z, **_):
+    ConditionalXDisplacement(z * a, phi, wires=wires)
+
+
+qml.add_decomps(ConditionalXDisplacement, _xcd_decomp)
+qml.add_decomps("Adjoint(ConditionalXDisplacement)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalXDisplacement)", _pow_xcd)
+
+XCD = ConditionalXDisplacement
+r"""X-Conditional displacement (xCD) gate
+
+.. math::
+
+    xCD(\alpha) = e^{(\alpha\ad - \alpha^*a)X}
+
+This is an alias for :class:`~hybridlane.ConditionalXDisplacement`
+"""
+
+
+class ConditionalYDisplacement(Operation, Hybrid):
+    r"""Y-Conditional displacement gate :math:`yCD(\alpha)`
+
+    This is the conditional displacement gate, conditioned on the :math:`Y` eigenstates
+    of the qubit instead of the usual :math:`Z` eigenstates.
+
+    .. math::
+
+        yCD(\alpha) = S~xCD(\alpha)~S^\dagger
+    """
+
+    num_params = 2
+    num_wires = 2
+    num_qumodes = 1
+    ndim_params = (0, 0)
+
+    resource_keys = set()
+
+    def __init__(
+        self,
+        a: TensorLike,
+        phi: TensorLike,
+        wires: WiresLike,
+        id: str | None = None,
+    ):
+        super().__init__(a, phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
+
+    def pow(self, z: int | float):
+        a, phi = self.data
+        return [ConditionalYDisplacement(a * z, phi, self.wires)]
+
+    def adjoint(self):
+        return ConditionalYDisplacement(-self.data[0], self.data[1], self.wires)
+
+    def simplify(self):
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+
+        if _can_replace(a, 0):
+            return qml.Identity(self.wires)
+
+        return ConditionalYDisplacement(a, phi, self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        return super().label(
+            decimals=decimals, base_label=base_label or "yCD", cache=cache
+        )
+
+
+def _ycd_resources():
+    return {ConditionalXDisplacement: 1, qml.S: 1, adjoint_resource_rep(qml.S): 1}
+
+
+@qml.register_resources(_ycd_resources)
+def _ycd_decomp(a, phi, wires, **_):
+    qml.adjoint(qml.S)(wires[0])
+    ConditionalXDisplacement(a, phi, wires)
+    qml.S(wires[0])
+
+
+@qml.register_resources({ConditionalYDisplacement: 1})
+def _pow_ycd(a, phi, wires, z, **_):
+    ConditionalYDisplacement(z * a, phi, wires=wires)
+
+
+qml.add_decomps(ConditionalYDisplacement, _ycd_decomp)
+qml.add_decomps("Adjoint(ConditionalYDisplacement)", adjoint_rotation)
+qml.add_decomps("Pow(ConditionalYDisplacement)", _pow_ycd)
+
+YCD = ConditionalYDisplacement
+r"""Y-Conditional displacement (yCD) gate
+
+.. math::
+
+    yCD(\alpha) = e^{(\alpha\ad - \alpha^*a)Y}
+
+This is an alias for :class:`~hybridlane.ConditionalYDisplacement`
+"""
+
 
 class ConditionalSqueezing(Operation, Hybrid):
     r"""Qubit-conditioned squeezing gate :math:`CS(\zeta)`
@@ -201,9 +373,7 @@ class ConditionalSqueezing(Operation, Hybrid):
 
     .. math::
 
-        CS(\zeta) &= \exp\left[\frac{1}{2}\sigma_z (\zeta^* a^2 -
-                      \zeta (\ad)^2)\right] \\
-                  &= \ket{0}\bra{0} \otimes S(\zeta) + \ket{1}\bra{1} \otimes S(-\zeta)
+        CS(\zeta) = \exp\left[\frac{1}{2}\sigma_z (\zeta^* a^2 - \zeta (\ad)^2)\right]
 
     where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (Box IV.3 of
     :footcite:p:`liu2026hybrid`). There exists a decomposition in terms of
@@ -254,19 +424,21 @@ class ConditionalSqueezing(Operation, Hybrid):
 
         return ConditionalSqueezing(z, phi, self.wires)
 
-    @staticmethod
-    def compute_decomposition(*params, wires=None, **hyperparameters):
-        a, phi = params
-        return [
-            ConditionalRotation(math.pi / 2, wires).adjoint(),
-            Squeezing(a, phi + math.pi / 2, wires[1:]),
-            ConditionalRotation(math.pi / 2, wires),
-        ]
-
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
             decimals=decimals, base_label=base_label or "CS", cache=cache
         )
+
+
+def _cs_decomp_resources():
+    return {Squeezing: 1, CR: 1, adjoint_resource_rep(CR): 1}
+
+
+@qml.register_resources(_cs_decomp_resources)
+def _cs_decomp(r, phi, wires, **_):
+    qml.adjoint(CR)(math.pi / 2, wires)
+    Squeezing(r, phi + math.pi / 2, wires[1])
+    CR(math.pi / 2, wires)
 
 
 @qml.register_resources({ConditionalSqueezing: 1})
@@ -274,9 +446,20 @@ def _pow_cs(r, phi, wires, z, **_):
     ConditionalSqueezing(z * r, phi, wires=wires)
 
 
+qml.add_decomps(ConditionalSqueezing, _cs_decomp)
 qml.add_decomps("Adjoint(ConditionalSqueezing)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalSqueezing)", _pow_cs)
 qml.add_decomps("qCond(ConditionalSqueezing)", decompose_multiqcond_native)
+
+CS = ConditionalSqueezing
+r"""Conditional squeezing (CS) gate
+
+.. math::
+
+    CS(\zeta) = \exp\left[\frac{1}{2}Z (\zeta^* a^2 - \zeta (\ad)^2)\right]
+
+This is an alias for :class:`~hybridlane.ConditionalSqueezing`
+"""
 
 
 class SelectiveQubitRotation(Operation, Hybrid):
@@ -461,17 +644,6 @@ class SelectiveNumberArbitraryPhase(Operation, Hybrid):
             )
         ]
 
-    @staticmethod
-    def compute_decomposition(*params, wires, **hyperparameters):
-        phi = params[0]
-        n = hyperparameters["n"]
-
-        # Decomposition in terms of SQR (eq. 239 of [1])
-        return [
-            SelectiveQubitRotation(math.pi, 0, n, wires),
-            SelectiveQubitRotation(-math.pi, phi, n, wires),
-        ]
-
     @classmethod
     def _unflatten(cls, data, metadata):
         wires = metadata[0]
@@ -601,6 +773,19 @@ r"""Red sideband gate
     This is an alias of :class:`~hybridlane.JaynesCummings`
 """
 
+JC = JaynesCummings
+r"""Jaynes-Cummings gate
+
+.. math::
+
+    JC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_- \ad
+        + e^{-i\varphi}\sigma_+ a)]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.JaynesCummings`
+"""
+
 
 @qml.register_resources({Red: 1})
 def _pow_jc(theta, phi, wires, z, **_):
@@ -686,6 +871,19 @@ r"""Blue sideband gate
 .. math::
 
     AJC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_+ \ad + e^{-i\varphi}\sigma_- a)]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.AntiJaynesCummings`
+"""
+
+AJC = AntiJaynesCummings
+r"""Anti-Jaynes-Cummings gate
+
+.. math::
+
+    AJC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_+ \ad
+        + e^{-i\varphi}\sigma_- a)]
 
 .. seealso::
 
@@ -854,6 +1052,16 @@ def _pow_ecd(a, phi, wires, z, **_):
 qml.add_decomps(EchoedConditionalDisplacement, _ecd_decomp)
 qml.add_decomps("Adjoint(EchoedConditionalDisplacement)", adjoint_rotation)
 qml.add_decomps("Pow(EchoedConditionalDisplacement)", _pow_ecd)
+
+ECD = EchoedConditionalDisplacement
+r"""Echoed-conditional displacement (ECD) gate
+
+.. math::
+
+    ECD(\alpha) = X~CD(\alpha/2)
+
+This is an alias for :class:`~hybridlane.EchoedConditionalDisplacement`
+"""
 
 
 def _can_replace(x, y):

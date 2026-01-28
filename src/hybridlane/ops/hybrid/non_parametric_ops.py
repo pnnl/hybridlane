@@ -52,10 +52,6 @@ class ConditionalParity(Operation, Hybrid):
     def resource_params(self):
         return {}
 
-    @staticmethod
-    def compute_decomposition(wires, **_):
-        return [hqml.ConditionalRotation(math.pi, wires)]
-
     def adjoint(self):
         return hqml.ConditionalRotation(-math.pi, self.wires)
 
@@ -97,3 +93,13 @@ qml.add_decomps(ConditionalParity, _cp_to_cr)
 qml.add_decomps("Adjoint(ConditionalParity)", _adjoint_cp_to_cr)
 qml.add_decomps("Pow(ConditionalParity)", make_pow_decomp_with_period(4), _pow_cp_to_cr)
 qml.add_decomps("qCond(ConditionalParity)", decompose_multiqcond_native)
+
+CP = ConditionalParity
+r"""Conditional parity (CP) gate
+
+.. math::
+
+    CP = e^{-i\frac{\pi}{2}\hat{n}Z}
+
+This is an alias for :class:`~hybridlane.ConditionalParity`
+"""

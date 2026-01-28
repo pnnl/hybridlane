@@ -88,6 +88,19 @@ qml.add_decomps("Adjoint(Beamsplitter)", adjoint_rotation)
 qml.add_decomps("Pow(Beamsplitter)", _pow_bs)
 qml.add_decomps("qCond(Beamsplitter)", to_native_qcond(1))
 
+BS = Beamsplitter
+r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
+
+.. math::
+
+    BS(\theta, \varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b
+        + e^{-i\varphi}ab^\dagger)\right]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.Beamsplitter`
+"""
+
 
 # Re-export flipping sign of r, equivalent to φ -> φ + π
 class TwoModeSqueezing(CVOperation):
@@ -159,6 +172,18 @@ qml.add_decomps("Adjoint(TwoModeSqueezing)", adjoint_rotation)
 qml.add_decomps("Pow(TwoModeSqueezing)", _pow_tms)
 qml.add_decomps("qCond(TwoModeSqueezing)", to_native_qcond(1))
 
+TMS = TwoModeSqueezing
+r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
+
+.. math::
+
+    TMS(r, \varphi) = \exp\left[r (e^{i\phi} \ad b^\dagger - e^{-i\phi} ab\right].
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.TwoModeSqueezing`
+"""
+
 
 class TwoModeSum(CVOperation):
     r"""Two-mode summing gate :math:`SUM(\lambda)`
@@ -221,6 +246,18 @@ class TwoModeSum(CVOperation):
 qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
 qml.add_decomps("Pow(TwoModeSum)", pow_rotation)
 qml.add_decomps("qCond(TwoModeSum)", to_native_qcond(1))
+
+SUM = TwoModeSum
+r"""Two-mode summing gate :math:`SUM(\lambda)`
+
+.. math::
+
+    SUM(\lambda) = \exp[\frac{\lambda}{2}(a + \ad)(b^\dagger - b)]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.TwoModeSum`
+"""
 
 
 def _can_replace(x, y):
