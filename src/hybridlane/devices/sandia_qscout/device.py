@@ -114,19 +114,15 @@ class QscoutIonTrap(Device):
 
     .. code:: python
 
-        import pennylane as qml
-        import hybridlane as hqml
-        from hybridlane.devices.sandia_qscout import QscoutIonTrap
-        from pennylane.workflow import construct_tape
+        dev = qml.device("sandiaqscout.hybrid")
 
-        dev = QscoutIonTrap(shots=1000)
-
+        @qml.set_shots(1000)
         @qml.qnode(dev)
         def circuit():
             hqml.FockLadder(5, [0, "a0m1"])
             return hqml.expval(qml.Z(0))
 
-        tape = construct_tape(circuit)()
+        tape = qml.workflow.construct_tape(circuit)()
 
     """
 

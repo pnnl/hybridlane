@@ -29,22 +29,29 @@ class ConditionalBeamsplitter(Operation, Hybrid):
 
     .. math::
 
-        CBS(\theta, \varphi) &= \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b + e^{-i\varphi} ab^\dagger)] \\
-                             &= \ket{0}\bra{0} \otimes BS(\theta, \varphi) + \ket{1}\bra{1} \otimes BS(-\theta, \varphi)
+        CBS(\theta, \varphi) &= \exp[-i\frac{\theta}{2}\sigma_z (e^{i\varphi}\ad b
+                                + e^{-i\varphi} ab^\dagger)] \\
+                             &= \ket{0}\bra{0} \otimes BS(\theta, \varphi)
+                                + \ket{1}\bra{1} \otimes BS(-\theta, \varphi)
 
-    where :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, \pi)` (Table III.3 [1]_). There exists a decomposition in terms
-    of :class:`.ConditionalParity` and :class:`~hybridlane.ops.Beamsplitter` gates (eq. 19 [2]_)
+    where :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, \pi)` (Table III.3 of
+    :footcite:p:`liu2026hybrid`). There exists a decomposition in terms of
+    :class:`.ConditionalParity` and :class:`~hybridlane.ops.Beamsplitter` gates (eq. 19
+    of :footcite:p:`crane2024hybrid`)
 
     .. math::
 
-        CBS_{ijk}(\theta, \varphi) = CP_{ij} BS_{jk}(\theta, \varphi + \pi/2) CP_{ij}^\dagger
+        CBS_{ijk}(\theta, \varphi) = CP_{ij}~BS_{jk}(\theta, \varphi + \pi/2)~
+            CP_{ij}^\dagger
 
     .. seealso::
 
         :py:class:`~hybridlane.ops.Beamsplitter`
 
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
-    .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 2
@@ -118,15 +125,18 @@ qml.add_decomps("qCond(ConditionalBeamsplitter)", decompose_multiqcond_native)
 class ConditionalTwoModeSqueezing(Operation, Hybrid):
     r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
 
-    This is the qubit-conditioned version of the :py:class:`~hybridlane.ops.TwoModeSqueezing` gate, given by
+    This is the qubit-conditioned version of the
+    :class:`~hybridlane.ops.TwoModeSqueezing` gate, given by
 
     .. math::
 
         CTMS(\xi) &= \exp[\sigma_z (\xi \ad b^\dagger - \xi^* ab)] \\
                   &= \ket{0}\bra{0} \otimes TMS(\xi) + \ket{1}\bra{1} \otimes TMS(-\xi)
 
-    where :math:`\xi = re^{i\phi} \in \mathbb{C}` (Table III.3 [1]_). There exists a decomposition in terms of
-    :class:`.ConditionalParity` and :class:`~hybridlane.ops.TwoModeSqueezing` gates (eq. 20 [2]_)
+    where :math:`\xi = re^{i\phi} \in \mathbb{C}` (Table III.3 of
+    :footcite:p:`liu2026hybrid`). There exists a decomposition in terms of
+    :class:`.ConditionalParity` and :class:`~hybridlane.ops.TwoModeSqueezing` gates
+    (eq. 20 of :footcite:p:`crane2024hybrid`)
 
     .. math::
 
@@ -140,8 +150,10 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
 
         :py:class:`~hybridlane.ops.TwoModeSqueezing`
 
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
-    .. [2] E. Crane et al, 2024. `arXiv:2409.03747 <https://arxiv.org/abs/2409.03747>`_
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 2
@@ -215,20 +227,25 @@ qml.add_decomps("qCond(ConditionalTwoModeSqueezing)", decompose_multiqcond_nativ
 class ConditionalTwoModeSum(Operation, Hybrid):
     r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
 
-    This is a multi-mode gate conditioned on the state of a qubit, given by the expression
+    This is a multi-mode gate conditioned on the state of a qubit, given by the
+    expression
 
     .. math::
 
         CSUM(\lambda) &= \exp[\frac{\lambda}{2}\sigma_z(a + \ad)(b^\dagger - b)] \\
-                      &= \ket{0}\bra{0} \otimes SUM(\lambda) + \ket{1}\bra{1} \otimes SUM(-\lambda)
+                      &= \ket{0}\bra{0} \otimes SUM(\lambda) + \ket{1}\bra{1} \otimes
+                            SUM(-\lambda)
 
-    with :math:`\lambda \in \mathbb{R}` (Table III.3 [1]_).
+    with :math:`\lambda \in \mathbb{R}` (Table III.3 of :footcite:p:`liu2026hybrid`).
 
     .. seealso::
 
         :py:class:`~hybridlane.ops.TwoModeSum`
 
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 1

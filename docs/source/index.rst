@@ -169,5 +169,6 @@ This project was supported by the U.S. Department of Energy, Office of Science, 
     hqml.measurements <_autoapi/hybridlane/measurements/index>
     hqml.ops <_autoapi/hybridlane/ops/index>
     hqml.sa <_autoapi/hybridlane/sa/index>
+    hqml.templates <_autoapi/hybridlane/templates/index>
     hqml.transforms <_autoapi/hybridlane/transforms/index>
 ..    _autoapi/hybridlane/util/index

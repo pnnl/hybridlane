@@ -24,7 +24,8 @@ class Beamsplitter(CVOperation):
 
     .. math::
 
-        BS(\theta,\varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b + e^{-i\varphi}ab^\dagger)\right]
+        BS(\theta,\varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b
+            + e^{-i\varphi}ab^\dagger)\right]
     """
 
     num_params = 2
@@ -168,15 +169,19 @@ class TwoModeSum(CVOperation):
 
         SUM(\lambda) = \exp[\frac{\lambda}{2}(a + \ad)(b^\dagger - b)]
 
-    where :math:`\lambda \in \mathbb{R}` is a real parameter. The action on the wavefunction is given by
+    where :math:`\lambda \in \mathbb{R}` is a real parameter. The action on the
+    wavefunction is given by
 
     .. math::
 
         SUM(\lambda)\ket{x_a}\ket{x_b} = \ket{x_a}\ket{x_b + \lambda x_a}
 
-    in the position basis (see Box III.6 of [1]_).
+    in the position basis (see Box III.6 of :footcite:p:`liu2026hybrid`).
 
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 1

@@ -25,8 +25,8 @@ class Displacement(CVOperation):
     .. math::
        D(\alpha) = \exp[\alpha \ad -\alpha^* a]
 
-    where :math:`\alpha = ae^{i\phi}`. The result of applying a displacement to the vacuum
-    is a coherent state :math:`D(\alpha)\ket{0} = \ket{\alpha}`.
+    where :math:`\alpha = ae^{i\phi}`. The result of applying a displacement to the
+    vacuum is a coherent state :math:`D(\alpha)\ket{0} = \ket{\alpha}`.
     """
 
     num_params = 2

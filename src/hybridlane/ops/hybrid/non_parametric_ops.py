@@ -23,19 +23,20 @@ from ..op_math.decompositions.qubit_conditioned_decompositions import (
 class ConditionalParity(Operation, Hybrid):
     r"""Qubit-conditioned number parity gate :math:`CP`
 
-    This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation` gate, with :math:`CP = CR(\pi)`, resulting
-    in the unitary expression
+    This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation`
+    gate, with :math:`CP = CR(\pi)`, resulting in the unitary expression
 
     .. math::
 
         CP &= \exp[-i\frac{\pi}{2}\sigma_z \hat{n}] \\
            &= \ket{0}\bra{0} \otimes F + \ket{1}\bra{1} \otimes F^\dagger
 
-    This gate can also be viewed as the "conditioned" version of the :class:`~hybridlane.Fourier` gate.
+    This gate can also be viewed as the "conditioned" version of the
+    :class:`~hybridlane.Fourier` gate.
 
     .. seealso::
 
-        :py:class:`~hybridlane.ConditionalRotation`
+        :class:`~hybridlane.ConditionalRotation`
     """
 
     num_params = 0
