@@ -15,8 +15,6 @@ from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
-
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 

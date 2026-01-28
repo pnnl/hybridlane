@@ -9,7 +9,6 @@ from functools import partial
 import numpy as np
 import pennylane as qml
 import pytest
-import scipy.stats
 from pennylane.exceptions import DeviceError
 
 import hybridlane as hqml
@@ -321,11 +320,11 @@ class TestExampleCircuits:
         assert np.isclose(n1, 0)
         assert np.isclose(n2, 0)
 
-    # Fixme: this test fails because constructing ExpectationMP infers a schema, but the schemas
-    # for n and x are different. However, technically in an analytic simulation of bosonic qiskit,
-    # it could handle this just fine. Maybe we need to be more deliberate about where verification
-    # and static analysis happen?
-    @pytest.mark.skip
+    # Fixme: this test fails because constructing ExpectationMP infers a schema, but
+    # the schemas for n and x are different. However, technically in an analytic
+    # simulation of bosonic qiskit, it could handle this just fine. Maybe we need to be
+    # more deliberate about where verification and static analysis happen?
+    @pytest.mark.xfail
     def test_complex_multibasis_observable_analytic(self):
         # This is another coherent state, but this time we measure n + x
         alpha = 1.5
@@ -344,43 +343,24 @@ class TestExampleCircuits:
         expval_x = 2 * alpha
         assert np.isclose(n, expval_n + expval_x)
 
-    # Fixme: this test fails, it is supposed to have an SQR gate but that's not
-    # yet implemented in bosonic qiskit
-    @pytest.mark.skip
-    @pytest.mark.parametrize("alpha", (1.0, -1.0, 2.0, -2.0))
+    @pytest.mark.parametrize("alpha", (2.0, -2.0))
     def test_cat_state_readout(self, alpha):
-        fock_levels = 16
-        n_per_test = 5000
-        repetitions = 10
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=fock_levels)
-
-        @partial(qml.set_shots, shots=repetitions * n_per_test)
         @qml.qnode(dev)
         def circuit(alpha):
-            # Put the qumode into state |α> + |-α>
+            # Put the qumode into state |α> + |-α>, which acts like |0L> + |1L>
             qml.H(0)
-            hqml.ConditionalDisplacement(alpha, 0, wires=[1, 0])
+            hqml.CD(alpha, 0, wires=[0, 1])
             qml.H(0)
 
             # Now use ancilliary qubit to read it out with a phase kickback
             qml.Displacement(alpha, 0, 1)  # |0> + |2α>
             qml.H(2)
-            hqml.SelectiveNumberArbitraryPhase(np.pi / 2, 0, wires=[1, 2])
+            hqml.SQR(np.pi, np.pi / 2, 0, wires=[2, 1])  # Ry(pi)|0><0|
             qml.H(2)
 
-            return hqml.sample(qml.PauliZ(2))
+            return hqml.expval(qml.Z(2))
 
-        eigvals = circuit(alpha)
-        sample_set = (1 - eigvals) // 2
-        sample_set = sample_set.reshape(repetitions, n_per_test)
-        a2 = np.abs(alpha) ** 2
-        p = 0.5 * (1 + np.exp(-4 * a2)) + np.exp(-2 * a2)
-
-        rejections = 0
-        for samples in sample_set:
-            successes = int(samples.sum())
-            if scipy.stats.binomtest(successes, n_per_test, p).pvalue < 0.05:
-                rejections += 1
-
-        assert rejections / repetitions < 0.5
+        z = circuit(alpha)
+        assert np.isclose(z, 0, atol=1e-7)

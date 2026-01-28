@@ -173,7 +173,7 @@ def get_observable_matrix(
     # Here we need to construct the matrix for the observable in the wire order
     # expected by qiskit.
 
-    if not obs.is_hermitian:
+    if not obs.is_verified_hermitian:
         raise DeviceError(f"Got non-hermitian observable {obs}")
 
     # Handle symbolic observable expressions by traversing the expression tree

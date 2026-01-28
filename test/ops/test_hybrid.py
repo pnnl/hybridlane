@@ -208,8 +208,8 @@ class TestConditionalDisplacement:
     def test_adjoint(self):
         op = hqml.ConditionalDisplacement(0.5, 0.3, wires=[0, 1])
         adj_op = op.adjoint()
-        assert isinstance(adj_op[0], hqml.ConditionalDisplacement)
-        assert adj_op[0].parameters == [-0.5, 0.3]
+        assert isinstance(adj_op, hqml.ConditionalDisplacement)
+        assert adj_op.parameters == [-0.5, 0.3]
 
     def test_pow(self):
         op = hqml.ConditionalDisplacement(0.5, 0.3, wires=[0, 1])

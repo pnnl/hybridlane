@@ -107,10 +107,10 @@ def _(op: ops.NativeBeamsplitter):
 
 @single_tape_support
 class QscoutIonTrap(Device):
-    r"""Backend for Pennylane that prepares circuits to be run on the Sandia QSCOUT ion trap
+    r"""Backend that prepares circuits for the Sandia QSCOUT ion trap
 
-    This device can't actually execute anything; instead, it's intended as a compilation target.
-    As an example of how to compile a circuit to this device,
+    This device can't actually execute anything; instead, it's intended as a
+    compilation target. As an example of how to compile a circuit to this device,
 
     .. code:: python
 
@@ -133,7 +133,7 @@ class QscoutIonTrap(Device):
     name = "Sandia Qscout Ion Trap"  # type: ignore
     shortname = "qscout"
     version = "0.1.0"
-    pennylane_requires = ">=0.42.0"
+    pennylane_requires = ">=0.44.0"
     author = "PNNL"
 
     _max_qubits = 6

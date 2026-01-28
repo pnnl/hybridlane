@@ -4,13 +4,11 @@
 # See the LICENSE.txt file for full license text.
 
 from collections import Counter
-from functools import partial
 
 import pennylane as qml
 import pytest
-from pennylane.decomposition import DecompositionError
 from pennylane.exceptions import DeviceError
-from pennylane.wires import WireError, Wires
+from pennylane.wires import Wires
 from pennylane.workflow import construct_tape
 
 import hybridlane as hqml

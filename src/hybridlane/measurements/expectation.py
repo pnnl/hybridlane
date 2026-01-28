@@ -5,8 +5,8 @@
 from collections.abc import Sequence
 
 import pennylane as qml
-from pennylane.measurements.mid_measure import MeasurementValue
 from pennylane.operation import Operator
+from pennylane.ops.mid_measure import MeasurementValue
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
