@@ -5,10 +5,20 @@
 
 r"""Module for exporting circuits compiled to the ion trap to the Jaqal format"""
 
+import decimal
+import math
 import re
+from collections.abc import Sequence
+from dataclasses import dataclass
 from functools import singledispatch, wraps
+from typing import Literal
+from unittest.mock import patch
 
 import pennylane as qml
+from jaqalpaq.core import GateDefinition, Parameter, ParamType
+from jaqalpaq.generator import generate_jaqal_program
+from jaqalpaq.qsyntax import circuit as jaqal_circuit
+from jaqalpaq.qsyntax import qsyntax
 from pennylane.exceptions import DeviceError
 from pennylane.operation import Operation
 from pennylane.tape import QuantumScript
@@ -17,6 +27,42 @@ import hybridlane as hqml
 
 from ... import sa
 from . import ops as native_ops
+
+
+@dataclass(frozen=True)
+class Qumode:
+    """Hardware qumode on the ion trap device."""
+
+    manifold: Literal[0, 1]
+    """The 'manifold' index dictating the axial direction
+
+    The lower manifold is ``1`` with stronger coupling, while the upper manifold is
+    ``0``.
+    """
+
+    index: int
+    """Index of the qumode within the manifold, ranging from ``[0, n-1]``
+
+    The modes are as follows:
+        - ``0``: Center of Mass (COM) mode
+        - ``1``: Tilt mode
+        - ``2``: Drum/trapezoid mode
+        - ``n-1``: Zig-zag mode
+    """
+
+    def __str__(self):
+        return f"m{self.manifold}i{self.index}"
+
+    @classmethod
+    def try_from_string(cls, s: str):
+        match = re.match(r"^m([01])i(\d+)$", s)
+        if not match:
+            return None
+
+        manifold = int(match.group(1))
+        index = int(match.group(2))
+        return cls(manifold=manifold, index=index)
+
 
 # Mappings from the names of gates to Jaqal
 # Obtainable from https://gitlab.com/jaqal/qscout-gatemodels/-/blob/master/src/qscout/v1/std/jaqal_gates.py?ref_type=heads
@@ -45,171 +91,204 @@ BOSON_GATES = {
     "JaynesCummings": "Red",
     "AntiJaynesCummings": "Blue",
     "FockStatePrep": "FockState",
-    "ConditionalXDisplacement": "SDF",
+    "ConditionalXDisplacement": "xCD",
     "ConditionalXSqueezing": "RampUp",
     "NativeBeamsplitter": "Beamsplitter",
     "SidebandProbe": "Rt_SBProbe",
 }
 
+BOSON_JAQAL_DEFINITIONS = {
+    "prepare_all": GateDefinition("prepare_all", []),
+    "measure_all": GateDefinition("measure_all", []),
+    "Red": GateDefinition(
+        "Red",
+        parameters=[
+            Parameter("q", ParamType.QUBIT),
+            Parameter("n", ParamType.INT),
+            Parameter("phase", ParamType.FLOAT),
+            Parameter("angle", ParamType.FLOAT),
+            Parameter("manifold", ParamType.INT),
+            Parameter("mode", ParamType.INT),
+        ],
+    ),
+    "Blue": GateDefinition(
+        "Blue",
+        parameters=[
+            Parameter("q", ParamType.QUBIT),
+            Parameter("n", ParamType.INT),
+            Parameter("phase", ParamType.FLOAT),
+            Parameter("angle", ParamType.FLOAT),
+            Parameter("manifold", ParamType.INT),
+            Parameter("mode", ParamType.INT),
+        ],
+    ),
+    "FockState": GateDefinition(
+        "FockState",
+        parameters=[
+            Parameter("q", ParamType.QUBIT),
+            Parameter("n", ParamType.INT),
+            Parameter("manifold", ParamType.INT),
+        ],
+    ),
+    "xCD": GateDefinition(
+        "xCD",
+        parameters=[
+            Parameter("q", ParamType.QUBIT),
+            Parameter("manifold", ParamType.INT),
+            Parameter("mode", ParamType.INT),
+            Parameter("beta_re", ParamType.FLOAT),
+            Parameter("beta_im", ParamType.FLOAT),
+        ],
+    ),
+    "RampUp": GateDefinition(
+        "RampUp",
+        parameters=[
+            Parameter("q", ParamType.QUBIT),
+            Parameter("blue_red_ratio", ParamType.FLOAT),
+        ],
+    ),
+    "Beamsplitter": GateDefinition(
+        "Beamsplitter",
+        parameters=[
+            Parameter("q", ParamType.QUBIT),
+            Parameter("detuning1", ParamType.FLOAT),
+            Parameter("detuning2", ParamType.FLOAT),
+            Parameter("duration", ParamType.FLOAT),
+            Parameter("phase", ParamType.FLOAT),
+        ],
+    ),
+    "Rt_SBProbe": GateDefinition(
+        "Rt_SBProbe",
+        parameters=[
+            Parameter("q", ParamType.QUBIT),
+            Parameter("phase", ParamType.FLOAT),
+            Parameter("duration_us", ParamType.FLOAT),
+            Parameter("manifold", ParamType.INT),
+            Parameter("mode", ParamType.INT),
+            Parameter("sign", ParamType.INT),
+            Parameter("detuning", ParamType.FLOAT),
+        ],
+    ),
+}
 
-def to_jaqal(
-    qnode, level: str | int | slice | None = None, precision: float | None = None
-):
-    from pennylane.workflow import construct_tape
 
+def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
     @wraps(qnode)
     def wrapper(*args, **kwargs) -> str:
-        tape = construct_tape(qnode, level=level)(*args, **kwargs)
-        return tape_to_jaqal(
-            tape,
+        batch, fn = qml.workflow.construct_batch(qnode, level=level)(*args, **kwargs)
+        return batch_to_jaqal(
+            batch,
             precision=precision,
         )
 
     return wrapper
 
 
-def tape_to_jaqal(tape: QuantumScript, precision: float | None = None):
-    sa_res = sa.analyze(tape)
-    num_qubits = max(sa_res.qubits) + 1
+def batch_to_jaqal(batch: Sequence[QuantumScript], precision: int = 20) -> str:
+    # Since jaqal requires a top-level register declaration, we need
+    # to find out the required number of qubits for all the tapes
+    num_qubits = 0
+    for tape in batch:
+        sa_res = sa.analyze(tape)
+        num_qubits = max(num_qubits, max(sa_res.qubits) + 1)
 
-    program = f"register q[{num_qubits}]\n\n"
-    program += "prepare_all\n"
-    for op in tape.operations:
-        program += tokenize_operation(op, precision=precision) + "\n"
+    @jaqal_circuit(inject_pulses=BOSON_JAQAL_DEFINITIONS)
+    def program(Q: qsyntax.Q):
+        # todo: add boson import statement
+        Q.usepulses("qscout.v1.std")
+        q = Q.register(num_qubits, "q")
+        for tape in batch:
+            with Q.subcircuit(tape.shots.total_shots):
+                for op in tape.operations:
+                    gate_to_ir(op, Q, q)
 
-    program += "measure_all"
-    return program
+    with patch(
+        "jaqalpaq.generator.generator._jaqal_value_numeric_context",
+        decimal.Context(prec=precision),
+    ):
+        ir = program()
+        return generate_jaqal_program(ir).strip()
+
+
+def convert_params(params):
+    return [p.item() if hasattr(p, "item") else p for p in params]
 
 
 @singledispatch
-def tokenize_operation(op: Operation, precision: float | None = None) -> str:
+def gate_to_ir(op: Operation, Q: qsyntax.Q, q: qsyntax.QRegister):
     if gate_id := QUBIT_GATES.get(op.name, None):
-        params = _tokenize_params(op.parameters, precision=precision)
-        wires = [f"q[{w}]" for w in op.wires]
-        return " ".join(map(str, [gate_id, *wires, *params]))
+        wires = [q[wire] for wire in op.wires]
+        getattr(Q, gate_id)(*wires, *convert_params(op.parameters))
+        return
 
     raise DeviceError(f"Cannot serialize non-native gate to Jaqal: {op}")
 
 
-@tokenize_operation.register
-def _(op: native_ops.R, precision: int | None = None):
+@gate_to_ir.register
+def _(op: native_ops.R, Q: qsyntax.Q, q: qsyntax.QRegister):
     gate_id = QUBIT_GATES[op.name]
-    angle, axis_angle = _tokenize_params(op.parameters, precision=precision)
-    qubit = op.wires[0]
-
-    return f"{gate_id} q[{qubit}] {axis_angle} {angle}"
-
-
-@tokenize_operation.register
-def _(_op: qml.GlobalPhase | qml.Identity, **_):
-    return ""
+    angle, axis_angle = convert_params(op.parameters)
+    qubit = q[op.wires[0]]
+    getattr(Q, gate_id)(qubit, axis_angle, angle)
 
 
-@tokenize_operation.register
-def _(op: hqml.JaynesCummings, precision: float | None = None):
-    # Has format Red <qubit> <Fock state> <phase> <angle> <axis choice> <mode choice>
+@gate_to_ir.register
+def _(_op: qml.GlobalPhase | qml.Identity, Q: qsyntax.Q, q: qsyntax.QRegister):
+    return
+
+
+@gate_to_ir.register
+def _(op: hqml.Red | hqml.Blue, Q: qsyntax.Q, q: qsyntax.QRegister):
     gate_id = BOSON_GATES[op.name]
-    params = _tokenize_params(op.parameters, precision=precision)
     qubit, mode = op.wires
-    axis, mode_idx = _get_axis_and_index(mode)
+    assert isinstance(mode, Qumode)
+    fock_state = 1  # Hard coded
+    [angle, phase] = convert_params(op.parameters)
+    getattr(Q, gate_id)(q[qubit], fock_state, phase, angle, mode.manifold, mode.index)
 
-    # Hard code - the user has to compensate for the calibration at the moment
-    fock_state = 1
 
-    return (
-        f"{gate_id} q[{qubit}] {fock_state} {params[1]} {params[0]} {axis} {mode_idx}"
+@gate_to_ir.register
+def _(op: native_ops.FockStatePrep, Q: qsyntax.Q, q: qsyntax.QRegister):
+    gate_id = BOSON_GATES[op.name]
+    fock_state = int(op.hyperparameters["n"])
+    qubit, mode = op.wires
+    assert isinstance(mode, Qumode)
+    getattr(Q, gate_id)(q[qubit], fock_state, mode.manifold)
+
+
+@gate_to_ir.register
+def _(op: native_ops.SidebandProbe, Q: qsyntax.Q, q: qsyntax.QRegister):
+    gate_id = BOSON_GATES[op.name]
+    [duration_us, phase, sign, detuning] = convert_params(op.parameters)
+    qubit, mode = op.wires
+    assert isinstance(mode, Qumode)
+    getattr(Q, gate_id)(
+        q[qubit], phase, duration_us, mode.manifold, mode.index, sign, detuning
     )
 
 
-@tokenize_operation.register
-def _(op: hqml.AntiJaynesCummings, precision: float | None = None):
-    # Has format Blue <qubit> <Fock state> <phase> <angle> <axis choice> <mode choice>
+@gate_to_ir.register
+def _(op: hqml.XCD, Q: qsyntax.Q, q: qsyntax.QRegister):
     gate_id = BOSON_GATES[op.name]
-    params = _tokenize_params(op.parameters, precision=precision)
     qubit, mode = op.wires
-    axis, mode_idx = _get_axis_and_index(mode)
-
-    # Hard code - the user has to compensate for the calibration at the moment
-    fock_state = 1
-
-    return (
-        f"{gate_id} q[{qubit}] {fock_state} {params[1]} {params[0]} {axis} {mode_idx}"
-    )
+    assert isinstance(mode, Qumode)
+    [beta, angle] = convert_params(op.parameters)
+    beta_re = beta * math.cos(angle)
+    beta_im = beta * math.sin(angle)
+    getattr(Q, gate_id)(q[qubit], mode.manifold, mode.index, beta_re, beta_im)
 
 
-@tokenize_operation.register
-def _(op: native_ops.FockStatePrep, **_):
-    # Has format FockState <qubit> <fock state> <axis>
+@gate_to_ir.register
+def _(op: native_ops.ConditionalXSqueezing, Q: qsyntax.Q, q: qsyntax.QRegister):
     gate_id = BOSON_GATES[op.name]
-    fock_state = int(op.parameters[0])
     qubit, mode = op.wires
-    axis, mode_idx = _get_axis_and_index(mode)
+    [blue_red_ratio] = convert_params(op.parameters)
+    getattr(Q, gate_id)(q[qubit], blue_red_ratio)
 
-    return f"{gate_id} q[{qubit}] {fock_state} {axis}"
 
-
-@tokenize_operation.register
-def _(op: native_ops.SidebandProbe, precision: float | None = None):
-    # Has format Rt_SBProbe <qubit> <phase> <duration_us> <axis> <mode> <sign> <detuning>
+@gate_to_ir.register
+def _(op: native_ops.NativeBeamsplitter, Q: qsyntax.Q, q: qsyntax.QRegister):
     gate_id = BOSON_GATES[op.name]
-    [duration_us, phase, detuning] = _tokenize_params(
-        [op.parameters[i] for i in (0, 1, 3)], precision=precision
-    )
-    sign = f"{op.parameters[2]:d}"
-    qubit, mode = op.wires
-    axis, mode_idx = _get_axis_and_index(mode)
-
-    return f"{gate_id} q[{qubit}] {phase} {duration_us} {axis} {mode_idx} {sign} {detuning}"
-
-
-@tokenize_operation.register
-def _(op: native_ops.ConditionalXDisplacement, precision: float | None = None):
-    # Has format SDF <qubit> <beta_re> <beta_im>
-    gate_id = BOSON_GATES[op.name]
-    params = _tokenize_params(op.parameters, precision=precision)
-    qubit, mode = op.wires
-    axis, mode_idx = _get_axis_and_index(mode)
-
-    return f"{gate_id} q[{qubit}] {params[0]} {params[1]}"
-
-
-@tokenize_operation.register
-def _(op: native_ops.ConditionalXSqueezing, precision: float | None = None):
-    # Has format RampUp <qubit> <blue/red ratio>
-    gate_id = BOSON_GATES[op.name]
-    params = _tokenize_params(op.parameters, precision=precision)
-    qubit, mode = op.wires
-    axis, mode_idx = _get_axis_and_index(mode)
-
-    return f"{gate_id} q[{qubit}] {params[0]}"
-
-
-@tokenize_operation.register
-def _(op: native_ops.NativeBeamsplitter, precision: float | None = None):
-    # Has format Beamsplitter <qubit> <detuning1> <detuning2> <duration> <phase>
-    gate_id = BOSON_GATES[op.name]
-    params = _tokenize_params(op.parameters, precision=precision)
     qubit, *modes = op.wires
-    # axis, mode_idx = _get_axis_and_index(mode)
-
-    return f"{gate_id} q[{qubit}] {params[0]} {params[1]} {params[2]} {params[3]}"
-
-
-def _tokenize_params(params, precision: float | None = None):
-    if precision:
-        params = list(map(lambda p: f"{p:.{precision}}", params))
-    else:
-        params = list(map(str, params))
-
-    return params
-
-
-# Should match layout function in the main device
-qumode_pattern = re.compile(r"^a([01])m(\d+)$")
-
-
-def _get_axis_and_index(qumode):
-    if isinstance(qumode, str) and (match := qumode_pattern.match(qumode)):
-        return int(match.group(1)), int(match.group(2))
-
-    raise DeviceError(f"Unsupported qumode name: {qumode}")
+    [detuning1, detuning2, duration, phase] = convert_params(op.parameters)
+    getattr(Q, gate_id)(q[qubit], detuning1, detuning2, duration, phase)

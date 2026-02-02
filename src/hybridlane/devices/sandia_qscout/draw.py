@@ -5,7 +5,8 @@
 
 r"""Contains drawing utilities for quantum circuits on the ion trap"""
 
-from .device import _get_allowed_device_wires, QscoutIonTrap
+from .device import QscoutIonTrap, _get_allowed_device_wires
+from .jaqal import Qumode
 
 _mode_colors = {
     0: "tomato",
@@ -22,7 +23,8 @@ def get_default_style():
 
     This adds the following styles to a quantum circuit:
 
-    * Qubits are listed before qumodes, and qumodes are plotted from low to high (in terms of mode)
+    * Qubits are listed before qumodes, and qumodes are plotted from low to high (in
+        terms of mode)
     * Qumodes are colored by their mode to be rainbow
 
     This only works if drawing a circuit at the device level, after the circuit wires
@@ -33,8 +35,7 @@ def get_default_style():
     # Color the qumodes rainbow like the slides
     icon_colors = {}
     for wire in wire_order:
-        if isinstance(wire, str):
-            mode = int(wire[-1])
-            icon_colors[wire] = _mode_colors[mode]
+        if isinstance(wire, Qumode):
+            icon_colors[wire] = _mode_colors[wire.index]
 
     return {"wire_icon_colors": icon_colors, "wire_order": wire_order}

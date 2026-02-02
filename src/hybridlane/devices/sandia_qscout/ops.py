@@ -19,99 +19,23 @@ from ...ops.mixins import Hybrid
 
 Red = hqml.Red
 Blue = hqml.Blue
-
-
-class ConditionalXDisplacement(Operation, Hybrid):
-    r"""Symmetric conditional displacement gate :math:`xCD(\beta)`
-
-    This is the qubit-conditioned version of the
-    :py:class:`~hybridlane.Displacement` gate, given by
-
-    .. math::
-
-        xCD(\beta) = \exp[\sigma_x(\beta \ad - \beta^* a)]
-
-    which differs from :class:`~hybridlane.ops.ConditionalDisplacement` due to the
-    :math:`\sigma_x` factor instead of :math:`\sigma_z`.
-
-    This is represented by the hardware instruction ``SDF``, and it can only be used on
-    hardware qumode ``a0m1``
-    """
-
-    num_params = 2
-    num_wires = 2
-    num_qumodes = 1
-    grad_method = "F"
-
-    resource_keys = set()
-
-    def __init__(
-        self,
-        beta_re: TensorLike,
-        beta_im: TensorLike,
-        wires: WiresLike,
-        id: str | None = None,
-    ):
-        r"""
-        Args:
-            beta_re: The real part of :math:`\beta`
-
-            beta_im: The imaginary part of :math:`\beta`
-
-            wires: The wires this gate acts on, in the format ``(qubit, qumode)``
-        """
-        super().__init__(beta_re, beta_im, wires=wires, id=id)
-
-    def pow(self, n: int | float):
-        beta_re, beta_im = self.data
-        return [ConditionalXDisplacement(beta_re * n, beta_im * n, self.wires)]
-
-    def adjoint(self):
-        return ConditionalXDisplacement(-self.data[0], -self.data[1], self.wires)
-
-    def simplify(self):
-        beta_re, beta_im = self.data
-
-        if _can_replace(beta_re, 0) and _can_replace(beta_im, 0):
-            return qml.Identity(self.wires)
-
-        return self
-
-    def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "xCD", cache=cache
-        )
-
-    @property
-    def resource_params(self):
-        return {}
-
-
-@qml.register_resources({ConditionalXDisplacement: 1})
-def _xcd_polar_decomp(a, phi, wires, **_):
-    # Convert the hqml.XCD gate (in polar) to cartesian
-    beta_re = a * qml.math.cos(phi)
-    beta_im = a * qml.math.sin(phi)
-    ConditionalXDisplacement(beta_re, beta_im, wires)
-
-
-qml.add_decomps(hqml.XCD, _xcd_polar_decomp)
+XCD = hqml.XCD
 
 
 class ConditionalXSqueezing(Operation, Hybrid):
-    r"""Qubit-conditioned squeezing gate :math:`C_xS(\beta)`
+    r"""Qubit-conditioned squeezing gate :math:`xCS(\beta)`
 
     This gate implements the unitary
 
     .. math::
 
-        CS(\beta) = \exp\left[\frac{1}{2}\sigma_x (\beta^* a^2 - \beta (\ad)^2)\right]
+        xCS(\beta) = \exp\left[\frac{1}{2}\sigma_x (\beta^* a^2 - \beta (\ad)^2)\right]
 
     which differs from :class:`~hybridlane.ops.ConditionalSqueezing` due to the
     :math:`\sigma_x` factor instead of :math:`\sigma_z`.
 
     This is represented by the hardware instruction ``RampUp``, and it can only be used
-    on hardware qumode ``a0m1``
+    on hardware qumode ``m1i1``
     """
 
     num_params = 1
@@ -184,11 +108,12 @@ class SidebandProbe(Operation, Hybrid):
 class FockStatePrep(Operation, Hybrid):
     r"""Prepare a definite Fock state
 
-    This is identical to ``hqml.FockLadder`` except it's only supported on hardware qumodes ``a0m1`` and ``a1m1``.
-    This gate is represented in terms of a native Jaqal instruction ``FockState``.
+    This is identical to ``hqml.FockLadder`` except it's only supported on hardware
+    qumodes ``m1i1`` and ``m0i1``. This gate is represented in terms of a native Jaqal
+    instruction ``FockState``.
     """
 
-    num_params = 1
+    num_params = 0
     num_wires = 2
     num_qumodes = 1
     grad_method = None
@@ -196,7 +121,8 @@ class FockStatePrep(Operation, Hybrid):
     resource_keys = set()
 
     def __init__(self, n: int, wires: WiresLike = None, id: str | None = None):
-        super().__init__(n, wires=wires, id=id)
+        self.hyperparameters["n"] = n
+        super().__init__(wires=wires, id=id)
 
     @property
     def resource_params(self):
@@ -206,10 +132,11 @@ class FockStatePrep(Operation, Hybrid):
 class NativeBeamsplitter(Operation, Hybrid):
     r"""Hardware-native beamsplitter gate
 
-    This class is named NativeBeamsplitter to distinguish it from :class:`~hybridlane.ops.Beamsplitter`,
-    as it has different arguments. It is represented by the hardware instruction ``Beamsplitter``.
+    This class is named NativeBeamsplitter to distinguish it from
+    :class:`~hybridlane.ops.Beamsplitter`, as it has different arguments. It is
+    represented by the hardware instruction ``Beamsplitter``.
 
-    Currently this gate can only be executed on the tilt modes (``a0m1``, ``a1m1``)
+    Currently this gate can only be executed on the tilt modes (``m0i1``, ``m1i1``)
     """
 
     num_params = 4

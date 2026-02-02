@@ -25,6 +25,7 @@ def cat_state_probs(alpha, ns, odd: bool):
     return np.exp(log_Pn)
 
 
+@pytest.mark.slow
 class TestSqueezedCatState:
     @pytest.mark.parametrize(
         "alpha,parity", itertools.product([3, 4, 5, 6], ("even", "odd"))

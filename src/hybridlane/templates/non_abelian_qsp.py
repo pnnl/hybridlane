@@ -88,7 +88,7 @@ class SqueezedCatState(ErrorOperation, Hybrid):
     type_signature = (hqml.sa.Qubit(), hqml.sa.Qumode())
     grad_method = None  # pyright: ignore[reportIncompatibleMethodOverride]
 
-    resource_keys = {"parity"}
+    resource_keys = {"parity", "has_squeezing"}
 
     def __init__(
         self,
@@ -125,12 +125,21 @@ class SqueezedCatState(ErrorOperation, Hybrid):
     def error(self) -> AlgorithmicError:
         return GCR(-np.pi / 2, self.data[0], self.data[2], wires=self.wires).error()
 
+    @property
+    def resource_params(self):
+        return {
+            "parity": self.hyperparameters["parity"],
+            "has_squeezing": not qml.math.isclose(self.data[2], 1),
+        }
 
-def _squeezedcatstate_resources(parity):
-    res = {hqml.XCD: 1, adjoint_resource_rep(GCR): 1, hqml.Squeezing: 1, qml.S: 2}
+
+def _squeezedcatstate_resources(parity, has_squeezing):
+    res = {hqml.XCD: 1, adjoint_resource_rep(GCR): 1, qml.S: 2}
 
     if parity == "odd":
         res[qml.X] = 1
+    if has_squeezing:
+        res[hqml.S] = 1
 
     return res
 
@@ -140,7 +149,9 @@ def _squeezedcatstate_decomp(a, phi, delta, wires, **hyperparameters):
     if hyperparameters["parity"] == "odd":
         qml.X(wires[0])
 
-    hqml.Squeezing(-qml.math.log(delta), 0, wires[1])
+    if not qml.math.isclose(delta, 1):
+        hqml.Squeezing(-qml.math.log(delta), 0, wires[1])
+
     hqml.XCD(a, phi, wires)
     qml.adjoint(qml.S)(wires[0])
     qml.adjoint(GCR)(-np.pi / 2, a, delta, wires)

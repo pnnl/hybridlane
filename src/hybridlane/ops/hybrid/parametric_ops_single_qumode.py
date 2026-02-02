@@ -188,8 +188,24 @@ def _pow_cd(a, phi, wires, z, **_):
     ConditionalDisplacement(z * a, phi, wires=wires)
 
 
-qml.add_decomps(ConditionalDisplacement, _cd_parity_decomp, _cd_to_ecd)
-qml.add_decomps("Adjoint(ConditionalDisplacement)", adjoint_rotation)
+@qml.register_resources({ConditionalDisplacement: 1})
+def _adjoint_cd(a, phi, wires, **_):
+    ConditionalDisplacement(a, phi + math.pi, wires=wires)
+
+
+def _cd_to_xcd_resources():
+    return {ConditionalXDisplacement: 1, qml.H: 2}
+
+
+@qml.register_resources(_cd_to_xcd_resources)
+def _cd_to_xcd(a, phi, wires, **_):
+    qml.H(wires[0])
+    ConditionalXDisplacement(a, phi, wires)
+    qml.H(wires[0])
+
+
+qml.add_decomps(ConditionalDisplacement, _cd_parity_decomp, _cd_to_ecd, _cd_to_xcd)
+qml.add_decomps("Adjoint(ConditionalDisplacement)", _adjoint_cd)
 qml.add_decomps("Pow(ConditionalDisplacement)", _pow_cd)
 qml.add_decomps("qCond(ConditionalDisplacement)", decompose_multiqcond_native)
 
@@ -264,12 +280,17 @@ def _xcd_decomp(a, phi, wires, **_):
 
 
 @qml.register_resources({ConditionalXDisplacement: 1})
+def _adjoint_xcd(a, phi, wires, **_):
+    ConditionalXDisplacement(a, phi + math.pi, wires=wires)
+
+
+@qml.register_resources({ConditionalXDisplacement: 1})
 def _pow_xcd(a, phi, wires, z, **_):
     ConditionalXDisplacement(z * a, phi, wires=wires)
 
 
 qml.add_decomps(ConditionalXDisplacement, _xcd_decomp)
-qml.add_decomps("Adjoint(ConditionalXDisplacement)", adjoint_rotation)
+qml.add_decomps("Adjoint(ConditionalXDisplacement)", _adjoint_xcd)
 qml.add_decomps("Pow(ConditionalXDisplacement)", _pow_xcd)
 
 XCD = ConditionalXDisplacement
@@ -347,12 +368,17 @@ def _ycd_decomp(a, phi, wires, **_):
 
 
 @qml.register_resources({ConditionalYDisplacement: 1})
+def _adjoint_ycd(a, phi, wires, **_):
+    ConditionalYDisplacement(a, phi + math.pi, wires=wires)
+
+
+@qml.register_resources({ConditionalYDisplacement: 1})
 def _pow_ycd(a, phi, wires, z, **_):
     ConditionalYDisplacement(z * a, phi, wires=wires)
 
 
 qml.add_decomps(ConditionalYDisplacement, _ycd_decomp)
-qml.add_decomps("Adjoint(ConditionalYDisplacement)", adjoint_rotation)
+qml.add_decomps("Adjoint(ConditionalYDisplacement)", _adjoint_ycd)
 qml.add_decomps("Pow(ConditionalYDisplacement)", _pow_ycd)
 
 YCD = ConditionalYDisplacement
