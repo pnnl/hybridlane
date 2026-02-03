@@ -3,6 +3,8 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 
+import importlib
+import sys
 from collections import Counter
 
 import pennylane as qml
@@ -13,7 +15,7 @@ from pennylane.workflow import construct_tape
 
 import hybridlane as hqml
 from hybridlane import sa
-from hybridlane.devices.sandia_qscout import QscoutIonTrap, Qumode
+from hybridlane.devices.sandia_qscout import Qumode
 from hybridlane.devices.sandia_qscout import ops as ion
 
 
@@ -24,10 +26,23 @@ def graph_enabled():
     qml.decomposition.disable_graph()
 
 
+def test_package_works_without_jaqalpaq(monkeypatch):
+    monkeypatch.delitem(sys.modules, "jaqalpaq", raising=False)
+    monkeypatch.delitem(sys.modules, "qscout", raising=False)
+
+    import hybridlane  # noqa: F401
+
+
+missing_jaqalpaq = importlib.util.find_spec("jaqalpaq") is None
+
+
+@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDevice:
     @pytest.mark.parametrize("allow_com", (True, False))
     def test_com_modes(self, allow_com):
-        dev = QscoutIonTrap(enable_com_modes=allow_com, use_virtual_wires=False)
+        dev = qml.device(
+            "sandiaqscout.hybrid", enable_com_modes=allow_com, use_virtual_wires=False
+        )
 
         qubits = dev._max_qubits
 
@@ -49,7 +64,7 @@ class TestDevice:
         ),
     )
     def test_supported_sample_observable(self, obs):
-        dev = QscoutIonTrap()
+        dev = qml.device("sandiaqscout.hybrid")
 
         @qml.set_shots(20)
         @qml.qnode(dev)
@@ -68,7 +83,7 @@ class TestDevice:
         ),
     )
     def test_no_analytic_measurement(self, obs):
-        dev = QscoutIonTrap()
+        dev = qml.device("sandiaqscout.hybrid")
 
         @qml.qnode(dev)
         def circuit(obs):
@@ -88,7 +103,7 @@ class TestDevice:
         ),
     )
     def test_beamsplitter_constraints(self, wires, allowed):
-        dev = QscoutIonTrap(n_qubits=6, use_virtual_wires=False)
+        dev = qml.device("sandiaqscout.hybrid", n_qubits=6, use_virtual_wires=False)
 
         @qml.set_shots(10)
         @qml.qnode(dev)
@@ -114,7 +129,7 @@ class TestDevice:
         ),
     )
     def test_rampup_constraints(self, wires, allowed):
-        dev = QscoutIonTrap(n_qubits=6, use_virtual_wires=False)
+        dev = qml.device("sandiaqscout.hybrid", n_qubits=6, use_virtual_wires=False)
 
         @qml.set_shots(10)
         @qml.qnode(dev)
@@ -129,7 +144,7 @@ class TestDevice:
                 circuit(wires)
 
     def too_many_qubits(self):
-        dev = QscoutIonTrap()
+        dev = qml.device("sandiaqscout.hybrid")
 
         @qml.set_shots(10)
         @qml.qnode(dev)
@@ -142,7 +157,7 @@ class TestDevice:
             circuit()
 
     def too_many_qumodes(self):
-        dev = QscoutIonTrap()
+        dev = qml.device("sandiaqscout.hybrid")
 
         @qml.set_shots(10)
         @qml.qnode(dev)
@@ -155,9 +170,10 @@ class TestDevice:
             circuit()
 
 
+@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestLayout:
     def test_qumode_assignment(self):
-        dev = QscoutIonTrap(n_qubits=4, use_virtual_wires=True)
+        dev = qml.device("sandiaqscout.hybrid", n_qubits=4, use_virtual_wires=True)
 
         @qml.set_shots(10)
         @qml.qnode(dev)
@@ -173,7 +189,7 @@ class TestLayout:
         assert allowed_wires.contains_wires(sa_res.qumodes)
 
     def test_qumode_assignment_with_com(self):
-        dev = QscoutIonTrap(n_qubits=3, enable_com_modes=True)
+        dev = qml.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
 
         @qml.set_shots(10)
         @qml.qnode(dev)
@@ -189,7 +205,7 @@ class TestLayout:
         assert allowed_wires.contains_wires(sa_res.qumodes)
 
     def test_no_valid_assignment(self):
-        dev = QscoutIonTrap(n_qubits=3, enable_com_modes=True)
+        dev = qml.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
 
         @qml.set_shots(10)
         @qml.qnode(dev)
@@ -202,6 +218,7 @@ class TestLayout:
             construct_tape(circuit, level="device")()
 
 
+@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDecomposition:
     def test_fockladder_and_conditionaldisplacement(self):
         dev = qml.device(
@@ -251,7 +268,8 @@ class TestDecomposition:
         @qml.set_shots(20)
         @qml.qnode(dev)
         def circuit():
-            # Hybridlane Beamsplitter gate isn't defined, instead one has to use NativeBeamsplitter
+            # Hybridlane Beamsplitter gate isn't defined, instead one has to use
+            # NativeBeamsplitter
             hqml.ModeSwap(wires=["m1i1", "m0i3"])
             return hqml.expval(qml.Z(0))
 

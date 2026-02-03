@@ -5,20 +5,18 @@
 
 r"""Module for exporting circuits compiled to the ion trap to the Jaqal format"""
 
+from __future__ import annotations
+
 import decimal
 import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import singledispatch, wraps
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, LiteralString
 from unittest.mock import patch
 
 import pennylane as qml
-from jaqalpaq.core import GateDefinition, Parameter, ParamType
-from jaqalpaq.generator import generate_jaqal_program
-from jaqalpaq.qsyntax import circuit as jaqal_circuit
-from jaqalpaq.qsyntax import qsyntax
 from pennylane.exceptions import DeviceError
 from pennylane.operation import Operation
 from pennylane.tape import QuantumScript
@@ -27,6 +25,9 @@ import hybridlane as hqml
 
 from ... import sa
 from . import ops as native_ops
+
+if TYPE_CHECKING:
+    from jaqalpaq.qsyntax import qsyntax
 
 
 @dataclass(frozen=True)
@@ -97,79 +98,84 @@ BOSON_GATES = {
     "SidebandProbe": "Rt_SBProbe",
 }
 
-BOSON_JAQAL_DEFINITIONS = {
-    "prepare_all": GateDefinition("prepare_all", []),
-    "measure_all": GateDefinition("measure_all", []),
-    "Red": GateDefinition(
-        "Red",
-        parameters=[
-            Parameter("q", ParamType.QUBIT),
-            Parameter("n", ParamType.INT),
-            Parameter("phase", ParamType.FLOAT),
-            Parameter("angle", ParamType.FLOAT),
-            Parameter("manifold", ParamType.INT),
-            Parameter("mode", ParamType.INT),
-        ],
-    ),
-    "Blue": GateDefinition(
-        "Blue",
-        parameters=[
-            Parameter("q", ParamType.QUBIT),
-            Parameter("n", ParamType.INT),
-            Parameter("phase", ParamType.FLOAT),
-            Parameter("angle", ParamType.FLOAT),
-            Parameter("manifold", ParamType.INT),
-            Parameter("mode", ParamType.INT),
-        ],
-    ),
-    "FockState": GateDefinition(
-        "FockState",
-        parameters=[
-            Parameter("q", ParamType.QUBIT),
-            Parameter("n", ParamType.INT),
-            Parameter("manifold", ParamType.INT),
-        ],
-    ),
-    "xCD": GateDefinition(
-        "xCD",
-        parameters=[
-            Parameter("q", ParamType.QUBIT),
-            Parameter("manifold", ParamType.INT),
-            Parameter("mode", ParamType.INT),
-            Parameter("beta_re", ParamType.FLOAT),
-            Parameter("beta_im", ParamType.FLOAT),
-        ],
-    ),
-    "RampUp": GateDefinition(
-        "RampUp",
-        parameters=[
-            Parameter("q", ParamType.QUBIT),
-            Parameter("blue_red_ratio", ParamType.FLOAT),
-        ],
-    ),
-    "Beamsplitter": GateDefinition(
-        "Beamsplitter",
-        parameters=[
-            Parameter("q", ParamType.QUBIT),
-            Parameter("detuning1", ParamType.FLOAT),
-            Parameter("detuning2", ParamType.FLOAT),
-            Parameter("duration", ParamType.FLOAT),
-            Parameter("phase", ParamType.FLOAT),
-        ],
-    ),
-    "Rt_SBProbe": GateDefinition(
-        "Rt_SBProbe",
-        parameters=[
-            Parameter("q", ParamType.QUBIT),
-            Parameter("phase", ParamType.FLOAT),
-            Parameter("duration_us", ParamType.FLOAT),
-            Parameter("manifold", ParamType.INT),
-            Parameter("mode", ParamType.INT),
-            Parameter("sign", ParamType.INT),
-            Parameter("detuning", ParamType.FLOAT),
-        ],
-    ),
-}
+
+# put in function so that it is not executed on import
+def get_boson_gate_defs():
+    from jaqalpaq.core import GateDefinition, Parameter, ParamType
+
+    return {
+        "prepare_all": GateDefinition("prepare_all", []),
+        "measure_all": GateDefinition("measure_all", []),
+        "Red": GateDefinition(
+            "Red",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("n", ParamType.INT),
+                Parameter("phase", ParamType.FLOAT),
+                Parameter("angle", ParamType.FLOAT),
+                Parameter("manifold", ParamType.INT),
+                Parameter("mode", ParamType.INT),
+            ],
+        ),
+        "Blue": GateDefinition(
+            "Blue",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("n", ParamType.INT),
+                Parameter("phase", ParamType.FLOAT),
+                Parameter("angle", ParamType.FLOAT),
+                Parameter("manifold", ParamType.INT),
+                Parameter("mode", ParamType.INT),
+            ],
+        ),
+        "FockState": GateDefinition(
+            "FockState",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("n", ParamType.INT),
+                Parameter("manifold", ParamType.INT),
+            ],
+        ),
+        "xCD": GateDefinition(
+            "xCD",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("manifold", ParamType.INT),
+                Parameter("mode", ParamType.INT),
+                Parameter("beta_re", ParamType.FLOAT),
+                Parameter("beta_im", ParamType.FLOAT),
+            ],
+        ),
+        "RampUp": GateDefinition(
+            "RampUp",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("blue_red_ratio", ParamType.FLOAT),
+            ],
+        ),
+        "Beamsplitter": GateDefinition(
+            "Beamsplitter",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("detuning1", ParamType.FLOAT),
+                Parameter("detuning2", ParamType.FLOAT),
+                Parameter("duration", ParamType.FLOAT),
+                Parameter("phase", ParamType.FLOAT),
+            ],
+        ),
+        "Rt_SBProbe": GateDefinition(
+            "Rt_SBProbe",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("phase", ParamType.FLOAT),
+                Parameter("duration_us", ParamType.FLOAT),
+                Parameter("manifold", ParamType.INT),
+                Parameter("mode", ParamType.INT),
+                Parameter("sign", ParamType.INT),
+                Parameter("detuning", ParamType.FLOAT),
+            ],
+        ),
+    }
 
 
 def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
@@ -184,7 +190,13 @@ def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
     return wrapper
 
 
-def batch_to_jaqal(batch: Sequence[QuantumScript], precision: int = 20) -> str:
+def batch_to_jaqal(
+    batch: Sequence[QuantumScript], precision: int = 20
+) -> LiteralString:
+    from jaqalpaq.generator import generate_jaqal_program
+    from jaqalpaq.qsyntax import circuit as jaqal_circuit
+    from jaqalpaq.qsyntax import qsyntax  # noqa: F401
+
     # Since jaqal requires a top-level register declaration, we need
     # to find out the required number of qubits for all the tapes
     num_qubits = 0
@@ -192,8 +204,8 @@ def batch_to_jaqal(batch: Sequence[QuantumScript], precision: int = 20) -> str:
         sa_res = sa.analyze(tape)
         num_qubits = max(num_qubits, max(sa_res.qubits) + 1)
 
-    @jaqal_circuit(inject_pulses=BOSON_JAQAL_DEFINITIONS)
-    def program(Q: qsyntax.Q):
+    @jaqal_circuit(inject_pulses=get_boson_gate_defs())
+    def program(Q: "qsyntax.Q"):
         # todo: add boson import statement
         Q.usepulses("qscout.v1.std")
         q = Q.register(num_qubits, "q")
@@ -215,7 +227,7 @@ def convert_params(params):
 
 
 @singledispatch
-def gate_to_ir(op: Operation, Q: qsyntax.Q, q: qsyntax.QRegister):
+def gate_to_ir(op: Operation, Q, q):
     if gate_id := QUBIT_GATES.get(op.name, None):
         wires = [q[wire] for wire in op.wires]
         getattr(Q, gate_id)(*wires, *convert_params(op.parameters))
@@ -225,7 +237,7 @@ def gate_to_ir(op: Operation, Q: qsyntax.Q, q: qsyntax.QRegister):
 
 
 @gate_to_ir.register
-def _(op: native_ops.R, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(op: native_ops.R, Q, q):
     gate_id = QUBIT_GATES[op.name]
     angle, axis_angle = convert_params(op.parameters)
     qubit = q[op.wires[0]]
@@ -233,12 +245,12 @@ def _(op: native_ops.R, Q: qsyntax.Q, q: qsyntax.QRegister):
 
 
 @gate_to_ir.register
-def _(_op: qml.GlobalPhase | qml.Identity, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(_op: qml.GlobalPhase | qml.Identity, Q, q):
     return
 
 
 @gate_to_ir.register
-def _(op: hqml.Red | hqml.Blue, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(op: hqml.Red | hqml.Blue, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
@@ -248,7 +260,7 @@ def _(op: hqml.Red | hqml.Blue, Q: qsyntax.Q, q: qsyntax.QRegister):
 
 
 @gate_to_ir.register
-def _(op: native_ops.FockStatePrep, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(op: native_ops.FockStatePrep, Q, q):
     gate_id = BOSON_GATES[op.name]
     fock_state = int(op.hyperparameters["n"])
     qubit, mode = op.wires
@@ -257,7 +269,7 @@ def _(op: native_ops.FockStatePrep, Q: qsyntax.Q, q: qsyntax.QRegister):
 
 
 @gate_to_ir.register
-def _(op: native_ops.SidebandProbe, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(op: native_ops.SidebandProbe, Q, q):
     gate_id = BOSON_GATES[op.name]
     [duration_us, phase, sign, detuning] = convert_params(op.parameters)
     qubit, mode = op.wires
@@ -268,7 +280,7 @@ def _(op: native_ops.SidebandProbe, Q: qsyntax.Q, q: qsyntax.QRegister):
 
 
 @gate_to_ir.register
-def _(op: hqml.XCD, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(op: hqml.XCD, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
@@ -279,7 +291,7 @@ def _(op: hqml.XCD, Q: qsyntax.Q, q: qsyntax.QRegister):
 
 
 @gate_to_ir.register
-def _(op: native_ops.ConditionalXSqueezing, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(op: native_ops.ConditionalXSqueezing, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     [blue_red_ratio] = convert_params(op.parameters)
@@ -287,7 +299,7 @@ def _(op: native_ops.ConditionalXSqueezing, Q: qsyntax.Q, q: qsyntax.QRegister):
 
 
 @gate_to_ir.register
-def _(op: native_ops.NativeBeamsplitter, Q: qsyntax.Q, q: qsyntax.QRegister):
+def _(op: native_ops.NativeBeamsplitter, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, *modes = op.wires
     [detuning1, detuning2, duration, phase] = convert_params(op.parameters)

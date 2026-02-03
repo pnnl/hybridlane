@@ -64,10 +64,11 @@ or noise-aware compilation.
 
 **Native gates**: The native gate set includes common qubit gates and some hybrid gates,
 particularly implementing the Sideband ISA :footcite:p:`liu2026hybrid`. The native
-gates are
+gates are available in :mod:`hybridlane.devices.sandia_qscout.ops` and currently
+include:
 
-.. autosummary:: hybridlane.devices.sandia_qscout.ops
-   :members:
+- **Qubit gates**: :math:`R_\phi, R_x, R_y, R_z, S, S^\dagger, S_x, S_x^\dagger, XX, YY, ZZ`
+- **Hybrid gates**: :math:`JC, AJC, xCD, xCS, BS`
 
 References
 ----------

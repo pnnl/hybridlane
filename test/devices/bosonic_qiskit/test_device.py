@@ -19,9 +19,8 @@ from ...util import poisson_test
 
 
 def test_package_works_without_bosonic_qiskit(monkeypatch):
-    """Test that hybridlane can be imported without bosonic qiskit"""
-
     monkeypatch.delitem(sys.modules, "bosonic_qiskit", raising=False)
+    import hybridlane  # noqa: F401
 
 
 missing_bosonic_qiskit = importlib.util.find_spec("bosonic_qiskit") is None
