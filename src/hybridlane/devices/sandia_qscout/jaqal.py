@@ -91,7 +91,9 @@ QUBIT_GATES = {
 BOSON_GATES = {
     "JaynesCummings": "Red",
     "AntiJaynesCummings": "Blue",
-    "FockStatePrep": "FockState",
+    "FockStatePrep": "FockStatePrep",
+    "ConditionalDisplacement": "zCD",
+    "ConditionalYDisplacement": "yCD",
     "ConditionalXDisplacement": "xCD",
     "ConditionalXSqueezing": "RampUp",
     "NativeBeamsplitter": "Beamsplitter",
@@ -128,16 +130,37 @@ def get_boson_gate_defs():
                 Parameter("mode", ParamType.INT),
             ],
         ),
-        "FockState": GateDefinition(
-            "FockState",
+        "FockStatePrep": GateDefinition(
+            "FockStatePrep",
             parameters=[
                 Parameter("q", ParamType.QUBIT),
-                Parameter("n", ParamType.INT),
                 Parameter("manifold", ParamType.INT),
+                Parameter("mode", ParamType.INT),
+                Parameter("state", ParamType.INT),
             ],
         ),
         "xCD": GateDefinition(
             "xCD",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("manifold", ParamType.INT),
+                Parameter("mode", ParamType.INT),
+                Parameter("beta_re", ParamType.FLOAT),
+                Parameter("beta_im", ParamType.FLOAT),
+            ],
+        ),
+        "yCD": GateDefinition(
+            "yCD",
+            parameters=[
+                Parameter("q", ParamType.QUBIT),
+                Parameter("manifold", ParamType.INT),
+                Parameter("mode", ParamType.INT),
+                Parameter("beta_re", ParamType.FLOAT),
+                Parameter("beta_im", ParamType.FLOAT),
+            ],
+        ),
+        "zCD": GateDefinition(
+            "zCD",
             parameters=[
                 Parameter("q", ParamType.QUBIT),
                 Parameter("manifold", ParamType.INT),
@@ -265,7 +288,7 @@ def _(op: native_ops.FockStatePrep, Q, q):
     fock_state = int(op.hyperparameters["n"])
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
-    getattr(Q, gate_id)(q[qubit], fock_state, mode.manifold)
+    getattr(Q, gate_id)(q[qubit], mode.manifold, mode.index, fock_state)
 
 
 @gate_to_ir.register
@@ -280,7 +303,7 @@ def _(op: native_ops.SidebandProbe, Q, q):
 
 
 @gate_to_ir.register
-def _(op: hqml.XCD, Q, q):
+def _(op: hqml.XCD | hqml.YCD | hqml.CD, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)

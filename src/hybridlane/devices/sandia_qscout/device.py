@@ -79,12 +79,6 @@ def is_gate_supported(_: Operator):
 
 
 @is_gate_supported.register
-def _(op: native_ops.FockStatePrep):
-    # Hardcoded to the tilt modes
-    return op.wires[1] in (Qumode(0, 1), Qumode(1, 1))
-
-
-@is_gate_supported.register
 def _(op: native_ops.ConditionalXSqueezing):
     # Hardcoded to the tilt mode on the lower manifold
     return op.wires[1] == Qumode(1, 1)
@@ -93,7 +87,9 @@ def _(op: native_ops.ConditionalXSqueezing):
 @is_gate_supported.register
 def _(op: native_ops.NativeBeamsplitter):
     # Only supported between the tilt modes
-    return op.wires.contains_wires(Wires([Qumode(0, 1), Qumode(1, 1)]))
+    is_tilt_modes = op.wires.contains_wires(Wires([Qumode(0, 1), Qumode(1, 1)]))
+    is_supported_qubit = op.wires[0] in Wires([0, 1, 3])  # zig zag indexing
+    return is_tilt_modes and is_supported_qubit
 
 
 @single_tape_support
@@ -124,7 +120,7 @@ class QscoutIonTrap(Device):
 
     name = "Sandia Qscout Ion Trap"  # type: ignore
     shortname = "qscout"
-    version = "0.1.0"
+    version = "0.2.0"
     pennylane_requires = ">=0.44.0"
     author = "PNNL"
 

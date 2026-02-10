@@ -20,6 +20,8 @@ from ...ops.mixins import Hybrid
 Red = hqml.Red
 Blue = hqml.Blue
 XCD = hqml.XCD
+YCD = hqml.YCD
+ZCD = hqml.CD
 
 
 class ConditionalXSqueezing(Operation, Hybrid):
@@ -108,9 +110,7 @@ class SidebandProbe(Operation, Hybrid):
 class FockStatePrep(Operation, Hybrid):
     r"""Prepare a definite Fock state
 
-    This is identical to ``hqml.FockLadder`` except it's only supported on hardware
-    qumodes ``m1i1`` and ``m0i1``. This gate is represented in terms of a native Jaqal
-    instruction ``FockState``.
+    This gate is represented in terms of a native Jaqal instruction ``FockStatePrep``.
     """
 
     num_params = 0

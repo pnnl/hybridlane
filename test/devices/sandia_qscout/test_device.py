@@ -99,7 +99,7 @@ class TestDevice:
             ([0, "m1i3", "m1i1"], False),
             ([0, "m1i1", "m0i1"], True),
             ([1, "m1i1", "m0i1"], True),
-            ([2, "m1i1", "m0i1"], True),
+            ([2, "m1i1", "m0i1"], False),
         ),
     )
     def test_beamsplitter_constraints(self, wires, allowed):
@@ -237,16 +237,12 @@ class TestDecomposition:
         tape = construct_tape(circuit, level="device")()
         op_counts = Counter([type(op) for op in tape.operations])
 
-        # First FockLadder has a native instruction, so it should be left alone
-        assert op_counts[ion.FockStatePrep] == 1
+        # Both fock ladders get converted into native instruction
+        assert op_counts[ion.FockStatePrep] == 2
         assert isinstance(tape.operations[0], ion.FockStatePrep)
 
-        # Second one is non-native and should be turned into red/blue sideband pulses
-        op_types = {type(op) for op in tape.operations[1:6]}
-        assert op_types == {hqml.Red, hqml.Blue}
-
-        # Check the conditional displacements got turned into SDF instructions
-        assert op_counts[hqml.XCD] == 2
+        # Check the conditional displacements are optimized away
+        assert op_counts[hqml.CD] == 0
 
     def test_cnot_to_xx(self):
         dev = qml.device("sandiaqscout.hybrid")
