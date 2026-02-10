@@ -5,6 +5,7 @@
 
 import textwrap
 
+import numpy as np
 import pennylane as qml
 import pytest
 
@@ -74,7 +75,7 @@ class TestToJaqal:
         @qml.set_shots(1024)
         @qml.qnode(dev)
         def circuit(alpha):
-            hqml.SqueezedCatState(alpha, 0, parity="even", wires=["q", "m1i1"])
+            hqml.SqueezedCatState(alpha, np.pi / 2, parity="even", wires=["q", "m1i1"])
 
         actual_ir = to_jaqal(circuit, level="device", precision=4)(4)
         expected_ir = textwrap.dedent(

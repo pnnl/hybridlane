@@ -5,16 +5,16 @@
 
 import itertools
 
-import numpy as np
 import pennylane as qml
+import pennylane.numpy as np
 import pytest
 from scipy.special import gammaln
 
 import hybridlane as hqml
-from hybridlane.templates.non_abelian_qsp import SqueezedCatState
+from hybridlane.templates.non_abelian_qsp import GKPState, SqueezedCatState
 
 
-# The distribution p(n) for even parity cat states
+# The distribution p(n) for cat states
 def cat_state_probs(alpha, ns, odd: bool):
     alpha_sq = np.abs(alpha) ** 2
     log_factorial = gammaln(ns + 1)
@@ -36,7 +36,7 @@ class TestSqueezedCatState:
 
         @qml.qnode(dev)
         def circuit(alpha):
-            SqueezedCatState(alpha, 0, parity=parity, wires=["q", "m"])
+            SqueezedCatState(alpha, np.pi / 2, parity=parity, wires=["q", "m"])
 
             qml.H("a")
             hqml.ConditionalParity(["a", "m"])
@@ -55,7 +55,7 @@ class TestSqueezedCatState:
 
         @qml.qnode(dev)
         def circuit(alpha):
-            SqueezedCatState(alpha, 0, parity=parity, wires=["q", "m"])
+            SqueezedCatState(alpha, np.pi / 2, parity=parity, wires=["q", "m"])
             return hqml.expval(qml.Z("q")), hqml.expval(hqml.N("m"))
 
         expval_z, expval_n = circuit(alpha)
@@ -67,3 +67,26 @@ class TestSqueezedCatState:
         p_n = cat_state_probs(alpha, n, parity == "odd")
         expected_mean = (n * p_n).sum()
         assert np.allclose(expval_n, expected_mean, rtol=1e-2)
+
+
+@pytest.mark.slow
+class TestGKPState:
+    @pytest.mark.parametrize("codeword", (0, 1))
+    def test_stabilizer(self, codeword):
+        fock_level = 256
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=fock_level)
+
+        @qml.qnode(dev)
+        def circuit(codeword, delta=1):
+            GKPState(delta, logical_state=codeword, wires=["q", "m"])
+
+            # SBS stabilizer measurement, fig. 9
+            alpha = np.sqrt(np.pi / 8)
+            lam = -alpha * delta**2
+            hqml.YCD(lam, 0, wires=["q", "m"])
+            hqml.XCD(2 * alpha, np.pi / 2, wires=["q", "m"])
+            hqml.YCD(lam, 0, wires=["q", "m"])
+            return hqml.expval(qml.Z("q"))
+
+        stabilizer_expval = circuit(codeword, 0.34)
+        assert stabilizer_expval >= 0.99  # from table 3
