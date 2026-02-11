@@ -4,6 +4,6 @@
 # See the LICENSE.txt file for full license text.
 
 from .fock_ladder import FockLadder
-from .non_abelian_qsp import SqueezedCatState
+from .non_abelian_qsp import GKPState, SqueezedCatState
 
-__all__ = ["SqueezedCatState", "FockLadder"]
+__all__ = ["GKPState", "SqueezedCatState", "FockLadder"]
