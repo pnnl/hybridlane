@@ -36,7 +36,6 @@ from pennylane.transforms import (
 )
 from pennylane.wires import Wires
 
-import hybridlane as hqml
 
 from ... import sa
 from ...measurements import SampleMeasurement
@@ -74,8 +73,8 @@ NATIVE_GATES = set(jaqal.QUBIT_GATES) | set(jaqal.BOSON_GATES)
 
 # Define constraints on the gates
 @singledispatch
-def is_gate_supported(_: Operator):
-    return True
+def is_gate_supported(op: Operator):
+    return op.name in NATIVE_GATES
 
 
 @is_gate_supported.register
@@ -107,7 +106,7 @@ class QscoutIonTrap(Device):
         @qml.set_shots(1000)
         @qml.qnode(dev)
         def circuit():
-            hqml.FockLadder(5, [0, "m1i1"])
+            hqml.FockState(5, [0, "m1i1"])
             return hqml.expval(qml.Z(0))
 
         tape = qml.workflow.construct_tape(circuit)()
@@ -130,7 +129,6 @@ class QscoutIonTrap(Device):
         "optimize",
         "enable_com_modes",
         "use_virtual_wires",
-        "prefer_fockstate_instruction",
     )
 
     def __init__(
@@ -141,7 +139,6 @@ class QscoutIonTrap(Device):
         optimize: bool = True,
         enable_com_modes: bool = False,
         use_virtual_wires: bool = True,
-        prefer_fockstate_instruction: bool = True,
     ):
         r"""Initializes the device
 
@@ -171,7 +168,6 @@ class QscoutIonTrap(Device):
         self._optimize = optimize
         self._enable_com_modes = enable_com_modes
         self._use_virtual_wires = use_virtual_wires
-        self._prefer_fockstate_instruction = prefer_fockstate_instruction
 
     def execute(  # type: ignore
         self,
@@ -221,7 +217,6 @@ def get_compiler(
     max_qubits: int | None = None,
     enable_com_modes: bool = False,
     use_virtual_wires: bool = True,
-    prefer_fockstate_instruction: bool = True,
 ) -> qml.CompilePipeline:
     r"""Returns a compilation pipeline for QscoutIonTrap device
 
@@ -240,13 +235,7 @@ def get_compiler(
         use_virtual_wires: If True (default), the circuit may contain algorithmic
             (virtual) wires that will be mapped to physical wires by the compiler.
             If False, the circuit must contain only physical wires.
-
-        prefer_fockstate_instruction: If True (default), all
-            :class:`~hybridlane.FockLadder` gates acting on the tilt modes will be
-            replaced by the native instruction instead of being decomposed into
-            blue and red gates.
     """
-    # Include Fockladder instruction here so that it can be laid out if necessary
     pipeline: qml.CompilePipeline = (
         from_pennylane
         + static_analyze_tape
@@ -255,21 +244,13 @@ def get_compiler(
     )
 
     # At this point, everything is a native instruction so we can perform virtual
-    # wire layout if desired. We could perform optimizations before this, but laying
-    # out the fockladder instruction might require us to generate more gates that can
-    # be optimized later.
+    # wire layout if desired.
     pipeline += parse_hardware_wires
     if use_virtual_wires:
         pipeline += layout_wires(
             max_qubits=max_qubits,
             use_com_modes=enable_com_modes,
         )
-
-    # Replace supported fockstate ladder macros prior to optimization with their native
-    # gate (FockState) which doesn't get decomposed. Any remaining FockLadder macros
-    # will become blue/red sideband gates
-    if prefer_fockstate_instruction:
-        pipeline += substitute_native_fockstate_instruction
 
     if optimize:
         pipeline += (
@@ -293,10 +274,10 @@ def get_validator(
     max_qubits: int, enable_com_modes: bool = False
 ) -> qml.CompilePipeline:
     r"""Returns a validation pipeline for QscoutIonTrap device"""
-    allowed_wires = _get_allowed_device_wires(max_qubits, enable_com_modes)
+    physical_wires = _get_allowed_device_wires(max_qubits, enable_com_modes)
 
     return (
-        validate_device_wires(wires=allowed_wires, name=QscoutIonTrap.name)
+        validate_device_wires(wires=physical_wires, name=QscoutIonTrap.name)
         + validate_measurements(
             analytic_measurements=lambda *_: False,
             sample_measurements=accepted_sample_measurement,
@@ -425,28 +406,6 @@ def _construct_csp(
         problem.addConstraint(partial(constraint, virtual_op=op), op.wires)
 
     return problem
-
-
-@qml.transform
-def substitute_native_fockstate_instruction(tape: QuantumScript):
-    new_ops = []
-
-    for op in tape.operations:
-        if isinstance(op, hqml.FockLadder):
-            native_op = native_ops.FockStatePrep(*op.parameters, wires=op.wires)
-            if is_gate_supported(native_op):
-                new_ops.append(native_op)
-            else:
-                new_ops.append(op)
-
-        else:
-            new_ops.append(op)
-
-    def null_postprocessing(results):
-        return results[0]
-
-    new_tape = QuantumScript(new_ops, tape.measurements, tape.shots)
-    return (new_tape,), null_postprocessing
 
 
 # Define gate decompositions. Note that many gates have already been defined

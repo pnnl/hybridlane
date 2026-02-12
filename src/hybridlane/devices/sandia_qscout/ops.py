@@ -22,6 +22,7 @@ Blue = hqml.Blue
 XCD = hqml.XCD
 YCD = hqml.YCD
 ZCD = hqml.CD
+FockState = hqml.FockState
 
 
 class ConditionalXSqueezing(Operation, Hybrid):
@@ -105,28 +106,6 @@ class SidebandProbe(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "Rt_SBP", cache=cache
         )
-
-
-class FockStatePrep(Operation, Hybrid):
-    r"""Prepare a definite Fock state
-
-    This gate is represented in terms of a native Jaqal instruction ``FockStatePrep``.
-    """
-
-    num_params = 0
-    num_wires = 2
-    num_qumodes = 1
-    grad_method = None
-
-    resource_keys = set()
-
-    def __init__(self, n: int, wires: WiresLike = None, id: str | None = None):
-        self.hyperparameters["n"] = n
-        super().__init__(wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
 
 class NativeBeamsplitter(Operation, Hybrid):

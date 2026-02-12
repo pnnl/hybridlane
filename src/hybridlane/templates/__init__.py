@@ -3,7 +3,7 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 
-from .fock_ladder import FockLadder
+from .fock_state import FockState
 from .non_abelian_qsp import GKPState, SqueezedCatState
 
-__all__ = ["GKPState", "SqueezedCatState", "FockLadder"]
+__all__ = ["GKPState", "SqueezedCatState", "FockState"]

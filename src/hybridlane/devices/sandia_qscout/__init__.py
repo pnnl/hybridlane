@@ -30,7 +30,7 @@ Example with hardware wires:
     @qml.set_shots(10)
     @qml.qnode(dev)
     def circuit():
-        hqml.FockLadder(3, [0, "m1i2"])
+        hqml.FockState(3, [0, "m1i2"])
         return hqml.expval(qml.Z(0))
 
     print(qml.draw(circuit)())
@@ -54,7 +54,7 @@ Example with virtual wires:
     @qml.set_shots(10)
     @qml.qnode(dev)
     def circuit():
-        hqml.FockLadder(3, ["q", "m"])
+        hqml.FockState(3, ["q", "m"])
         return hqml.expval(qml.Z("q"))
 
     print(qml.draw(circuit, level="device")())

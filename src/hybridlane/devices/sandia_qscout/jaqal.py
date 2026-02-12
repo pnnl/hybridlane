@@ -91,7 +91,7 @@ QUBIT_GATES = {
 BOSON_GATES = {
     "JaynesCummings": "Red",
     "AntiJaynesCummings": "Blue",
-    "FockStatePrep": "FockStatePrep",
+    "FockState": "FockStatePrep",
     "ConditionalDisplacement": "zCD",
     "ConditionalYDisplacement": "yCD",
     "ConditionalXDisplacement": "xCD",
@@ -283,7 +283,7 @@ def _(op: hqml.Red | hqml.Blue, Q, q):
 
 
 @gate_to_ir.register
-def _(op: native_ops.FockStatePrep, Q, q):
+def _(op: hqml.FockState, Q, q):
     gate_id = BOSON_GATES[op.name]
     fock_state = int(op.hyperparameters["n"])
     qubit, mode = op.wires

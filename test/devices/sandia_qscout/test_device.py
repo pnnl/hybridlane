@@ -220,7 +220,7 @@ class TestLayout:
 
 @pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDecomposition:
-    def test_fockladder_and_conditionaldisplacement(self):
+    def test_fockstate_and_conditionaldisplacement(self):
         dev = qml.device(
             "sandiaqscout.hybrid", optimize=True, use_virtual_wires=False, n_qubits=3
         )
@@ -228,8 +228,8 @@ class TestDecomposition:
         @qml.set_shots(20)
         @qml.qnode(dev)
         def circuit():
-            hqml.FockLadder(5, [0, "m0i1"])
-            hqml.FockLadder(5, [0, "m0i2"])
+            hqml.FockState(5, [0, "m0i1"])
+            hqml.FockState(5, [0, "m0i2"])
             hqml.ConditionalDisplacement(0.5, 0.5, [0, "m1i1"])
             hqml.ConditionalDisplacement(-0.5, -0.5, [0, "m1i1"])
             return hqml.expval(qml.X(0))
@@ -237,9 +237,7 @@ class TestDecomposition:
         tape = construct_tape(circuit, level="device")()
         op_counts = Counter([type(op) for op in tape.operations])
 
-        # Both fock ladders get converted into native instruction
-        assert op_counts[ion.FockStatePrep] == 2
-        assert isinstance(tape.operations[0], ion.FockStatePrep)
+        assert op_counts[hqml.FockState] == 2
 
         # Check the conditional displacements are optimized away
         assert op_counts[hqml.CD] == 0
@@ -259,7 +257,9 @@ class TestDecomposition:
         assert op_counts[qml.IsingXX] == 1
 
     def test_no_beamsplitter_decomposition(self):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=6, optimize=True)
+        dev = qml.device(
+            "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
+        )
 
         @qml.set_shots(20)
         @qml.qnode(dev)
@@ -269,22 +269,33 @@ class TestDecomposition:
             hqml.ModeSwap(wires=["m1i1", "m0i3"])
             return hqml.expval(qml.Z(0))
 
-        # Emits 2 warnings if it can't find a decomposition
-        with pytest.warns(UserWarning):
-            with pytest.warns(UserWarning, match="unable to find a decomposition for"):
-                construct_tape(circuit, level="device")()
+        # Emits 2 warnings if it can't find a decomposition, then raises an error
+        # because the decomposed tape has non-native operations
+        with (
+            pytest.warns(UserWarning),
+            pytest.warns(UserWarning, match="unable to find a decomposition for"),
+            pytest.raises(DeviceError),
+        ):
+            construct_tape(circuit, level="device")()
 
     def test_no_squeezing_decomposition(self):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=6, optimize=True)
+        dev = qml.device(
+            "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
+        )
 
         @qml.set_shots(20)
         @qml.qnode(dev)
         def circuit():
-            # Hybridlane CS gate isn't defined, instead one has to use ConditionalXSqueezing
+            # Hybridlane CS gate isn't defined, instead one has to use
+            # ConditionalXSqueezing
             hqml.ConditionalSqueezing(1, 0, wires=[0, "m1i1"])
             return hqml.expval(qml.Z(0))
 
-        # Emits 2 warnings if it can't find a decomposition
-        with pytest.warns(UserWarning):
-            with pytest.warns(UserWarning, match="unable to find a decomposition for"):
-                construct_tape(circuit, level="device")()
+        # Emits 2 warnings if it can't find a decomposition, then raises an error
+        # because the decomposed tape has non-native operations
+        with (
+            pytest.warns(UserWarning),
+            pytest.warns(UserWarning, match="unable to find a decomposition for"),
+            pytest.raises(DeviceError),
+        ):
+            construct_tape(circuit, level="device")()
