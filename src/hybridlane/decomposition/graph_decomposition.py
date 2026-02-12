@@ -2,7 +2,7 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-from typing import override
+from typing_extensions import override
 from unittest.mock import patch
 
 import pennylane as qml
