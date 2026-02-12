@@ -3,7 +3,6 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import math
-from collections.abc import Sequence
 
 import pennylane as qml
 from pennylane.decomposition.symbolic_decomposition import (
@@ -37,12 +36,6 @@ class Fourier(CVOperation):
     @property
     def resource_params(self):
         return {}
-
-    @staticmethod
-    def compute_decomposition(
-        *params, wires, **hyperparameters
-    ) -> Sequence[CVOperation]:
-        return [hqml.Rotation(math.pi / 2, wires)]
 
     def adjoint(self):
         return hqml.Rotation(-math.pi / 2, self.wires)

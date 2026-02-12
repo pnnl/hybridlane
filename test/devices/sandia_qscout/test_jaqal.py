@@ -3,6 +3,7 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 
+import math
 import textwrap
 
 import numpy as np
@@ -93,5 +94,41 @@ class TestToJaqal:
             }
             """
         )
+
+        assert programs_equal(actual_ir, expected_ir)
+
+    def test_dynamic_displacement_decomposition(self):
+        dev = qml.device("sandiaqscout.hybrid", optimize=True, n_qubits=2)
+
+        @qml.set_shots(20)
+        @qml.qnode(dev)
+        def circuit(dist):
+            qml.H("q")
+            hqml.CD(dist, 0, ["q", "m"])
+            hqml.D(dist, math.pi / 2, ["m"])
+            hqml.ConditionalDisplacement(-dist, 0, ["q", "m"])
+            hqml.D(-dist, math.pi / 2, ["m"])
+            qml.H("q")
+            return hqml.expval(qml.Z("q"))
+
+        actual_ir = to_jaqal(circuit, level="device", precision=4)(1.0)
+        expected_ir = textwrap.dedent(
+            r"""
+            from qscout.v1.std usepulses *
+
+            register q[2]
+
+            subcircuit 20 {
+               	Rz q[1] 3.142
+               	Ry q[1] 1.571
+               	zCD q[1] 1 1 1.0 0.0
+               	zCD q[0] 1 1 0.00000000000000006123 1.0
+               	zCD q[1] 1 1 -1.0 -0.0
+               	zCD q[0] 1 1 -0.00000000000000006123 -1.0
+               	Rz q[1] 3.142
+               	Ry q[1] 1.571
+            }
+            """
+        ).strip()
 
         assert programs_equal(actual_ir, expected_ir)

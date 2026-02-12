@@ -49,6 +49,7 @@ Example with virtual wires:
 
 .. code:: python
 
+    qml.decomposition.enable_graph()
     dev = qml.device("sandiaqscout.hybrid", n_qubits=4)
 
     @qml.set_shots(10)

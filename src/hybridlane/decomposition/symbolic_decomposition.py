@@ -2,6 +2,14 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
+
+__all__ = [
+    "merge_qubit_conditioned",
+    "flip_pow_qcond",
+    "ctrl_from_qcond",
+    "make_qcond_decomp",
+]
+
 import pennylane as qml
 from pennylane.decomposition import DecompositionRule
 from pennylane.decomposition.resources import adjoint_resource_rep, pow_resource_rep

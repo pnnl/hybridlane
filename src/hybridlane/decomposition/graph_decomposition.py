@@ -9,12 +9,12 @@ import pennylane as qml
 from pennylane.decomposition import CompressedResourceOp, DecompositionRule
 from pennylane.decomposition import DecompositionGraph as PLDG
 
+import hybridlane as hqml
+
 from ..ops.op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multi_qcond,
 )
-from .symbolic_decomposition import ctrl_from_qcond, make_qcond_decomp, flip_pow_qcond
-
-import hybridlane as hqml
+from .symbolic_decomposition import ctrl_from_qcond, flip_pow_qcond, make_qcond_decomp
 
 
 class DecompositionGraph(PLDG):

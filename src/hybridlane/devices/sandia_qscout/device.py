@@ -32,15 +32,17 @@ from pennylane.transforms import (
     decompose,
     diagonalize_measurements,
     merge_rotations,
+    resolve_dynamic_wires,
     single_qubit_fusion,
 )
 from pennylane.wires import Wires
 
+import hybridlane as hqml
+from hybridlane.ops.op_math.decompositions import make_gate_with_ancilla_qubit
 
 from ... import sa
 from ...measurements import SampleMeasurement
 from ...transforms import from_pennylane
-from ..preprocess import static_analyze_tape
 from . import jaqal
 from . import ops as native_ops
 from .jaqal import Qumode
@@ -207,6 +209,7 @@ class QscoutIonTrap(Device):
     ) -> qml.CompilePipeline:
         execution_config = execution_config or ExecutionConfig()
         device_options = execution_config.device_options.copy() or {}
+        device_options.setdefault("max_qubits", self._max_qubits)
         if n_qubits := device_options.pop("n_qubits", None):
             device_options["max_qubits"] = n_qubits
         return get_compiler(**device_options)
@@ -238,9 +241,8 @@ def get_compiler(
     """
     pipeline: qml.CompilePipeline = (
         from_pennylane
-        + static_analyze_tape
         + diagonalize_measurements
-        + decompose(gate_set=NATIVE_GATES | {"FockLadder"})
+        + dynamic_gate_decompose(gate_set=NATIVE_GATES, max_qubits=max_qubits)
     )
 
     # At this point, everything is a native instruction so we can perform virtual
@@ -296,6 +298,38 @@ def validate_gates_supported_on_hardware(tape: QuantumScript):
         return results[0]
 
     return (tape,), null_postprocessing
+
+
+@qml.transform
+def dynamic_gate_decompose(
+    tape: QuantumScript,
+    sa_res: sa.StaticAnalysisResult | None = None,
+    max_qubits: int | None = None,
+    gate_set: set | None = None,
+):
+    if sa_res is None:
+        sa_res = sa.analyze(tape)
+
+    gate_set = gate_set or NATIVE_GATES
+
+    remaining_work_wires = None
+    if max_qubits is not None:
+        n_qubits = len(sa_res.qubits)
+        remaining_work_wires = max_qubits - n_qubits
+
+    # Decompose into the target gate set allowing dynamic qubit allocation, then map
+    # dynamic wires to virtual wires
+    pipeline = decompose(
+        gate_set=gate_set,
+        alt_decomps=DECOMPS,
+        num_work_wires=remaining_work_wires,
+        minimize_work_wires=True,
+    ) + resolve_dynamic_wires(
+        zeroed=[f"virtual-qubit-{i}" for i in range(remaining_work_wires or 0)],
+        allow_resets=False,  # no native reset instruction
+    )
+
+    return pipeline(tape)
 
 
 @qml.transform
@@ -413,7 +447,7 @@ def _construct_csp(
 
 
 @qml.register_resources({qml.IsingXX: 1, qml.RY: 2, qml.RX: 2})
-def _cnot_decomp(wires, **_):
+def cnot_decomp(wires, **_):
     # Taken from https://en.wikipedia.org/wiki/Mølmer–Sørensen_gate#Description
     qml.RY(math.pi / 2, wires[0])
     qml.IsingXX(math.pi / 2, wires)
@@ -422,17 +456,23 @@ def _cnot_decomp(wires, **_):
     qml.RY(-math.pi / 2, wires[0])
 
 
-qml.add_decomps(qml.CNOT, _cnot_decomp)
-
-
 @qml.register_resources({qml.GlobalPhase: 1, native_ops.R: 2})
-def _rot_decomp(phi, theta, omega, wires, **_):
+def rot_decomp(phi, theta, omega, wires, **_):
     native_ops.R(theta - math.pi, math.pi / 2 - phi, wires=wires)
     native_ops.R(math.pi, (omega - phi) / 2 + math.pi / 2, wires=wires)
     qml.GlobalPhase((phi + omega) / 2)
 
 
-qml.add_decomps(qml.Rot, _rot_decomp)
+DYNAMIC_DECOMPS = {
+    hqml.D: [make_gate_with_ancilla_qubit(hqml.D)],
+    hqml.S: [make_gate_with_ancilla_qubit(hqml.S)],
+    hqml.R: [make_gate_with_ancilla_qubit(hqml.R)],
+}
+
+DECOMPS = {
+    qml.CNOT: [cnot_decomp],
+    qml.Rot: [rot_decomp],
+} | DYNAMIC_DECOMPS
 
 
 def _get_allowed_device_wires(max_qubits: int, use_com_modes: bool) -> Wires:

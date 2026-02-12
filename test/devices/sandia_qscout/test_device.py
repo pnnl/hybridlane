@@ -4,6 +4,7 @@
 # See the LICENSE.txt file for full license text.
 
 import importlib
+import math
 import sys
 from collections import Counter
 
@@ -299,3 +300,24 @@ class TestDecomposition:
             pytest.raises(DeviceError),
         ):
             construct_tape(circuit, level="device")()
+
+    def test_dynamic_displacement_decomposition(self):
+        dev = qml.device("sandiaqscout.hybrid", optimize=True, n_qubits=6)
+
+        @qml.set_shots(20)
+        @qml.qnode(dev)
+        def circuit(dist):
+            qml.H("q")
+            hqml.CD(dist, 0, ["q", "m"])
+            hqml.D(dist, math.pi / 2, ["m"])
+            hqml.ConditionalDisplacement(-dist, 0, ["q", "m"])
+            hqml.D(-dist, math.pi / 2, ["m"])
+            qml.H("q")
+            return hqml.expval(qml.Z("q"))
+
+        specs = qml.specs(circuit, level="device")(1.0)
+        gate_count = specs.resources.gate_types
+
+        # The D gates should be replaced by CD gates on an ancilla qubit
+        assert gate_count.get("Displacement", 0) == 0
+        assert gate_count["ConditionalDisplacement"] == 4
