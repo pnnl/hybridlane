@@ -429,6 +429,14 @@ def _construct_csp(
     # All virtual wires must have unique hardware assignments
     problem.addConstraint(AllDifferentConstraint())
 
+    # For any wires in the circuit that are already hardware labels, force them to be
+    # assigned to themselves
+    for w in sa_res.qubits & hw_qubits:
+        problem.addConstraint(lambda assigned, w=w: assigned == w, [w])
+
+    for w in sa_res.qumodes & hw_qumodes:
+        problem.addConstraint(lambda assigned, w=w: assigned == w, [w])
+
     def constraint(*hw_wires, virtual_op: Operator):
         hw_op = virtual_op.map_wires(
             {w: w2 for w, w2 in zip(virtual_op.wires, hw_wires)}

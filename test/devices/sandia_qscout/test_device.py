@@ -309,9 +309,9 @@ class TestDecomposition:
         def circuit(dist):
             qml.H("q")
             hqml.CD(dist, 0, ["q", "m"])
-            hqml.D(dist, math.pi / 2, ["m"])
-            hqml.ConditionalDisplacement(-dist, 0, ["q", "m"])
-            hqml.D(-dist, math.pi / 2, ["m"])
+            hqml.D(dist, math.pi / 2, "m")
+            hqml.CD(-dist, 0, ["q", "m"])
+            hqml.D(-dist, math.pi / 2, "m")
             qml.H("q")
             return hqml.expval(qml.Z("q"))
 

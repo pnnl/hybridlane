@@ -103,13 +103,13 @@ class TestToJaqal:
         @qml.set_shots(20)
         @qml.qnode(dev)
         def circuit(dist):
-            qml.H("q")
-            hqml.CD(dist, 0, ["q", "m"])
-            hqml.D(dist, math.pi / 2, ["m"])
-            hqml.ConditionalDisplacement(-dist, 0, ["q", "m"])
-            hqml.D(-dist, math.pi / 2, ["m"])
-            qml.H("q")
-            return hqml.expval(qml.Z("q"))
+            qml.H(0)
+            hqml.CD(dist, 0, [0, "m"])
+            hqml.D(dist, math.pi / 2, "m")
+            hqml.CD(-dist, 0, [0, "m"])
+            hqml.D(-dist, math.pi / 2, "m")
+            qml.H(0)
+            return hqml.expval(qml.Z(0))
 
         actual_ir = to_jaqal(circuit, level="device", precision=4)(1.0)
         expected_ir = textwrap.dedent(
@@ -119,14 +119,14 @@ class TestToJaqal:
             register q[2]
 
             subcircuit 20 {
-               	Rz q[1] 3.142
-               	Ry q[1] 1.571
-               	zCD q[1] 1 1 1.0 0.0
-               	zCD q[0] 1 1 0.00000000000000006123 1.0
-               	zCD q[1] 1 1 -1.0 -0.0
-               	zCD q[0] 1 1 -0.00000000000000006123 -1.0
-               	Rz q[1] 3.142
-               	Ry q[1] 1.571
+               	Rz q[0] 3.142
+               	Ry q[0] 1.571
+               	zCD q[0] 1 1 1.0 0.0
+               	zCD q[1] 1 1 0.00000000000000006123 1.0
+               	zCD q[0] 1 1 -1.0 -0.0
+               	zCD q[1] 1 1 -0.00000000000000006123 -1.0
+               	Rz q[0] 3.142
+               	Ry q[0] 1.571
             }
             """
         ).strip()
