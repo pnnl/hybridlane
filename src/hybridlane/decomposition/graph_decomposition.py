@@ -2,14 +2,7 @@
 
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
-import sys
-
-if sys.version_info >= (3, 12):
-    from typing import override
-elif sys.version_info >= (3, 11):
-    from typing_extensions import override
-else:
-    raise ImportError("Python 3.11 or higher is required to use HybridLane")
+from typing_extensions import override
 from unittest.mock import patch
 
 import pennylane as qml
