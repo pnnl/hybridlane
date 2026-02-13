@@ -3,7 +3,6 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import warnings
-from functools import partial
 
 import numpy as np
 import pennylane as qml
@@ -39,10 +38,6 @@ class DJCEvo(Operation, Hybrid):
         )
         super().__init__(t, wires=wires, id=id)
 
-    @property
-    def resource_params(self):
-        return {}
-
 
 @qml.register_resources({qml.RZ: 1, hqml.Rotation: 1, hqml.ConditionalRotation: 1})
 def _djc_decomp(t, wires, omega_r, omega_q, chi, **_):
@@ -64,9 +59,10 @@ class TestApplications:
 
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
-        @partial(
-            qml.transforms.decompose,
+        @qml.transforms.decompose(
             gate_set={
+                hqml.Red,
+                hqml.Blue,
                 hqml.ConditionalRotation,
                 hqml.Rotation,
                 qml.RZ,
@@ -79,6 +75,7 @@ class TestApplications:
         @qml.set_shots(10)
         @qml.qnode(dev)
         def circuit(n_bits: int):
+            hqml.FockState(4, wires=("q", "m"))
             estimation_wires = range(n_bits)
             QuantumPhaseEstimation(U, estimation_wires=estimation_wires)
 
@@ -88,7 +85,7 @@ class TestApplications:
         # Decomposition raises a warning if it can't find a decomposition
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            specs = qml.specs(circuit, level="user")(5)
+            specs = qml.specs(circuit, level="device")(5)
 
         gate_types = specs["resources"].gate_types
         assert gate_types["Hadamard"] == 10  # 2 per estimation bit

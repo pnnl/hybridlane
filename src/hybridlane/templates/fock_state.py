@@ -73,8 +73,8 @@ def _fockstate_resources(fock_level):
 
 
 @qml.register_resources(_fockstate_resources)
-def _fockstate_decomp(*params, wires, **_):
-    fock_state = cast(int, params[0])
+def _fockstate_decomp(fock_state, wires, **_):
+    fock_state = cast(int, fock_state)
     for n in range(fock_state):
         rabi_rate = math.sqrt(n + 1)
         theta = math.pi / (2 * rabi_rate)
@@ -87,7 +87,13 @@ def _fockstate_decomp(*params, wires, **_):
         qml.X(wires[0])
 
 
-@qml.register_resources({FockState: 1}, work_wires={"zeroed": 1})
+def _fock_state_with_ancilla_qubit_resources(fock_level):
+    return {qml.resource_rep(FockState, fock_level=fock_level): 1}
+
+
+@qml.register_resources(
+    _fock_state_with_ancilla_qubit_resources, work_wires={"zeroed": 1}
+)
 def _qml_fockstate_with_ancilla_qubit(n, wires):
     with qml.allocate(1, "zero", restored=True) as ancilla:
         FockState(n, wires=[ancilla[0], wires[0]])
