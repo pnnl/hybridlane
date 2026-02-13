@@ -10,18 +10,18 @@ import pytest
 import hybridlane as hqml
 
 
-class TestFockLadder:
+class TestFockState:
     @pytest.mark.parametrize("n", range(10))
     def test_expval(self, n):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
 
         @qml.qnode(dev)
         def circuit(n):
-            hqml.FockLadder(n, [0, 1])
+            hqml.FockState(n, [0, 1])
             return hqml.expval(qml.Z(0) @ hqml.N(1))
 
         expval = circuit(n)
-        assert np.isclose(expval, (-1) ** n * n)
+        assert np.isclose(expval, n)
 
     @pytest.mark.parametrize("n", range(10))
     def test_var(self, n):
@@ -29,7 +29,7 @@ class TestFockLadder:
 
         @qml.qnode(dev)
         def circuit(n):
-            hqml.FockLadder(n, [0, 1])
+            hqml.FockState(n, [0, 1])
             return hqml.var(qml.Z(0) @ hqml.N(1))
 
         var = circuit(n)

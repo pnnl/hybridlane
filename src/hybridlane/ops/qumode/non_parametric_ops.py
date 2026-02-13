@@ -3,7 +3,6 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import math
-from collections.abc import Sequence
 
 import pennylane as qml
 from pennylane.decomposition.symbolic_decomposition import (
@@ -22,7 +21,8 @@ from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_
 class Fourier(CVOperation):
     r"""Continuous-variable Fourier gate :math:`F`
 
-    This gate is a special case of the CV :py:class:`~hybridlane.Rotation` gate with :math:`\theta = \pi/2`
+    This gate is a special case of the CV :py:class:`~hybridlane.Rotation` gate with
+    :math:`\theta = \pi/2`
     """
 
     num_params = 0
@@ -36,12 +36,6 @@ class Fourier(CVOperation):
     @property
     def resource_params(self):
         return {}
-
-    @staticmethod
-    def compute_decomposition(
-        *params, wires, **hyperparameters
-    ) -> Sequence[CVOperation]:
-        return [hqml.Rotation(math.pi / 2, wires)]
 
     def adjoint(self):
         return hqml.Rotation(-math.pi / 2, self.wires)
@@ -84,14 +78,30 @@ qml.add_decomps("Adjoint(Fourier)", _adjoint_f_to_r)
 qml.add_decomps("Pow(Fourier)", make_pow_decomp_with_period(4), _pow_f_to_r)
 qml.add_decomps("qCond(Fourier)", to_native_qcond(1))
 
+F = Fourier
+r"""Fourier gate
+
+.. math::
+
+    F = e^{-i\frac{\pi}{2}\hat{n}}
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.JaynesCummings`
+"""
+
 
 class ModeSwap(CVOperation):
     r"""Continuous-variable SWAP between two qumodes
 
-    This has a decomposition in terms of a :py:class:`~hybridlane.Beamsplitter` and phase-space
-    :py:class:`~hybridlane.Rotation` gates to eliminate the global phase. See eq. 175 [1]_.
+    This has a decomposition in terms of a :py:class:`~hybridlane.Beamsplitter` and
+    phase-space :py:class:`~hybridlane.Rotation` gates to eliminate the global phase.
+    (eq. 175 of :footcite:p:`liu2026hybrid`).
 
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 0
@@ -105,14 +115,6 @@ class ModeSwap(CVOperation):
     @property
     def resource_params(self):
         return {}
-
-    @staticmethod
-    def compute_decomposition(*params, wires, **hyperparameters):
-        return [
-            hqml.Beamsplitter(math.pi, 0, wires),
-            hqml.Rotation(-math.pi / 2, wires[0]),
-            hqml.Rotation(-math.pi / 2, wires[1]),
-        ]
 
     def adjoint(self):
         return ModeSwap(self.wires)  # self-adjoint up to a global phase of -1

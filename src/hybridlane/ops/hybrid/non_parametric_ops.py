@@ -23,19 +23,20 @@ from ..op_math.decompositions.qubit_conditioned_decompositions import (
 class ConditionalParity(Operation, Hybrid):
     r"""Qubit-conditioned number parity gate :math:`CP`
 
-    This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation` gate, with :math:`CP = CR(\pi)`, resulting
-    in the unitary expression
+    This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation`
+    gate, with :math:`CP = CR(\pi)`, resulting in the unitary expression
 
     .. math::
 
         CP &= \exp[-i\frac{\pi}{2}\sigma_z \hat{n}] \\
            &= \ket{0}\bra{0} \otimes F + \ket{1}\bra{1} \otimes F^\dagger
 
-    This gate can also be viewed as the "conditioned" version of the :class:`~hybridlane.Fourier` gate.
+    This gate can also be viewed as the "conditioned" version of the
+    :class:`~hybridlane.Fourier` gate.
 
     .. seealso::
 
-        :py:class:`~hybridlane.ConditionalRotation`
+        :class:`~hybridlane.ConditionalRotation`
     """
 
     num_params = 0
@@ -50,10 +51,6 @@ class ConditionalParity(Operation, Hybrid):
     @property
     def resource_params(self):
         return {}
-
-    @staticmethod
-    def compute_decomposition(wires, **_):
-        return [hqml.ConditionalRotation(math.pi, wires)]
 
     def adjoint(self):
         return hqml.ConditionalRotation(-math.pi, self.wires)
@@ -96,3 +93,13 @@ qml.add_decomps(ConditionalParity, _cp_to_cr)
 qml.add_decomps("Adjoint(ConditionalParity)", _adjoint_cp_to_cr)
 qml.add_decomps("Pow(ConditionalParity)", make_pow_decomp_with_period(4), _pow_cp_to_cr)
 qml.add_decomps("qCond(ConditionalParity)", decompose_multiqcond_native)
+
+CP = ConditionalParity
+r"""Conditional parity (CP) gate
+
+.. math::
+
+    CP = e^{-i\frac{\pi}{2}\hat{n}Z}
+
+This is an alias for :class:`~hybridlane.ConditionalParity`
+"""

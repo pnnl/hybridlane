@@ -24,7 +24,8 @@ class Beamsplitter(CVOperation):
 
     .. math::
 
-        BS(\theta,\varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b + e^{-i\varphi}ab^\dagger)\right]
+        BS(\theta,\varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b
+            + e^{-i\varphi}ab^\dagger)\right]
     """
 
     num_params = 2
@@ -86,6 +87,19 @@ def _pow_bs(theta, phi, wires, z, **_):
 qml.add_decomps("Adjoint(Beamsplitter)", adjoint_rotation)
 qml.add_decomps("Pow(Beamsplitter)", _pow_bs)
 qml.add_decomps("qCond(Beamsplitter)", to_native_qcond(1))
+
+BS = Beamsplitter
+r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
+
+.. math::
+
+    BS(\theta, \varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b
+        + e^{-i\varphi}ab^\dagger)\right]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.Beamsplitter`
+"""
 
 
 # Re-export flipping sign of r, equivalent to φ -> φ + π
@@ -158,6 +172,18 @@ qml.add_decomps("Adjoint(TwoModeSqueezing)", adjoint_rotation)
 qml.add_decomps("Pow(TwoModeSqueezing)", _pow_tms)
 qml.add_decomps("qCond(TwoModeSqueezing)", to_native_qcond(1))
 
+TMS = TwoModeSqueezing
+r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
+
+.. math::
+
+    TMS(r, \varphi) = \exp\left[r (e^{i\phi} \ad b^\dagger - e^{-i\phi} ab\right].
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.TwoModeSqueezing`
+"""
+
 
 class TwoModeSum(CVOperation):
     r"""Two-mode summing gate :math:`SUM(\lambda)`
@@ -168,15 +194,19 @@ class TwoModeSum(CVOperation):
 
         SUM(\lambda) = \exp[\frac{\lambda}{2}(a + \ad)(b^\dagger - b)]
 
-    where :math:`\lambda \in \mathbb{R}` is a real parameter. The action on the wavefunction is given by
+    where :math:`\lambda \in \mathbb{R}` is a real parameter. The action on the
+    wavefunction is given by
 
     .. math::
 
         SUM(\lambda)\ket{x_a}\ket{x_b} = \ket{x_a}\ket{x_b + \lambda x_a}
 
-    in the position basis (see Box III.6 of [1]_).
+    in the position basis (see Box III.6 of :footcite:p:`liu2026hybrid`).
 
-    .. [1] Y. Liu et al, 2024. `arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 1
@@ -216,6 +246,18 @@ class TwoModeSum(CVOperation):
 qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
 qml.add_decomps("Pow(TwoModeSum)", pow_rotation)
 qml.add_decomps("qCond(TwoModeSum)", to_native_qcond(1))
+
+SUM = TwoModeSum
+r"""Two-mode summing gate :math:`SUM(\lambda)`
+
+.. math::
+
+    SUM(\lambda) = \exp[\frac{\lambda}{2}(a + \ad)(b^\dagger - b)]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.TwoModeSum`
+"""
 
 
 def _can_replace(x, y):

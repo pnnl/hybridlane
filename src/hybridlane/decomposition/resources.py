@@ -64,14 +64,19 @@ def qubit_conditioned_resource_rep(
     if base_class is hqml.ops.Rotation:
         return qml.resource_rep(hqml.ops.ConditionalRotation)
 
-    # Decompose instances of QubitConditioned(gate) where gate itself is equivalent to QubitConditioned(othergate)
-    # e.g. QubitConditioned(ConditionalDisplacement) = QubitConditioned(Displacement, control_wires=2)
+    # Decompose instances of QubitConditioned(gate) where gate itself is equivalent to
+    # QubitConditioned(othergate) e.g.
+    # QubitConditioned(CD) = QubitConditioned(D, control_wires=2)
     known_custom_gates = custom_qubit_controlled_op_to_base()
     if known_custom_gate := known_custom_gates.get(base_class):
         num_control_wires = (
             num_control_wires + base_class.num_wires - known_custom_gate.num_wires
         )
         base_class = known_custom_gate
+    elif base_class is qml.MultiRZ:  # special exception
+        num_control_wires = num_control_wires + base_params["num_wires"] - 1
+        base_class = qml.RZ
+        base_params = {}
 
     return CompressedResourceOp(
         hqml.ops.QubitConditioned,
@@ -92,7 +97,6 @@ def custom_qubit_controlled_op_to_base():
         hqml.ConditionalTwoModeSum: hqml.TwoModeSum,
         hqml.ConditionalBeamsplitter: hqml.Beamsplitter,
         qml.IsingZZ: qml.RZ,
-        qml.MultiRZ: qml.RZ,
     }
 
 

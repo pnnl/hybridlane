@@ -27,19 +27,23 @@ Defining a quantum circuit in Hybridlane follows the same format as Pennylane, a
     import pennylane as qml
     import hybridlane as hqml
 
-    dev = qml.device('hybrid.device')
+    dev = qml.device('bosonicqiskit.hybrid', max_fock_level=8)
 
     @qml.qnode(dev)
     def circuit(n):
         for j in range(n):
             qml.X(0)
             hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
-        
-        return hqml.expval(hqml.NumberOperator(1))
-    
+
+        return hqml.expval(hqml.N(1))
+
     n = 5
     result = circuit(n)
-    
+
+.. invisible-code-block:: python
+
+    assert result == n
+
 This circuit consists of one qubit (wire ``0``) and one qumode (wire ``1``), and it prepares the state :math:`\ket{0, n}` by (:math:`n` times) pumping one quanta into the qubit and transferring it into the qumode.
 
 .. note::
@@ -48,7 +52,7 @@ This circuit consists of one qubit (wire ``0``) and one qumode (wire ``1``), and
 
 Let's walk through the steps:
 
-.. code:: python
+.. code-block:: python
 
     import numpy as np
     import pennylane as qml
@@ -56,32 +60,23 @@ Let's walk through the steps:
 
 This code imports both Pennylane (``qml``) to get access to its decorators and their quantum gates, and our library Hybridlane (``hqml``). Usually you will need both - our library uses all the existing qubit and qumode gates provided by Pennylane, along with extra hybrid (qubit-qumode) gates and utilities provided by us. Pay close attention to which parts use Pennylane functions (``qml.``) and Hybridlane functions (``hqml.``).
 
-.. code:: python
+.. code-block:: python
 
-    dev = qml.device('hybrid.device')
+    dev = qml.device('bosonicqiskit.hybrid', max_fock_level=8)
 
-When simulating circuits in Pennylane, circuits are usually bound to devices. You must choose a device that supports the operations in your circuit, or you'll obtain an error (for example, using ``qml.Displacement`` gates with the ``default.qubit`` device). This line initializes the device registered with name ``hybrid.device``. Note that while we picked a fictional device for the purposes of providing a clean example, Hybridlane does provide a reference simulator device based on Bosonic Qiskit, ``bosonicqiskit.hybrid``.
+When simulating circuits in Pennylane, circuits are usually bound to devices. You must choose a device that supports the operations in your circuit, or you'll obtain an error (for example, using ``qml.Displacement`` gates with the ``default.qubit`` device). This line initializes the device registered with name ``bosonicqiskit.hybrid``, which calls the Bosonic Qiskit simulator.
 
-.. code:: python
+.. code-block:: python
 
     @qml.qnode(dev)
     def circuit(n):
         for j in range(n):
             qml.X(0)
             hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
-        
-        return hqml.expval(hqml.NumberOperator(1))
 
-This middle part is the actual circuit definition consisting of its inputs, operation, and outputs (measurements). The special decorator at the top, ``@qml.qnode(dev)``, is a Pennylane method for converting pure Python functions into executable quantum circuits. This binds the function ``circuit`` to the device ``dev``.
+        return hqml.expval(hqml.N(1))
 
-.. code:: python
-
-    def circuit(n):
-        for j in range(n):
-            qml.X(0)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
-
-Next is our circuit definition, which accepts a single parameter :math:`n`. The function produces the circuit
+This middle part is the actual circuit definition consisting of its inputs, operation, and outputs (measurements). The special decorator at the top, ``@qml.qnode(dev)``, is a Pennylane method for converting pure Python functions into executable quantum circuits. This binds the function ``circuit`` to the device ``dev``. Next is our circuit definition, which accepts a single parameter :math:`n`. The function produces the circuit
 
 .. math::
 
@@ -99,15 +94,12 @@ In Hybridlane we use the convention that all qubits are listed before qumodes (m
 
     You can find the list of gates provided by Pennylane at :py:mod:`pennylane`. The extra hybrid gates implemented by Hybridlane are at :py:mod:`hybridlane`. Again, if a class or function is provided under both ``qml`` and ``hqml`` (e.g. ``NumberOperator``, ``QuadX``, ``expval``), use the ``hqml`` version.
 
-.. code:: python
 
-    return hqml.expval(hqml.NumberOperator(1))
-
-Finally, the return statement determines what measurements our circuit will make. In this case, we obtain the expectation value of the photon number operator on the qumode, :math:`\braket{\hat{n}_1}`. Here, we use the Hybridlane functions ``hqml.expval`` and ``hqml.NumberOperator``. Pennylane has its own versions, but we had to redefine them for additional functionality, so use our versions.
+Finally, the return statement determines what measurements our circuit will make. In this case, we obtain the expectation value of the photon number operator on the qumode, :math:`\braket{\hat{n}_1}`. Here, we use the Hybridlane functions ``hqml.expval`` and ``hqml.N``. Pennylane has its own versions, but we had to redefine them for additional functionality, so use our versions.
 
 Phew that was a lot. But, up until this point (the last two lines), nothing has happened - these are just the *definitions*. Nothing actually happens until the function ``circuit`` is invoked,
 
-.. code:: python
+.. code-block:: python
 
     n = 5
     result = circuit(n)
@@ -121,9 +113,9 @@ These lines pass the parameter :math:`n = 5` to our circuit, meaning we will pre
 Drawing the circuit
 -------------------
 
-Pennylane provides some utility methods for visualizing circuits, :py:func:`pennylane.draw` and :py:func:`pennylane.draw_mpl`, which (mostly) work on Hybridlane circuits. 
+Pennylane provides some utility methods for visualizing circuits, :py:func:`pennylane.draw` and :py:func:`pennylane.draw_mpl`, which (mostly) work on Hybridlane circuits.
 
-.. code:: python
+.. code-block:: python
 
     hqml.draw_mpl(circuit, style='sketch')(n)
 
@@ -145,6 +137,5 @@ which produces the output
     0: ──X─╭JC(1.57,1.57)──X─╭JC(1.11,1.57)──X─╭JC(0.91,1.57)──X─╭JC(0.79,1.57)──X─╭JC(0.70,1.57)─┤ ···
     1: ────╰JC(1.57,1.57)────╰JC(1.11,1.57)────╰JC(0.91,1.57)────╰JC(0.79,1.57)────╰JC(0.70,1.57)─┤ ···
 
-    0: ···                
+    0: ···
     1: ···   expval(n̂(1))
-

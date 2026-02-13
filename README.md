@@ -1,139 +1,134 @@
-# hybridlane
+<h1 align="center">hybridlane</h1>
 
-[![PyPI - Version](https://img.shields.io/pypi/v/hybridlane?logo=pypi)](https://pypi.org/project/hybridlane/)
-[![Docs](https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/docs.yml?branch=main&logo=githubpages&label=docs)](https://pnnl.github.io/hybridlane/)
-[![PyPI Downloads](https://static.pepy.tech/personalized-badge/hybridlane?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/hybridlane)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/release.yml)](https://github.com/pnnl/hybridlane/actions/workflows/release.yml)
-[![License](https://img.shields.io/github/license/pnnl/hybridlane)](LICENSE.txt)
+<p align="center">
+  <a href="https://pypi.org/project/hybridlane/"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/hybridlane?logo=pypi"></a>
+  <a href="https://pnnl.github.io/hybridlane/"><img alt="Docs" src="https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/docs.yml?branch=main&logo=githubpages&label=docs"></a>
+  <a href="https://pepy.tech/projects/hybridlane"><img alt="PyPI Downloads" src="https://static.pepy.tech/personalized-badge/hybridlane?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads"></a>
+  <a href="https://github.com/pnnl/hybridlane/actions/workflows/release.yml"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/release.yml"></a>
+  <a href="LICENSE.txt"><img alt="License" src="https://img.shields.io/github/license/pnnl/hybridlane"></a>
+</p>
 
-hybridlane is a frontend library for expressing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the [PennyLane](https://pennylane.ai/) ecosystem. It implements the concepts introduced in the paper Y. Liu *et al*, 2024 ([arXiv:2407.10381](https://arxiv.org/abs/2407.10381)).
+**hybridlane** is a Python library for designing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the [PennyLane](https://pennylane.ai/) ecosystem. It provides a frontend for expressing hybrid quantum algorithms, implementing the concepts from the paper Y. Liu *et al*, 2026 ([PRX Quantum 7, 010201](https://doi.org/10.1103/4rf7-9tfx)).
 
 ---
 
 ## ✨ Why hybridlane?
 
-Quantum computing research is increasingly exploring hybrid (heterogenous) models. hybridlane empowers researchers and developers to:
+As quantum computing explores beyond traditional qubit-only models, `hybridlane` offers a powerful and intuitive framework for researchers and developers to:
 
-*   **Design complex hybrid circuits effortlessly:** Mix and match qubits and qumodes in the same circuit without workaround.
-*   **Circuit size:** Define hybrid gate semantics independent of simulation, enabling fast, wide, and deep circuit description with minimal memory consumption.
-*   **Integrate with PennyLane:** Leverage existing PennyLane tools for transformations, resource estimation, and device integration.
+*   **Design complex hybrid circuits effortlessly:** Seamlessly integrate qubits and qumodes in the same circuit.
+*   **Describe large-scale circuits:** Define hybrid gate semantics independently of simulation, enabling fast description of wide and deep circuits with minimal memory.
+*   **Leverage the PennyLane ecosystem:** Integrate with PennyLane's extensive tools for transformations, resource estimation, and device support.
 
 ---
 
 ## 🚀 Features
 
-hybridlane offers functionality designed for hybrid quantum circuit development:
+*   **📃 Hybrid Gate Semantics:** Precise, platform-independent definitions for hybrid gates, enabling rapid construction of large-scale quantum circuits.
 
-*   **📃 Hybrid Gate Semantics:**
-    The library precisely defines hybrid gates as presented in the reference paper, along with their operational semantics. Crucially, these definitions are entirely independent of their truncated matrix representations, allowing for rapid description of large circuits.
+*   **⚛️ Native Qumode Support:** Qumodes are treated as a fundamental wire type, with automatic type inference that simplifies circuit construction and enhances readability.
 
-*   **⚛️ Native Qumode Support:**
-    Unlike other libraries that might interpret lists of qubits as a "qumode," hybridlane provides native support for qumodes as fundamental wire types. The types of wires (qubit or qumode) are automatically inferred through static analysis of the circuit structure, eliminating the need for manual type annotation and making circuit construction highly intuitive.
+*   **🤝 PennyLane Compatibility:** A familiar interface for PennyLane users. Utilize existing PennyLane gates, build custom hybrid devices, write compilation passes, and perform resource estimation across mixed-variable systems.
 
-*   **🤝 PennyLane Compatibility:**
-    hybridlane is built to be compatible with PennyLane. Existing PennyLane users will find the interface familiar, allowing them to utilize PennyLane gates and operators, define custom devices for hybrid CV-DV computation (for simulators or hardware), write decomposition passes (transforms) to transpile hybrid circuits, and perform resource estimation. A key differentiator is the ability to freely mix qubits and qumodes within the same circuit, a capability not natively found in PennyLane or StrawberryFields alone.
+*   **💻 Classical Simulation:** A built-in device that dispatches to [Bosonic Qiskit](https://github.com/C2QA/bosonic-qiskit) for simulating small hybrid circuits.
 
-*   **💻 Classical Simulation Device:**
-    We provide a classical simulation device that dispatches computations to [Bosonic Qiskit](https://github.com/C2QA/bosonic-qiskit). This device is ideal for testing small circuits or serving as a reference for building your own custom hybrid devices.
-
-*   **💾 OpenQASM-based Intermediate Representation (IR):**
-    hybridlane includes an intermediate representation based on OpenQASM, extended with modifications to handle the more complex semantics inherent in CV-DV quantum computation. This enables interoperability and advanced circuit manipulation.
+*   **💾 OpenQASM-based IR:** An intermediate representation based on an extended OpenQASM, promoting interoperability and enabling advanced circuit manipulations.
 
 ---
 
 ## ⚙️ Installation
 
-hybridlane is currently in **early preview**. We highly value your feedback on GitHub Issues to help us improve!
+`hybridlane` is currently in **early preview**. We welcome your feedback on our [GitHub Issues](https://github.com/pnnl/hybridlane/issues) page to help us improve.
 
-The package can be installed from PyPI with
-
+Install the package from PyPI:
 ```bash
-pip install hybridlane[extras]
+pip install hybridlane
 ```
 
-**Available Extra Flags:**
-*   `[all]`: Installs all extra flags.
+**Available Extras:**
+*   `[all]`: Installs all extra dependencies.
 *   `[bq]`: Installs support for the `bosonicqiskit.hybrid` simulation device.
 *   `[qscout]`: Installs support for the `sandiaqscout.hybrid` compilation device.
 
-For more detailed installation instructions and environment setup, please refer to the [Getting Started Guide in our Documentation](https://pnnl.github.io/hybridlane/getting-started.html).
+For detailed instructions, see the [Getting Started Guide](https://pnnl.github.io/hybridlane/getting-started.html) in our documentation.
 
 ---
 
 ## ⚡ Quick Start
-
-Get started with hybridlane in just a few lines of code:
 
 ```python
 import numpy as np
 import pennylane as qml
 import hybridlane as hqml
 
-# Create the bosonic qiskit simulator with custom Fock truncation
+# Create a bosonic qiskit simulator with a custom Fock truncation
 dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
-# Define a hybrid circuit with familiar Pennylane syntax
+# Define a hybrid circuit with familiar PennyLane syntax
 @qml.qnode(dev)
 def circuit(n):
-    # Python control flow allowed
     for j in range(n):
-        # You can use existing Pennylane gates.
-        qml.X(0) # wire `0` inferred to be a qubit
+        qml.X(0)  # Wire `0` is inferred to be a qubit
+        # Use hybrid CV-DV gates from hybridlane
+        hqml.JC(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m"])
 
-        # Or use the hybrid CV-DV gates in Hybridlane
-        # (!) Qubits come before qumodes, allowing m0 to be inferred as a qumode
-        hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m0"])
-
-    # Freely mix qubit and qumode observables
-    # (!) We use `hqml` for measurements and for CV observables
-    return hqml.expval(hqml.NumberOperator("m0") @ qml.Z(0))
+    # Mix qubit and qumode observables
+    return hqml.expval(hqml.N("m") @ qml.Z(0))
 
 # Execute the circuit
 expval = circuit(5)
 # array(5.)
 
-# Or analyze its structure
+# Analyze its structure
 import hybridlane.sa as sa
 res = sa.analyze(circuit._tape)
-# StaticAnalysisResult(qumodes=Wires(['m0']), qubits=Wires([0]), schemas=[<hybridlane.sa.base.BasisSchema object at 0x7f504673a090>], wire_order=Wires([0, 'm0']))
+print(res)
+# StaticAnalysisResult(qumodes=Wires(['m']), qubits=Wires([0]), schemas=[...])
 ```
 
-For more examples and detailed usage, explore the [Documentation](https://pnnl.github.io/hybridlane/).
+For more examples, explore our [Documentation](https://pnnl.github.io/hybridlane/).
 
 ---
 
-## 🚧 Limitations & Future Work
+## 🗺️ Roadmap
 
-While hybridlane provides a powerful framework for hybrid quantum circuits, it's currently under active development and has some known limitations:
+`hybridlane` is under active development. Here are some of our future goals:
 
-*   **❌ Quantum Error Correction (QEC):**
-    While QEC circuits can be *described* using this package, hybridlane is not designed to handle fault-tolerant programs or extensive resource estimation like specialized libraries such as [Qualtran](https://github.com/quantumlib/Qualtran). Our focus remains on the circuit model of quantum computing.
-
-*   **❌ Catalyst/JIT Compilation Support:**
-    Currently, hybridlane does not support PennyLane's Catalyst and `qjit` capabilities. This would require developing a custom MLIR dialect for hybrid operations, which is a significant undertaking. While not on the immediate roadmap, this could be a potential feature in the future.
-
-*   **❌ Automatic Differentiation (Autodiff):**
-    While our gate definitions are fundamentally compatible with PennyLane's differentiability paradigm, we do not yet provide a differentiable simulator device, nor are gradient recipes fully defined for all hybrid operations. For now, the `bosonicqiskit.hybrid` device will typically require finite differences for gradient computation. We plan to integrate more robust autodiff capabilities in future releases.
+*   **Broader measurement support:** Including mid-circuit measurements and broader measurement capabilities.
+*   **Algorithms and transformations:** Implementing popular algorithms and circuit transformations from research papers, including dynamic qumode allocation.
+*   **Symbolic Hamiltonians:** Introducing support for symbolic bosonic Hamiltonians.
+*   **Noisy simulation:** Supporting noisy simulations with Bosonic Qiskit.
+*   **Pulse-level gates:** Allowing pulse-level gates and simulating them in Dynamiqs.
+*   **Catalyst/QJIT support:** Integrating with PennyLane's `qjit` capabilities by developing a custom MLIR dialect.
+*   **Community-driven features:** Incorporating features requested by the community during usage.
 
 ---
 
 ## 📚 Documentation
 
-For comprehensive information on hybridlane's API, detailed usage examples, theoretical background, and contributing guidelines, please visit our official [Documentation](https://pnnl.github.io/hybridlane/).
+For comprehensive information on `hybridlane`'s API, tutorials, and technical background, please visit our official [Documentation](https://pnnl.github.io/hybridlane/).
 
 ---
 
-## ❓ Support & Feedback
+## ❓ Support
 
-Having trouble? Found a bug? Have a great idea for a new feature?
+For questions, bug reports, or feature requests, please open an issue on our [GitHub Issues page](https://github.com/pnnl/hybridlane/issues).
 
-*   For technical questions, bug reports, or feature requests, please open an issue on our [GitHub Issues page](https://github.com/pnnl/hybridlane/issues).
+---
+
+## Citing hybridlane
+
+If you use `hybridlane` in your research, please cite our work:
+
+```
+under preparation, check back soon :)
+```
 
 ---
 
 ## 📜 License
 
-This project is licensed under a permissive open-source license - see the [LICENSE.txt](LICENSE.txt) file for details.
+This project is licensed under the BSD 2-Clause License - see the [LICENSE.txt](LICENSE.txt) file for details.
 
 ---
 

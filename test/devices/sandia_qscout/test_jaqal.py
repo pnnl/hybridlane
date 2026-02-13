@@ -6,13 +6,17 @@
 import math
 import textwrap
 
+import numpy as np
 import pennylane as qml
 import pytest
 
-import hybridlane as hqml
-from hybridlane.devices.sandia_qscout import QscoutIonTrap, to_jaqal
-from hybridlane.devices.sandia_qscout import ops as ion
-from hybridlane.devices.sandia_qscout.jaqal import tokenize_operation
+jaqalpaq = pytest.importorskip("jaqalpaq")
+
+from jaqalpaq.parser import parse_jaqal_string  # noqa: E402
+
+import hybridlane as hqml  # noqa: E402
+from hybridlane.devices.sandia_qscout import to_jaqal  # noqa: E402
+from hybridlane.devices.sandia_qscout.jaqal import get_boson_gate_defs  # noqa: E402
 
 
 @pytest.fixture(scope="class", autouse=True)
@@ -22,59 +26,16 @@ def graph_enabled():
     qml.decomposition.disable_graph()
 
 
-class TestTokenizer:
-    def test_fockstate(self):
-        op = ion.FockStatePrep(5, wires=[0, "a0m1"])
-        assert tokenize_operation(op) == "FockState q[0] 5 0"
-
-    def test_beamsplitter(self):
-        op = ion.NativeBeamsplitter(1.0, 2.0, 3.0, 4.0, wires=[0, "a0m1", "a1m1"])
-        assert (
-            tokenize_operation(op, precision=3) == "Beamsplitter q[0] 1.0 2.0 3.0 4.0"
-        )
-
-    def test_blue_sideband(self):
-        op = hqml.Blue(0.5, -0.2, wires=[1, "a1m3"])
-        assert tokenize_operation(op, precision=3) == "Blue q[1] 1 -0.2 0.5 1 3"
-
-    def test_red_sideband(self):
-        op = hqml.Red(0.5, -0.2, wires=[1, "a1m3"])
-        assert tokenize_operation(op, precision=3) == "Red q[1] 1 -0.2 0.5 1 3"
-
-    def test_sideband_probe(self):
-        op = ion.SidebandProbe(0.1, 0.2, 0, 0.3, wires=[0, "a0m1"])
-        assert (
-            tokenize_operation(op, precision=3) == "Rt_SBProbe q[0] 0.2 0.1 0 1 0 0.3"
-        )
-
-    def test_spin_dependent_force(self):
-        op = ion.ConditionalXDisplacement(0.1, -0.23, wires=[3, "a0m1"])
-        assert tokenize_operation(op, precision=3) == "SDF q[3] 0.1 -0.23"
-
-    def test_rampup(self):
-        op = ion.ConditionalXSqueezing(0.2, wires=[0, "a0m1"])
-        assert tokenize_operation(op, precision=3) == "RampUp q[0] 0.2"
-
-    def test_sdg(self):
-        op = qml.adjoint(qml.S(0))
-        assert tokenize_operation(op) == "Szd q[0]"
-
-    def test_sxdg(self):
-        op = qml.adjoint(qml.SX(0))
-        assert tokenize_operation(op) == "Sxd q[0]"
-
-    def test_xx(self):
-        op = qml.IsingXX(0.5, wires=[0, 1])
-        assert tokenize_operation(op, precision=3) == "XX q[0] q[1] 0.5"
-
-    def test_r(self):
-        op = ion.R(0.5, math.pi, wires=0)
-        assert tokenize_operation(op, precision=3) == "R q[0] 3.14 0.5"
+def programs_equal(actual_ir, expected_ir):
+    gates = get_boson_gate_defs()
+    actual_program = parse_jaqal_string(actual_ir, inject_pulses=gates)
+    expected_program = parse_jaqal_string(expected_ir, inject_pulses=gates)
+    return actual_program == expected_program
 
 
 class TestToJaqal:
     def test_sample_qubit_circuit(self):
-        dev = QscoutIonTrap()
+        dev = qml.device("sandiaqscout.hybrid")
 
         @qml.set_shots(20)
         @qml.qnode(dev)
@@ -83,23 +44,85 @@ class TestToJaqal:
             qml.CNOT([0, 1])
             return hqml.expval(qml.X(0))
 
-        program = to_jaqal(circuit, level="device", precision=3)()
+        actual_ir = to_jaqal(circuit, level="device")()
 
         def get_valid_programs(*wires):
             return textwrap.dedent(
                 f"""
+            from qscout.v1.std usepulses *
+
             register q[2]
 
-            prepare_all
-            Rz q[{wires[0]}] 3.14
-            Ry q[{wires[0]}] 3.14
-            XX q[{wires[0]}] q[{wires[1]}] 1.57
-            Rx q[{wires[1]}] 11.0
-            Rz q[{wires[0]}] 7.85
-            Ry q[{wires[0]}] 1.57
-            Rz q[{wires[0]}] 1.57
-
-            measure_all"""
+            subcircuit 20 {{
+            \tRz q[{wires[0]}] 3.141592653589793
+            \tRy q[{wires[0]}] 3.141592653589793
+            \tXX q[{wires[0]}] q[{wires[1]}] 1.5707963267948966
+            \tRx q[{wires[1]}] 10.995574287564276
+            \tRz q[{wires[0]}] 7.853981633974483
+            \tRy q[{wires[0]}] 1.5707963267948968
+            \tRz q[{wires[0]}] 1.5707963267948966
+            }}
+            """
             ).strip()
 
-        assert program in {get_valid_programs(0, 1), get_valid_programs(1, 0)}
+        assert any(
+            programs_equal(actual_ir, prog)
+            for prog in (get_valid_programs(0, 1), get_valid_programs(1, 0))
+        )
+
+    def test_catstate_circuit(self):
+        dev = qml.device("sandiaqscout.hybrid", n_qubits=2)
+
+        @qml.set_shots(1024)
+        @qml.qnode(dev)
+        def circuit(alpha):
+            hqml.SqueezedCatState(alpha, np.pi / 2, parity="even", wires=["q", "m1i1"])
+
+        actual_ir = to_jaqal(circuit, level="device", precision=4)(4)
+        expected_ir = textwrap.dedent(
+            r"""
+            from qscout.v1.std usepulses *
+
+            register q[2]
+
+            subcircuit 1024 {
+               	xCD q[1] 1 1 4.0 0.0
+               	Rz q[1] 11.00
+               	xCD q[1] 1 1 0.00000000000000001803 0.09817
+               	yCD q[1] 1 1 -0.09817 -0.0
+               	Sz q[1]
+            }
+            """
+        )
+
+        assert programs_equal(actual_ir, expected_ir)
+
+    def test_dynamic_displacement_decomposition(self):
+        dev = qml.device("sandiaqscout.hybrid", optimize=True, n_qubits=2)
+
+        @qml.set_shots(20)
+        @qml.qnode(dev)
+        def circuit(dist):
+            hqml.XCD(dist, 0, [0, "m"])
+            hqml.D(dist, math.pi / 2, "m")
+            hqml.XCD(-dist, 0, [0, "m"])
+            hqml.D(-dist, math.pi / 2, "m")
+            return hqml.expval(qml.Z(0))
+
+        actual_ir = to_jaqal(circuit, level="device", precision=4)(1.0)
+        expected_ir = textwrap.dedent(
+            r"""
+            from qscout.v1.std usepulses *
+
+            register q[2]
+
+            subcircuit 20 {
+               	xCD q[0] 1 1 1.0 0.0
+               	zCD q[1] 1 1 0.00000000000000006123 1.0
+               	xCD q[0] 1 1 -1.0 -0.0
+               	zCD q[1] 1 1 -0.00000000000000006123 -1.0
+            }
+            """
+        ).strip()
+
+        assert programs_equal(actual_ir, expected_ir)

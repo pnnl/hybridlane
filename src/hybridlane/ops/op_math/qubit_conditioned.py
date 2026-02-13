@@ -61,9 +61,9 @@ def _qcond_transform(func, control: Wires):
         leaves, _ = qml.pytrees.flatten(
             (args, kwargs), lambda obj: isinstance(obj, Operator)
         )
-        for l in leaves:
-            if isinstance(l, Operator):
-                qml.QueuingManager.remove(l)
+        for leaf in leaves:
+            if isinstance(leaf, Operator):
+                qml.QueuingManager.remove(leaf)
 
         for op in tape.operations:
             qcond(op, control)

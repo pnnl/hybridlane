@@ -173,7 +173,7 @@ def get_observable_matrix(
     # Here we need to construct the matrix for the observable in the wire order
     # expected by qiskit.
 
-    if not obs.is_hermitian:
+    if not obs.is_verified_hermitian:
         raise DeviceError(f"Got non-hermitian observable {obs}")
 
     # Handle symbolic observable expressions by traversing the expression tree
@@ -285,11 +285,11 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
 
         match op:
             # These gates take complex parameters or differ from bosonic qiskit
-            case (
-                hqml.Displacement(parameters=(r, phi))
-                | hqml.Squeezing(parameters=(r, phi))
-            ):
+            case hqml.Displacement(parameters=(r, phi)):
                 arg = r * np.exp(1j * phi)
+                getattr(qc, method)(arg, *qumodes)
+            case hqml.Squeezing(parameters=(r, phi)):
+                arg = -r * np.exp(-1j * phi)
                 getattr(qc, method)(arg, *qumodes)
             case hqml.Rotation(parameters=(theta,)):
                 getattr(qc, method)(-theta, *qumodes)

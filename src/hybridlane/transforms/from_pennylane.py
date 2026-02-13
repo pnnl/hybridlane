@@ -22,7 +22,6 @@ from pennylane.ops.op_math import (
 )
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
-from pennylane.wires import Wires
 
 import hybridlane as hqml
 

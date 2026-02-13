@@ -63,7 +63,9 @@ def draw_mpl(
 
     By default, Hybridlane draws quantum circuits with wire icons and default colors.
 
-    .. code:: python
+    .. code-block:: python
+
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @qml.qnode(dev)
         def circuit(n):
@@ -81,7 +83,7 @@ def draw_mpl(
     Furthermore, icon colors can be adjusted from their defaults (say to color different motional modes of an ion trap). Note
     that Hybridlane also has a special notation for "qubit-conditioned" gates.
 
-    .. code:: python
+    .. code-block:: python
 
         @qml.qnode(dev)
         def circuit(n):

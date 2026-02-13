@@ -11,7 +11,6 @@ from dataclasses import replace
 from functools import partial, singledispatch
 from typing import Hashable, cast
 
-import numpy as np
 import pennylane as qml
 from pennylane.devices import Device
 from pennylane.devices.execution_config import ExecutionConfig
@@ -33,21 +32,20 @@ from pennylane.transforms import (
     decompose,
     diagonalize_measurements,
     merge_rotations,
+    resolve_dynamic_wires,
     single_qubit_fusion,
 )
-from pennylane.transforms.core import TransformProgram
 from pennylane.wires import Wires
 
 import hybridlane as hqml
+from hybridlane.ops.op_math.decompositions import make_gate_with_ancilla_qubit
 
 from ... import sa
 from ...measurements import SampleMeasurement
 from ...transforms import from_pennylane
-from ..preprocess import static_analyze_tape
-from . import jaqal, ops
-from .ops import (
-    ConditionalXDisplacement,
-)
+from . import jaqal
+from . import ops as native_ops
+from .jaqal import Qumode
 
 # --------------------------------------------
 #     Rules about what the device handles
@@ -77,72 +75,62 @@ NATIVE_GATES = set(jaqal.QUBIT_GATES) | set(jaqal.BOSON_GATES)
 
 # Define constraints on the gates
 @singledispatch
-def is_gate_supported(_: Operator):
-    return True
+def is_gate_supported(op: Operator):
+    return op.name in NATIVE_GATES
 
 
 @is_gate_supported.register
-def _(op: ops.FockStatePrep):
-    # Hardcoded to the tilt modes
-    return op.wires[1] in ("a0m1", "a1m1")
+def _(op: native_ops.ConditionalXSqueezing):
+    # Hardcoded to the tilt mode on the lower manifold
+    return op.wires[1] == Qumode(1, 1)
 
 
 @is_gate_supported.register
-def _(op: ops.ConditionalXDisplacement):
-    # Hardcoded to the tilt mode on axis 0
-    return op.wires[1] == "a0m1"
-
-
-@is_gate_supported.register
-def _(op: ops.ConditionalXSqueezing):
-    # Hardcoded to the tilt mode on axis 0
-    return op.wires[1] == "a0m1"
-
-
-@is_gate_supported.register
-def _(op: ops.NativeBeamsplitter):
+def _(op: native_ops.NativeBeamsplitter):
     # Only supported between the tilt modes
-    return op.wires.contains_wires(Wires(["a0m1", "a1m1"]))
+    is_tilt_modes = op.wires.contains_wires(Wires([Qumode(0, 1), Qumode(1, 1)]))
+    is_supported_qubit = op.wires[0] in Wires([0, 1, 3])  # zig zag indexing
+    return is_tilt_modes and is_supported_qubit
 
 
 @single_tape_support
 class QscoutIonTrap(Device):
-    r"""Backend for Pennylane that prepares circuits to be run on the Sandia QSCOUT ion trap
+    r"""Backend that prepares circuits for the Sandia QSCOUT ion trap
 
-    This device can't actually execute anything; instead, it's intended as a compilation target.
-    As an example of how to compile a circuit to this device,
+    This device can't actually execute anything; instead, it's intended as a
+    compilation target for the QSCOUT ion trap :footcite:p:`clark2021engineering`. As
+    an example of how to compile a circuit to this device,
 
     .. code:: python
 
-        import pennylane as qml
-        import hybridlane as hqml
-        from hybridlane.devices.sandia_qscout import QscoutIonTrap
-        from pennylane.workflow import construct_tape
+        dev = qml.device("sandiaqscout.hybrid")
 
-        dev = QscoutIonTrap(shots=1000)
-
+        @qml.set_shots(1000)
         @qml.qnode(dev)
         def circuit():
-            hqml.FockLadder(5, [0, "a0m1"])
+            hqml.FockState(5, [0, "m1i1"])
             return hqml.expval(qml.Z(0))
 
-        tape = construct_tape(circuit)()
+        tape = qml.workflow.construct_tape(circuit)()
 
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     name = "Sandia Qscout Ion Trap"  # type: ignore
     shortname = "qscout"
-    version = "0.1.0"
-    pennylane_requires = ">=0.42.0"
+    version = "0.2.0"
+    pennylane_requires = ">=0.44.0"
     author = "PNNL"
 
     _max_qubits = 6
     _device_options = (
         "n_qubits",
         "optimize",
-        "use_com_modes",
-        "use_hardware_wires",
-        "use_fockstate_instruction",
+        "enable_com_modes",
+        "use_virtual_wires",
     )
 
     def __init__(
@@ -151,52 +139,37 @@ class QscoutIonTrap(Device):
         shots: int | None = None,
         n_qubits: int | None = None,
         optimize: bool = True,
-        use_com_modes: bool = False,
-        use_hardware_wires: bool = False,
-        use_fockstate_instruction: bool = True,
+        enable_com_modes: bool = False,
+        use_virtual_wires: bool = True,
     ):
         r"""Initializes the device
 
         Args:
-            wires: An optional list of wires to expect in each circuit. If this is passed, then executing
-                a circuit will error if it has any wire not in `wires`
+            wires: An optional list of wires to expect in each circuit. If this is
+                passed, then executing a circuit will error if it has any wire not in
+                `wires`
 
             shots: The number of shots to use for a measurement
 
-            n_qubits: The number of qubits per circuit. If None (default), this will be inferred from
-                each circuit. By setting this number to more qubits than are used in the circuit,
-                this can grant access to additional qumodes.
-
-            optimize: Whether to perform any simplifications of the circuit including cancelling inverse
-                gates, merging consecutive rotations, and commuting controlled operators
-
-            use_com_modes: If True, the center-of-mass qumodes are enabled. As they are likely
-                to be very noisy due to heating, they are disabled by default.
-
-            use_hardware_wires: If True, the circuit must contain only physical qumode/qubit wires.
-                If False (default), the device will assign available physical qubits and qumodes to
-                algorithmic (virtual) wires.
-
-            use_fockstate_instruction: If True (default), all :class:`~hybridlane.FockLadder` gates
-                acting on the tilt modes will be replaced by the native instruction instead of
-                being decomposed into blue/red gates.
+        Keyword arguments:
+            See the options of :func:`get_compiler`
         """
         if n_qubits is not None and n_qubits > self._max_qubits:
             raise DeviceError(
-                f"Requested more qubits than available ({n_qubits} > {self._max_qubits})"
+                f"Requested more qubits than available "
+                f"({n_qubits} > {self._max_qubits})"
             )
 
-        if use_hardware_wires:
+        if not use_virtual_wires:
             qubits = n_qubits or self._max_qubits
-            wires = _get_allowed_device_wires(qubits, use_com_modes)
+            wires = _get_allowed_device_wires(qubits, enable_com_modes)
 
         super().__init__(wires=wires, shots=shots)
 
         self._n_qubits = n_qubits
         self._optimize = optimize
-        self._use_com_modes = use_com_modes
-        self._use_hardware_wires = use_hardware_wires
-        self._use_fockstate_instruction = use_fockstate_instruction
+        self._enable_com_modes = enable_com_modes
+        self._use_virtual_wires = use_virtual_wires
 
     def execute(  # type: ignore
         self,
@@ -233,89 +206,86 @@ class QscoutIonTrap(Device):
 
     def preprocess_transforms(
         self, execution_config: ExecutionConfig | None = None
-    ) -> TransformProgram:
+    ) -> qml.CompilePipeline:
         execution_config = execution_config or ExecutionConfig()
-        device_options = execution_config.device_options or {}
+        device_options = execution_config.device_options.copy() or {}
+        device_options.setdefault("max_qubits", self._max_qubits)
+        if n_qubits := device_options.pop("n_qubits", None):
+            device_options["max_qubits"] = n_qubits
+        return get_compiler(**device_options)
 
-        transform_program = TransformProgram()
 
-        # Convert pennylane gates to hybridlane
-        transform_program.add_transform(from_pennylane)
+def get_compiler(
+    optimize: bool = True,
+    max_qubits: int | None = None,
+    enable_com_modes: bool = False,
+    use_virtual_wires: bool = True,
+) -> qml.CompilePipeline:
+    r"""Returns a compilation pipeline for QscoutIonTrap device
 
-        # Make everything measurable in pauli z basis. Diagonalize prior to
-        # decompose so that it decomposes unsupported gates
-        transform_program.add_transform(diagonalize_measurements)
+    Args:
+        optimize: Whether to perform any simplifications of the circuit including
+            cancelling inverse gates, merging consecutive rotations, and commuting
+            controlled operators
 
-        # Decompose all gates into the native gate set. We include FockLadder so that
-        # it can be laid out, and then after the layout stage we'll decompose it if necessary.
-        transform_program.add_transform(
-            decompose, gate_set=NATIVE_GATES | {"FockLadder"}
+        max_qubits: The number of qubits per circuit. If None (default), this will be
+            inferred from each circuit. By setting this number to more qubits than
+            are used in the circuit, this can grant access to additional qumodes.
+
+        enable_com_modes: If True, the center-of-mass qumodes are enabled. As they are
+            likely to be very noisy due to heating, they are disabled by default.
+
+        use_virtual_wires: If True (default), the circuit may contain algorithmic
+            (virtual) wires that will be mapped to physical wires by the compiler.
+            If False, the circuit must contain only physical wires.
+    """
+    pipeline: qml.CompilePipeline = (
+        from_pennylane
+        + diagonalize_measurements
+        + dynamic_gate_decompose(gate_set=NATIVE_GATES, max_qubits=max_qubits)
+    )
+
+    # At this point, everything is a native instruction so we can perform virtual
+    # wire layout if desired.
+    pipeline += parse_hardware_wires
+    if use_virtual_wires:
+        pipeline += layout_wires(
+            max_qubits=max_qubits,
+            use_com_modes=enable_com_modes,
         )
 
-        # If virtual wires are allowed, we need to assign them
-        max_qubits = device_options.get("n_qubits", self._n_qubits)
-        use_com_modes = device_options.get("use_com_modes", self._use_com_modes)
-        if not device_options.get("use_hardware_wires", self._use_hardware_wires):
-            transform_program.add_transform(
-                layout_wires,
-                max_qubits=max_qubits,
-                use_com_modes=use_com_modes,
-            )
-
-        # Validate all wires are assigned to proper physical addresses
-        allowed_wires = _get_allowed_device_wires(
-            max_qubits or self._max_qubits, use_com_modes
-        )
-        transform_program.add_transform(
-            validate_device_wires, wires=allowed_wires, name=self.name
+    if optimize:
+        pipeline += (
+            commute_controlled
+            + cancel_inverses
+            + merge_rotations
+            + single_qubit_fusion
+            + decompose(gate_set=NATIVE_GATES)
+            + _simplify_transform
+            + decompose(gate_set=NATIVE_GATES)
         )
 
-        # Qubit/qumode type checking
-        transform_program.add_transform(static_analyze_tape)
+    pipeline += combine_global_phases
 
-        # Measurement check
-        transform_program.add_transform(
-            validate_measurements,
+    # Finally, validate the circuit
+    pipeline += get_validator(max_qubits or QscoutIonTrap._max_qubits, enable_com_modes)
+    return pipeline
+
+
+def get_validator(
+    max_qubits: int, enable_com_modes: bool = False
+) -> qml.CompilePipeline:
+    r"""Returns a validation pipeline for QscoutIonTrap device"""
+    physical_wires = _get_allowed_device_wires(max_qubits, enable_com_modes)
+
+    return (
+        validate_device_wires(wires=physical_wires, name=QscoutIonTrap.name)
+        + validate_measurements(
             analytic_measurements=lambda *_: False,
             sample_measurements=accepted_sample_measurement,
-            name=self.name,
         )
-
-        # Expand any unsupported fockstate operations because decompose transform
-        # below won't (it's a native gate)
-        transform_program.add_transform(
-            map_supported_fockstate,
-            use_native_instruction=device_options.get(
-                "use_fockstate_instruction", self._use_fockstate_instruction
-            ),
-        )
-
-        # Do one more transformation that now expands unsupported fock ladders
-        transform_program.add_transform(decompose, gate_set=NATIVE_GATES)
-
-        # Optional optimizations
-        if device_options.get("optimize", self._optimize):
-            transform_program.add_transform(commute_controlled)
-            transform_program.add_transform(cancel_inverses)
-            transform_program.add_transform(merge_rotations)
-
-            # Fuse single qubit gates into Rot, then hopefully decompose them into
-            # R gates
-            transform_program.add_transform(single_qubit_fusion)
-            transform_program.add_transform(decompose, gate_set=NATIVE_GATES)
-
-            # Simplify any rotation parameters, then decompose again will delete
-            # Identity from the circuit
-            transform_program.add_transform(_simplify_transform)
-            transform_program.add_transform(decompose, gate_set=NATIVE_GATES)
-
-        transform_program.add_transform(combine_global_phases)
-
-        # Finally check all native gates. This takes into account additional constraints
-        # like gates being defined only on certain qumodes that decompose doesn't know about
-        transform_program.add_transform(validate_gates_supported_on_hardware)
-
-        return transform_program
+        + validate_gates_supported_on_hardware
+    )
 
 
 @qml.transform
@@ -328,6 +298,38 @@ def validate_gates_supported_on_hardware(tape: QuantumScript):
         return results[0]
 
     return (tape,), null_postprocessing
+
+
+@qml.transform
+def dynamic_gate_decompose(
+    tape: QuantumScript,
+    sa_res: sa.StaticAnalysisResult | None = None,
+    max_qubits: int | None = None,
+    gate_set: set | None = None,
+):
+    if sa_res is None:
+        sa_res = sa.analyze(tape)
+
+    gate_set = gate_set or NATIVE_GATES
+
+    remaining_work_wires = None
+    if max_qubits is not None:
+        n_qubits = len(sa_res.qubits)
+        remaining_work_wires = max_qubits - n_qubits
+
+    # Decompose into the target gate set allowing dynamic qubit allocation, then map
+    # dynamic wires to virtual wires
+    pipeline = decompose(
+        gate_set=gate_set,
+        alt_decomps=DECOMPS,
+        num_work_wires=remaining_work_wires,
+        minimize_work_wires=True,
+    ) + resolve_dynamic_wires(
+        zeroed=[f"virtual-qubit-{i}" for i in range(remaining_work_wires or 0)],
+        allow_resets=False,  # no native reset instruction
+    )
+
+    return pipeline(tape)
 
 
 @qml.transform
@@ -364,6 +366,23 @@ def layout_wires(
         raise DeviceError(
             "No layout was found that could implement the gates in the circuit"
         )
+
+    def null_postprocessing(results):
+        return results[0]
+
+    tape_batch, _ = qml.map_wires(tape, wire_map)
+    return tape_batch, null_postprocessing
+
+
+@qml.transform
+def parse_hardware_wires(tape: QuantumScript):
+    wire_map = {w: w for w in tape.wires}
+    for wire in tape.wires:
+        if (
+            isinstance(wire, str)
+            and (new_wire := Qumode.try_from_string(wire)) is not None
+        ):
+            wire_map[wire] = new_wire
 
     def null_postprocessing(results):
         return results[0]
@@ -410,10 +429,17 @@ def _construct_csp(
     # All virtual wires must have unique hardware assignments
     problem.addConstraint(AllDifferentConstraint())
 
+    # For any wires in the circuit that are already hardware labels, force them to be
+    # assigned to themselves
+    for w in sa_res.qubits & hw_qubits:
+        problem.addConstraint(lambda assigned, w=w: assigned == w, [w])
+
+    for w in sa_res.qumodes & hw_qumodes:
+        problem.addConstraint(lambda assigned, w=w: assigned == w, [w])
+
     def constraint(*hw_wires, virtual_op: Operator):
-        data, (_, *hashable_hyperparameters) = virtual_op._flatten()  # pyright: ignore[reportPrivateUsage]
-        hw_op = virtual_op._unflatten(
-            data, (Wires(hw_wires), *hashable_hyperparameters)
+        hw_op = virtual_op.map_wires(
+            {w: w2 for w, w2 in zip(virtual_op.wires, hw_wires)}
         )
         return is_gate_supported(hw_op)
 
@@ -424,35 +450,12 @@ def _construct_csp(
     return problem
 
 
-@qml.transform
-def map_supported_fockstate(tape: QuantumScript, use_native_instruction: bool = True):
-    new_ops = []
-
-    for op in tape.operations:
-        if isinstance(op, hqml.FockLadder):
-            native_op = ops.FockStatePrep(*op.parameters, wires=op.wires)
-            if use_native_instruction and is_gate_supported(native_op):
-                new_ops.append(native_op)
-
-            else:
-                new_ops.append(op)
-
-        else:
-            new_ops.append(op)
-
-    def null_postprocessing(results):
-        return results[0]
-
-    new_tape = QuantumScript(new_ops, tape.measurements, tape.shots)
-    return (new_tape,), null_postprocessing
-
-
 # Define gate decompositions. Note that many gates have already been defined
 # in pennylane in terms of R{x,y,z} gates, which are native.
 
 
 @qml.register_resources({qml.IsingXX: 1, qml.RY: 2, qml.RX: 2})
-def _cnot_decomp(wires, **_):
+def cnot_decomp(wires, **_):
     # Taken from https://en.wikipedia.org/wiki/Mølmer–Sørensen_gate#Description
     qml.RY(math.pi / 2, wires[0])
     qml.IsingXX(math.pi / 2, wires)
@@ -461,40 +464,23 @@ def _cnot_decomp(wires, **_):
     qml.RY(-math.pi / 2, wires[0])
 
 
-qml.add_decomps(qml.CNOT, _cnot_decomp)
-
-
-@qml.register_resources({qml.GlobalPhase: 1, ops.R: 2})
-def _rot_decomp(phi, theta, omega, wires, **_):
-    ops.R(theta - math.pi, math.pi / 2 - phi, wires=wires)
-    ops.R(math.pi, (omega - phi) / 2 + math.pi / 2, wires=wires)
+@qml.register_resources({qml.GlobalPhase: 1, native_ops.R: 2})
+def rot_decomp(phi, theta, omega, wires, **_):
+    native_ops.R(theta - math.pi, math.pi / 2 - phi, wires=wires)
+    native_ops.R(math.pi, (omega - phi) / 2 + math.pi / 2, wires=wires)
     qml.GlobalPhase((phi + omega) / 2)
 
 
-qml.add_decomps(qml.Rot, _rot_decomp)
+DYNAMIC_DECOMPS = {
+    hqml.D: [make_gate_with_ancilla_qubit(hqml.D)],
+    hqml.S: [make_gate_with_ancilla_qubit(hqml.S)],
+    hqml.R: [make_gate_with_ancilla_qubit(hqml.R)],
+}
 
-
-@qml.register_resources({ConditionalXDisplacement: 1, qml.H: 2})
-def _conditionaldisplacement_decomp(*params, wires, **_):
-    r, phi = params
-    beta = r * np.exp(1j * phi)
-
-    qml.H(wires[0])
-    ConditionalXDisplacement(np.real(beta), np.imag(beta), wires=wires)
-    qml.H(wires[0])
-
-
-qml.add_decomps(hqml.ConditionalDisplacement, _conditionaldisplacement_decomp)
-
-# Currently unknown how to decompose normal squeezing parameters to red/blue sideband ratios
-# @register_resources({ConditionalXSqueezing: 1, qml.H: 2})
-# def _conditionalsqueezing_decomp(*params, wires, **_):
-#     qml.H(wires[0])
-#     ConditionalXSqueezing(*params, wires=wires)
-#     qml.H(wires[0])
-
-
-# add_decomps(hqml.ConditionalSqueezing, _conditionalsqueezing_decomp)
+DECOMPS = {
+    qml.CNOT: [cnot_decomp],
+    qml.Rot: [rot_decomp],
+} | DYNAMIC_DECOMPS
 
 
 def _get_allowed_device_wires(max_qubits: int, use_com_modes: bool) -> Wires:
@@ -510,6 +496,6 @@ def _get_device_qubits(max_qubits: int) -> Wires:
 def _get_device_qumodes(max_qubits: int, use_com_modes: bool) -> Wires:
     min_qumode_idx = 1 - use_com_modes
     qumodes = Wires(
-        [f"a{a}m{i}" for i in range(min_qumode_idx, max_qubits) for a in (0, 1)]
+        [Qumode(m, i) for i in range(min_qumode_idx, max_qubits) for m in (0, 1)]
     )
     return qumodes

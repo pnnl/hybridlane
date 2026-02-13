@@ -15,8 +15,6 @@ from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
-
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
@@ -25,10 +23,11 @@ class Displacement(CVOperation):
     r"""Phase space displacement gate :math:`D(\alpha)`
 
     .. math::
+
        D(\alpha) = \exp[\alpha \ad -\alpha^* a]
 
-    where :math:`\alpha = ae^{i\phi}`. The result of applying a displacement to the vacuum
-    is a coherent state :math:`D(\alpha)\ket{0} = \ket{\alpha}`.
+    where :math:`\alpha = ae^{i\phi}`. The result of applying a displacement to the
+    vacuum is a coherent state :math:`D(\alpha)\ket{0} = \ket{\alpha}`.
     """
 
     num_params = 2
@@ -82,6 +81,17 @@ qml.add_decomps("Adjoint(Displacement)", adjoint_rotation)
 qml.add_decomps("Pow(Displacement)", _pow_d)
 qml.add_decomps("qCond(Displacement)", to_native_qcond(1))
 
+D = Displacement
+r"""Phase space displacement gate :math:`D(\alpha)`
+
+.. math::
+   D(\alpha) = \exp[\alpha \ad -\alpha^* a]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.Displacement`
+"""
+
 
 # Modify to use -i convention
 class Rotation(CVOperation):
@@ -130,6 +140,18 @@ class Rotation(CVOperation):
 qml.add_decomps("Adjoint(Rotation)", adjoint_rotation)
 qml.add_decomps("Pow(Rotation)", pow_rotation)
 qml.add_decomps("qCond(Rotation)", to_native_qcond(1))
+
+R = Rotation
+r"""Phase space rotation gate :math:`R(\theta)`
+
+.. math::
+
+    R(\theta) = \exp[-i\theta \hat{n}]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.Rotation`
+"""
 
 
 # Re-export since it matches paper convention
@@ -189,6 +211,18 @@ qml.add_decomps("Adjoint(Squeezing)", adjoint_rotation)
 qml.add_decomps("Pow(Squeezing)", _pow_s)
 qml.add_decomps("qCond(Squeezing)", to_native_qcond(1))
 
+S = Squeezing
+r"""Phase space squeezing gate :math:`S(\zeta)`
+
+.. math::
+
+    S(\zeta) = \exp\left[\frac{1}{2}(\zeta^* a^2 - \zeta(\ad)^2)\right]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.Squeezing`
+"""
+
 
 # Modify to have -i convention
 class Kerr(CVOperation):
@@ -232,6 +266,18 @@ class Kerr(CVOperation):
 qml.add_decomps("Adjoint(Kerr)", adjoint_rotation)
 qml.add_decomps("Pow(Kerr)", pow_rotation)
 
+K = Kerr
+r"""Kerr gate :math:`K(\kappa)`
+
+.. math::
+
+    K(\kappa) = \exp[-i \kappa \hat{n}^2]
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.Kerr`
+"""
+
 
 # Modify for -i convention
 class CubicPhase(CVOperation):
@@ -274,6 +320,18 @@ class CubicPhase(CVOperation):
 
 qml.add_decomps("Adjoint(CubicPhase)", adjoint_rotation)
 qml.add_decomps("Pow(CubicPhase)", pow_rotation)
+
+C = CubicPhase
+r"""Cubic phase shift gate :math:`C(r)`
+
+.. math::
+
+    C(r) = e^{-i r \hat{x}^3}.
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.CubicPhase`
+"""
 
 
 def _can_replace(x, y):

@@ -3,6 +3,7 @@
 # This software is licensed under the 2-Clause BSD License.
 # See the LICENSE.txt file for full license text.
 import pennylane as qml
+from pennylane.operation import Operation
 
 import hybridlane as hqml
 
@@ -72,3 +73,29 @@ def decompose_multi_qcond(*params, wires, base, control_wires, **_):
 
     for c, t in reversed(ct):
         qml.CNOT(wires=[c, t])
+
+
+def make_gate_with_ancilla_qubit(base_class: type[Operation]):
+    r"""Synthesizes a gate using an ancilla qubit and qubit conditioned operations
+
+    For example, this decomposition rule allows for creating a displacement gate
+    :math:`D_m(\alpha)` by allocating an ancilla qubit :math:`a` and applying
+    :math:`CD_{a,m}(\alpha)` instead. This is a particularly useful rule on platforms
+    that don't support native bosonic gates (e.g. ion traps).
+    """
+
+    def _resource_fn(**base_params):
+        return {
+            qubit_conditioned_resource_rep(
+                base_class, base_params, num_control_wires=1
+            ): 1
+        }
+
+    @qml.register_resources(_resource_fn, work_wires={"zeroed": 1})
+    def _impl(*params, wires, **hparams):
+        with qml.allocate(1, "zero", restored=True) as ancilla:
+            hqml.qcond(base_class, control_wires=ancilla)(
+                *params, wires=wires, **hparams
+            )
+
+    return _impl
