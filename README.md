@@ -6,7 +6,9 @@
   <a href="LICENSE.txt"><img alt="License" src="https://img.shields.io/github/license/pnnl/hybridlane"></a>
 </p>
 
-<img src="./docs/source/_static/draw_mpl/qpe_circuit.png" alt="hybridlane logo" width="500" align="center">
+<p align="center">
+    <img src="./docs/source/_static/draw_mpl/qpe_circuit.png" alt="hybridlane banner" width="80%">
+</p>
 
 <h1 align="center">hybridlane</h1>
 
