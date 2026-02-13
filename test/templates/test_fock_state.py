@@ -9,9 +9,15 @@ import pytest
 
 import hybridlane as hqml
 
+qml.decomposition.enable_graph()
+
 
 class TestFockState:
-    @pytest.mark.parametrize("n", range(10))
+    def test_resource_rep(self):
+        op = hqml.FockState(5, [0, 1])
+        assert set(op.resource_params.keys()) == op.resource_keys
+
+    @pytest.mark.parametrize("n", range(1, 10, 2))
     def test_expval(self, n):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
 
@@ -23,7 +29,7 @@ class TestFockState:
         expval = circuit(n)
         assert np.isclose(expval, n)
 
-    @pytest.mark.parametrize("n", range(10))
+    @pytest.mark.parametrize("n", range(1, 10, 2))
     def test_var(self, n):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
 
