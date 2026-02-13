@@ -243,7 +243,12 @@ class GKPState(ErrorOperation, Hybrid):
         self.hyperparameters["repetitions"] = repetitions
 
     def error(self) -> AlgorithmicError:
-        pass
+        error = sum(
+            op.error().error
+            for op in self.decomposition()
+            if isinstance(op, ErrorOperation)
+        )
+        return SpectralNormError(error)
 
     @property
     def resource_params(self):

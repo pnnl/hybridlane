@@ -69,8 +69,8 @@ class TestSqueezedCatState:
         assert np.allclose(expval_n, expected_mean, rtol=1e-2)
 
 
-@pytest.mark.slow
 class TestGKPState:
+    @pytest.mark.slow
     @pytest.mark.parametrize("codeword", (0, 1))
     def test_stabilizer(self, codeword):
         fock_level = 256
@@ -90,3 +90,16 @@ class TestGKPState:
 
         stabilizer_expval = circuit(codeword, 0.34)
         assert stabilizer_expval >= 0.99  # from table 3
+
+    @pytest.mark.parametrize("codeword", (0, 1))
+    def test_error(self, codeword):
+        fock_level = 256
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=fock_level)
+
+        @qml.qnode(dev)
+        def circuit(codeword, delta=1):
+            GKPState(delta, logical_state=codeword, wires=["q", "m"])
+            return hqml.expval(qml.Z("q"))
+
+        errors_dict = qml.resource.algo_error(circuit)(codeword, 0.34)
+        assert errors_dict["SpectralNormError"].error > 0
