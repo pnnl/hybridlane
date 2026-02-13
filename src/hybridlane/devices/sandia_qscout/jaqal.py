@@ -218,7 +218,9 @@ def batch_to_jaqal(
 ) -> LiteralString:
     from jaqalpaq.generator import generate_jaqal_program
     from jaqalpaq.qsyntax import circuit as jaqal_circuit
-    from jaqalpaq.qsyntax import qsyntax  # noqa: F401
+
+    if TYPE_CHECKING:
+        from jaqalpaq.qsyntax import qsyntax  # noqa: F401
 
     # Since jaqal requires a top-level register declaration, we need
     # to find out the required number of qubits for all the tapes

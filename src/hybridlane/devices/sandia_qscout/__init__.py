@@ -69,7 +69,47 @@ gates are available in :mod:`hybridlane.devices.sandia_qscout.ops` and currently
 include:
 
 - **Qubit gates**: :math:`R_\phi, R_x, R_y, R_z, S, S^\dagger, S_x, S_x^\dagger, XX, YY, ZZ`
-- **Hybrid gates**: :math:`JC, AJC, xCD, xCS, BS`
+- **Hybrid gates**: :math:`JC, AJC, xCD, yCD, zCD, xCS, BS`
+
+Exporting to Jaqal
+------------------
+
+To run on the ion trap, circuits need to be exported to the Jaqal
+:footcite:p:`morrison2020just` language. Hybridlane provides the
+:func:`~hybridlane.devices.sandia_qscout.to_jaqal` function to convert a QNode to a
+Jaqal program. By using that function on a QNode bound to the QSCOUT device, the
+resulting Jaqal program will be optimized for the device's native gate set and
+constraints.
+
+Example:
+
+.. code:: python
+
+    dev = qml.device("sandiaqscout.hybrid", n_qubits=2)
+
+    @qml.set_shots(1024)
+    @qml.qnode(dev)
+    def circuit(alpha):
+        hqml.SqueezedCatState(alpha, np.pi / 2, parity="even", wires=["q", "m1i1"])
+
+    to_jaqal(circuit, level="device", precision=4)(4)
+
+This will return a Jaqal string, where each tape of the QNode batch is encoded as a
+subcircuit.
+
+.. code::
+
+    from qscout.v1.std usepulses *
+
+    register q[2]
+
+    subcircuit 1024 {
+        xCD q[1] 1 1 4.0 0.0
+        Rz q[1] 11.00
+        xCD q[1] 1 1 0.00000000000000001803 0.09817
+        yCD q[1] 1 1 -0.09817 -0.0
+        Sz q[1]
+    }
 
 References
 ----------
