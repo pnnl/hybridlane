@@ -1,5 +1,3 @@
-<h1 align="center">hybridlane</h1>
-
 <p align="center">
   <a href="https://pypi.org/project/hybridlane/"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/hybridlane?logo=pypi"></a>
   <a href="https://pnnl.github.io/hybridlane/"><img alt="Docs" src="https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/docs.yml?branch=main&logo=githubpages&label=docs"></a>
@@ -7,6 +5,10 @@
   <a href="https://github.com/pnnl/hybridlane/actions/workflows/release.yml"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/release.yml"></a>
   <a href="LICENSE.txt"><img alt="License" src="https://img.shields.io/github/license/pnnl/hybridlane"></a>
 </p>
+
+<img src="./docs/source/_static/draw_mpl/qpe_circuit.png" alt="hybridlane logo" width="500" align="center">
+
+<h1 align="center">hybridlane</h1>
 
 **hybridlane** is a Python library for designing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the [PennyLane](https://pennylane.ai/) ecosystem. It provides a frontend for expressing hybrid quantum algorithms, implementing the concepts from the paper Y. Liu *et al*, 2026 ([PRX Quantum 7, 010201](https://doi.org/10.1103/4rf7-9tfx)).
 
