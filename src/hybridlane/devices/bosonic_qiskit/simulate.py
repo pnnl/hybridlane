@@ -36,6 +36,7 @@ from ...measurements import (
     SampleMeasurement,
     SampleResult,
     StateMeasurement,
+    StateMP,
     VarianceMP,
 )
 from ...ops.mixins import Hybrid
@@ -113,6 +114,12 @@ def analytic_probs(
     raise NotImplementedError()
 
 
+def analytic_state(
+    state: Statevector, result: QiskitResult, obs: np.ndarray | None = None
+) -> np.ndarray:
+    return state.data
+
+
 analytic_measurement_map: dict[
     type[SampleMeasurement],
     Callable[[Statevector, QiskitResult, np.ndarray], np.ndarray],
@@ -120,6 +127,7 @@ analytic_measurement_map: dict[
     ExpectationMP: analytic_expval,
     VarianceMP: analytic_var,
     ProbabilityMP: analytic_probs,
+    StateMP: analytic_state,
 }
 
 
