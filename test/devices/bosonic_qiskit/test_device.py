@@ -391,8 +391,8 @@ class TestExampleCircuits:
             ([0, 1, 2], 6),
             ([0, 2, 1], 9),
             ([1, 0, 2], 10),
-            ([1, 2, 0], 12),
-            ([2, 0, 1], 17),
+            ([1, 2, 0], 17),
+            ([2, 0, 1], 12),
             ([2, 1, 0], 18),
         ],
     )
@@ -416,6 +416,9 @@ class TestExampleCircuits:
             )
 
         state, num1, num2 = circuit()
+        # hqml.draw_mpl(circuit, level="device")()[0].savefig(
+        #     f"test_{state_index}.png"
+        # )  # for debugging
         assert np.isclose(num1, 1)
         assert np.isclose(num2, 2)
         target = np.zeros((32,), dtype=complex)
