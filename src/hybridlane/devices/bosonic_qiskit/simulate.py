@@ -119,17 +119,20 @@ def analytic_state(
     obs: np.ndarray,
     regmapper: RegisterMapping,
 ) -> np.ndarray:
-    # TODO state needs to be reshaped....
-    source_wires = regmapper.wire_order
-    destination_wires = Wires([source_wires.index(w) for w in source_wires])
+    source_wires = Wires(
+        range(len(regmapper.wire_order))
+    )  # auto pulling from ALL hybridlane wires
+    destination_wires = (
+        regmapper.wire_order
+    )  # how those wires map to the bq statevector wires
     state_size = state.data.shape[0]
 
     out_vector = -1 * np.ones(state.data.shape, dtype=complex)
 
     order = permute_subsystems(
-        sp.diags([range(state_size)], [0]),
-        source_wires,
-        destination_wires,
+        sp.diags([range(state_size)], [0]),  # matrix
+        source_wires,  # 'observable' wires
+        destination_wires,  # 'statevector' wires
         regmapper,
         qiskit_order=True,
     ).diagonal()
