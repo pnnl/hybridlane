@@ -16,7 +16,7 @@ from .counts import CountsMP
 from .expectation import ExpectationMP, expval
 from .probability import ProbabilityMP
 from .sample import SampleMP, sample
-from .state import StateMP, state
+from .state import state
 from .variance import VarianceMP, var
 
 __all__ = [
@@ -38,5 +38,4 @@ __all__ = [
     "var",
     "sample",
     "state",
-    "StateMP",
 ]
