@@ -130,7 +130,7 @@ def analytic_state(
     out_vector = -1 * np.ones(state.data.shape, dtype=complex)
 
     order = permute_subsystems(
-        sp.diags([range(state_size)], [0]),  # matrix
+        sp.diags([range(state_size)], [0], dtype=int),  # matrix
         source_wires,  # 'observable' wires
         destination_wires,  # 'statevector' wires
         regmapper,
