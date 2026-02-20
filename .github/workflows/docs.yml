@@ -25,7 +25,7 @@ jobs:
   # Single deploy job since we're just deploying
   deploy:
     # only run this workflow if the event is not from a fork, as forks don't have permissions to deploy to GitHub Pages
-    if: github.event.repository.fork == false
+    if: github.repository == 'pnnl/hybridlane'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
