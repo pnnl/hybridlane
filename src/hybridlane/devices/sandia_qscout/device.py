@@ -71,6 +71,11 @@ def is_sampled_observable_supported(o: Operator) -> bool:
 
 
 NATIVE_GATES = set(jaqal.QUBIT_GATES) | set(jaqal.BOSON_GATES)
+# Assign non-native CD gates a higher cost so it'll use the xCD gate
+NATIVE_GATES_WITH_COST = {g: 1 for g in NATIVE_GATES} | {
+    "ConditionalDisplacement": 3,
+    "ConditionalYDisplacement": 3,
+}
 
 
 # Define constraints on the gates
@@ -242,7 +247,7 @@ def get_compiler(
     pipeline: qml.CompilePipeline = (
         from_pennylane
         + diagonalize_measurements
-        + dynamic_gate_decompose(gate_set=NATIVE_GATES, max_qubits=max_qubits)
+        + dynamic_gate_decompose(gate_set=NATIVE_GATES_WITH_COST, max_qubits=max_qubits)
     )
 
     # At this point, everything is a native instruction so we can perform virtual
@@ -260,9 +265,9 @@ def get_compiler(
             + cancel_inverses
             + merge_rotations
             + single_qubit_fusion
-            + decompose(gate_set=NATIVE_GATES)
+            + decompose(gate_set=NATIVE_GATES_WITH_COST)
             + _simplify_transform
-            + decompose(gate_set=NATIVE_GATES)
+            + decompose(gate_set=NATIVE_GATES_WITH_COST)
         )
 
     pipeline += combine_global_phases
@@ -305,12 +310,12 @@ def dynamic_gate_decompose(
     tape: QuantumScript,
     sa_res: sa.StaticAnalysisResult | None = None,
     max_qubits: int | None = None,
-    gate_set: set | None = None,
+    gate_set: set | dict | None = None,
 ):
     if sa_res is None:
         sa_res = sa.analyze(tape)
 
-    gate_set = gate_set or NATIVE_GATES
+    gate_set = gate_set or NATIVE_GATES_WITH_COST
 
     remaining_work_wires = None
     if max_qubits is not None:
