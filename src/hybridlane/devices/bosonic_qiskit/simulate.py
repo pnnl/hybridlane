@@ -113,6 +113,36 @@ def analytic_probs(
     raise NotImplementedError()
 
 
+def analytic_state(
+    state: Statevector,
+    result: QiskitResult,
+    obs: np.ndarray,
+    regmapper: RegisterMapping,
+) -> np.ndarray:
+    source_wires = Wires(
+        range(len(regmapper.wire_order))
+    )  # auto pulling from ALL hybridlane wires
+    destination_wires = (
+        regmapper.wire_order
+    )  # how those wires map to the bq statevector wires
+    state_size = state.data.shape[0]
+
+    out_vector = -1 * np.ones(state.data.shape, dtype=complex)
+
+    order = permute_subsystems(
+        sp.diags([range(state_size)], [0], dtype=int),  # matrix
+        source_wires,  # 'observable' wires
+        destination_wires,  # 'statevector' wires
+        regmapper,
+        qiskit_order=True,
+    ).diagonal()
+    for i, idx in enumerate(order):
+        out_vector[int(idx)] = state.data[i]
+
+    assert not np.any(out_vector == -1)
+    return out_vector
+
+
 analytic_measurement_map: dict[
     type[SampleMeasurement],
     Callable[[Statevector, QiskitResult, np.ndarray], np.ndarray],
@@ -120,6 +150,7 @@ analytic_measurement_map: dict[
     ExpectationMP: analytic_expval,
     VarianceMP: analytic_var,
     ProbabilityMP: analytic_probs,
+    # StateMP: analytic_state,  # Don't even need StateMP if the device handles the calculation
 }
 
 
@@ -401,7 +432,11 @@ def analytic_measurement(
         if m.obs is not None
         else None
     )
-    return analytic_measurement_map.get(type(m))(state, result, obs)
+    return (
+        analytic_measurement_map.get(type(m))(state, result, obs)
+        if type(m) in analytic_measurement_map
+        else analytic_state(state, result, obs, regmapper)
+    )
 
 
 def sampled_measurement(
