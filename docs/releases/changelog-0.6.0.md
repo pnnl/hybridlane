@@ -79,6 +79,12 @@
 
 ### Breaking changes
 
+- Changed the hardware wire notation for the `sandiaqscout.hybrid` device to now use the "manifold" notation. (#28)
+
+  Previously, hardware qumodes were addressed with axis-mode notation like "a0m1", but with the device now using "manifolds", this has been updated to `m<manifold>i<index>` where `manifold` takes the role of `axis` in determining the radial direction of the qumodes, and `index` takes the role of `mode` in determining which mode in that direction to address. Note that there is also now a `Qumode` object that can be used as a wire to more explicitly specify the addressing, like `Qumode(1, 2)`.
+
+  To update prior code, change `axis {0, 1} -> manifold {1, 0}` and keep the index the same, so a wire `a0m1` (tilt mode on axis 0) is now `m1i1` (tilt mode on manifold 1).
+
 - Renames `hqml.FockLadder` to `hqml.FockState` (#28)
 - Modifies OpenQASM library `cvstdgates.inc` to add wire types in function definitions (#28)
 - OpenQASM exporting no longer uses constants for homodyne/pnr precision; instead, it uses the hardware's native precision (#28)

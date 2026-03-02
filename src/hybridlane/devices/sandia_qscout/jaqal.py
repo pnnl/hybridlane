@@ -13,7 +13,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import singledispatch, wraps
-from typing import TYPE_CHECKING, Literal, LiteralString
+from typing import TYPE_CHECKING, Literal, LiteralString, cast
 from unittest.mock import patch
 
 import pennylane as qml
@@ -28,6 +28,8 @@ from . import ops as native_ops
 
 if TYPE_CHECKING:
     from jaqalpaq.qsyntax import qsyntax
+
+QUBIT_BOSON_MODULE = "Calibration_PulseDefinitions.QubitBosonPulses"
 
 
 @dataclass(frozen=True)
@@ -89,8 +91,8 @@ QUBIT_GATES = {
 
 # Taken from the slides
 BOSON_GATES = {
-    "JaynesCummings": "Red",
-    "AntiJaynesCummings": "Blue",
+    "JaynesCummings": "JC",
+    "AntiJaynesCummings": "AJC",
     "FockState": "FockStatePrep",
     "ConditionalDisplacement": "zCD",
     "ConditionalYDisplacement": "yCD",
@@ -108,26 +110,24 @@ def get_boson_gate_defs():
     return {
         "prepare_all": GateDefinition("prepare_all", []),
         "measure_all": GateDefinition("measure_all", []),
-        "Red": GateDefinition(
-            "Red",
+        "JC": GateDefinition(
+            "JC",
             parameters=[
-                Parameter("q", ParamType.QUBIT),
-                Parameter("n", ParamType.INT),
-                Parameter("phase", ParamType.FLOAT),
-                Parameter("angle", ParamType.FLOAT),
+                Parameter("qubit", ParamType.QUBIT),
                 Parameter("manifold", ParamType.INT),
                 Parameter("mode", ParamType.INT),
+                Parameter("phase", ParamType.FLOAT),
+                Parameter("angle", ParamType.FLOAT),
             ],
         ),
-        "Blue": GateDefinition(
-            "Blue",
+        "AJC": GateDefinition(
+            "AJC",
             parameters=[
-                Parameter("q", ParamType.QUBIT),
-                Parameter("n", ParamType.INT),
-                Parameter("phase", ParamType.FLOAT),
-                Parameter("angle", ParamType.FLOAT),
+                Parameter("qubit", ParamType.QUBIT),
                 Parameter("manifold", ParamType.INT),
                 Parameter("mode", ParamType.INT),
+                Parameter("phase", ParamType.FLOAT),
+                Parameter("angle", ParamType.FLOAT),
             ],
         ),
         "FockStatePrep": GateDefinition(
@@ -216,6 +216,8 @@ def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
 def batch_to_jaqal(
     batch: Sequence[QuantumScript], precision: int = 20
 ) -> LiteralString:
+    from jaqalpaq.core import Circuit
+    from jaqalpaq.core.usepulses import UsePulsesStatement
     from jaqalpaq.generator import generate_jaqal_program
     from jaqalpaq.qsyntax import circuit as jaqal_circuit
 
@@ -229,9 +231,8 @@ def batch_to_jaqal(
         sa_res = sa.analyze(tape)
         num_qubits = max(num_qubits, max(sa_res.qubits) + 1)
 
-    @jaqal_circuit(inject_pulses=get_boson_gate_defs())
+    @jaqal_circuit(inject_pulses=get_boson_gate_defs(), autoload_pulses="ignore")
     def program(Q: "qsyntax.Q"):
-        # todo: add boson import statement
         Q.usepulses("qscout.v1.std")
         q = Q.register(num_qubits, "q")
         for tape in batch:
@@ -243,7 +244,9 @@ def batch_to_jaqal(
         "jaqalpaq.generator.generator._jaqal_value_numeric_context",
         decimal.Context(prec=precision),
     ):
-        ir = program()
+        ir = cast(Circuit, program())  # pyright: ignore[reportCallIssue]
+        # Have to defer the usepulses call until generation or it'll throw a ModuleImportError
+        ir._usepulses.append(UsePulsesStatement(QUBIT_BOSON_MODULE, all))  # type: ignore[reportPrivateUsage]
         return generate_jaqal_program(ir).strip()
 
 
@@ -279,9 +282,8 @@ def _(op: hqml.Red | hqml.Blue, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
-    fock_state = 1  # Hard coded
     [angle, phase] = convert_params(op.parameters)
-    getattr(Q, gate_id)(q[qubit], fock_state, phase, angle, mode.manifold, mode.index)
+    getattr(Q, gate_id)(q[qubit], mode.manifold, mode.index, phase, angle)
 
 
 @gate_to_ir.register
