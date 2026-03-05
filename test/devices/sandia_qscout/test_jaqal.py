@@ -33,6 +33,11 @@ def graph_enabled():
 
 
 def programs_equal(actual_ir, expected_ir):
+    # Fake the qubit pulses as these are only valid on the emulator, not hardware
+    import_statement = "from qscout.v1.std usepulses *\n"
+    actual_ir = import_statement + actual_ir
+    expected_ir = import_statement + expected_ir
+
     # Fake having the qubit boson gate definitions
     gates = get_boson_gate_defs()
     qb_module = ModuleType(QUBIT_BOSON_MODULE)
@@ -68,12 +73,11 @@ class TestToJaqal:
         actual_ir = to_jaqal(circuit, level="device", precision=4)()
         expected_ir = textwrap.dedent(
             r"""
-            from qscout.v1.std usepulses *
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
 
             register q[2]
 
-            subcircuit 20 {
+            subcircuit {
                	Rz q[0] 3.142
                	Ry q[0] 3.142
                	XX q[0] q[1] 1.571
@@ -100,12 +104,11 @@ class TestToJaqal:
         actual_ir = to_jaqal(circuit, level="device")()
         expected_ir = textwrap.dedent(
             r"""
-            from qscout.v1.std usepulses *
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
 
             register q[1]
 
-            subcircuit 20 {
+            subcircuit {
                	JC q[0] 1 1 0.0 0.5
                	AJC q[0] 1 1 0.0 0.5
             }
@@ -125,12 +128,11 @@ class TestToJaqal:
         actual_ir = to_jaqal(circuit, level="device", precision=4)(4)
         expected_ir = textwrap.dedent(
             r"""
-            from qscout.v1.std usepulses *
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
 
             register q[2]
 
-            subcircuit 1024 {
+            subcircuit {
                	xCD q[1] 1 1 4.0 0.0
                	Rz q[1] 11.00
                	xCD q[1] 1 1 0.0 0.09818
@@ -157,10 +159,9 @@ class TestToJaqal:
         actual_ir = to_jaqal(circuit, level="device", precision=4)(1.0)
         expected_ir = textwrap.dedent(
             r"""
-            from qscout.v1.std usepulses *
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
             register q[2]
-            subcircuit 20 {
+            subcircuit {
                	xCD q[0] 1 1 1.0 0.0
                	zCD q[1] 1 1 0.0 1.0
                	xCD q[0] 1 1 -1.0 -0.0

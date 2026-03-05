@@ -103,6 +103,13 @@ BOSON_GATES = {
 }
 
 
+def get_qubit_gate_defs():
+    from jaqalpaq.core.usepulses import UsePulsesStatement
+
+    stmt = UsePulsesStatement("qscout.v1.std", all)
+    return stmt.load_pulses()
+
+
 # put in function so that it is not executed on import
 def get_boson_gate_defs():
     from jaqalpaq.core import GateDefinition, Parameter, ParamType
@@ -231,12 +238,14 @@ def batch_to_jaqal(
         sa_res = sa.analyze(tape)
         num_qubits = max(num_qubits, max(sa_res.qubits) + 1)
 
-    @jaqal_circuit(inject_pulses=get_boson_gate_defs(), autoload_pulses="ignore")
+    @jaqal_circuit(
+        inject_pulses=get_boson_gate_defs() | get_qubit_gate_defs(),
+        autoload_pulses="ignore",
+    )
     def program(Q: "qsyntax.Q"):
-        Q.usepulses("qscout.v1.std")
         q = Q.register(num_qubits, "q")
         for tape in batch:
-            with Q.subcircuit(tape.shots.total_shots):
+            with Q.subcircuit():
                 for op in tape.operations:
                     gate_to_ir(op, Q, q)
 
