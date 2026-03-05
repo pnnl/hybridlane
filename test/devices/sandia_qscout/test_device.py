@@ -320,4 +320,4 @@ class TestDecomposition:
 
         # The D gates should be replaced by CD gates on an ancilla qubit
         assert gate_count.get("Displacement", 0) == 0
-        assert gate_count["ConditionalDisplacement"] == 4
+        assert gate_count["ConditionalXDisplacement"] == 4

@@ -71,7 +71,7 @@ class Qumode:
 # Obtainable from https://gitlab.com/jaqal/qscout-gatemodels/-/blob/master/src/qscout/v1/std/jaqal_gates.py?ref_type=heads
 QUBIT_GATES = {
     "GlobalPhase": None,
-    # "I": None,
+    "Identity": None,
     "R": "R",
     "RX": "Rx",
     "RY": "Ry",
@@ -250,8 +250,13 @@ def batch_to_jaqal(
         return generate_jaqal_program(ir).strip()
 
 
-def convert_params(params):
-    return [p.item() if hasattr(p, "item") else p for p in params]
+def convert_params(params, round_small=True):
+    params = [p.item() if hasattr(p, "item") else p for p in params]
+
+    if round_small:
+        return list(map(lambda x: round(x, 6), params))
+    else:
+        return params
 
 
 @singledispatch
@@ -311,9 +316,11 @@ def _(op: hqml.XCD | hqml.YCD | hqml.CD, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
-    [beta, angle] = convert_params(op.parameters)
+    [beta, angle] = convert_params(op.parameters, round_small=False)
     beta_re = beta * math.cos(angle)
     beta_im = beta * math.sin(angle)
+    beta_re = round(beta_re, 6)
+    beta_im = round(beta_im, 6)
     getattr(Q, gate_id)(q[qubit], mode.manifold, mode.index, beta_re, beta_im)
 
 

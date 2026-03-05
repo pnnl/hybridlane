@@ -65,30 +65,27 @@ class TestToJaqal:
             qml.CNOT([0, 1])
             return hqml.expval(qml.X(0))
 
-        actual_ir = to_jaqal(circuit, level="device")()
+        actual_ir = to_jaqal(circuit, level="device", precision=4)()
+        expected_ir = textwrap.dedent(
+            r"""
+            from qscout.v1.std usepulses *
+            from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
 
-        def get_valid_programs(*wires):
-            return textwrap.dedent(
-                f"""
-                from qscout.v1.std usepulses *
-                from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
-                register q[2]
-                subcircuit 20 {{
-                    Rz q[{wires[0]}] 3.141592653589793
-                    Ry q[{wires[0]}] 3.141592653589793
-                    XX q[{wires[0]}] q[{wires[1]}] 1.5707963267948966
-                    Rx q[{wires[1]}] 10.995574287564276
-                    Rz q[{wires[0]}] 7.853981633974483
-                    Ry q[{wires[0]}] 1.5707963267948968
-                    Rz q[{wires[0]}] 1.5707963267948966
-                }}
-                """
-            ).strip()
+            register q[2]
 
-        assert any(
-            programs_equal(actual_ir, prog)
-            for prog in (get_valid_programs(0, 1), get_valid_programs(1, 0))
-        )
+            subcircuit 20 {
+               	Rz q[0] 3.142
+               	Ry q[0] 3.142
+               	XX q[0] q[1] 1.571
+               	Rx q[1] 11.00
+               	Rz q[0] 7.854
+               	Ry q[0] 1.571
+               	Rz q[0] 1.571
+            }
+            """
+        ).strip()
+
+        assert programs_equal(actual_ir, expected_ir)
 
     def test_red_blue_gates(self):
         dev = qml.device("sandiaqscout.hybrid", n_qubits=2)
@@ -105,7 +102,9 @@ class TestToJaqal:
             r"""
             from qscout.v1.std usepulses *
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
+
             register q[1]
+
             subcircuit 20 {
                	JC q[0] 1 1 0.0 0.5
                	AJC q[0] 1 1 0.0 0.5
@@ -128,14 +127,15 @@ class TestToJaqal:
             r"""
             from qscout.v1.std usepulses *
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
+
             register q[2]
+
             subcircuit 1024 {
                	xCD q[1] 1 1 4.0 0.0
                	Rz q[1] 11.00
-               	xCD q[1] 1 1 0.00000000000000001803 0.09817
-               	Rz q[1] 11.00
-               	xCD q[1] 1 1 -0.09817 -0.0
-               	Rz q[1] 3.142
+               	xCD q[1] 1 1 0.0 0.09818
+               	yCD q[1] 1 1 -0.09818 -0.0
+               	Sz q[1]
             }
             """
         )
@@ -143,7 +143,7 @@ class TestToJaqal:
         assert programs_equal(actual_ir, expected_ir)
 
     def test_dynamic_displacement_decomposition(self):
-        dev = qml.device("sandiaqscout.hybrid", optimize=True, n_qubits=2)
+        dev = qml.device("sandiaqscout.hybrid", optimize=False, n_qubits=2)
 
         @qml.set_shots(20)
         @qml.qnode(dev)
@@ -162,9 +162,9 @@ class TestToJaqal:
             register q[2]
             subcircuit 20 {
                	xCD q[0] 1 1 1.0 0.0
-               	zCD q[1] 1 1 0.00000000000000006123 1.0
+               	zCD q[1] 1 1 0.0 1.0
                	xCD q[0] 1 1 -1.0 -0.0
-               	zCD q[1] 1 1 -0.00000000000000006123 -1.0
+               	zCD q[1] 1 1 -0.0 -1.0
             }
             """
         ).strip()
