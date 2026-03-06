@@ -99,14 +99,14 @@ subcircuit.
 
 .. code::
 
-    from qscout.v1.std usepulses *
+    from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
 
     register q[2]
 
-    subcircuit 1024 {
+    subcircuit {
         xCD q[1] 1 1 4.0 0.0
         Rz q[1] 11.00
-        xCD q[1] 1 1 0.00000000000000001803 0.09817
+        xCD q[1] 1 1 0.0 0.09817
         yCD q[1] 1 1 -0.09817 -0.0
         Sz q[1]
     }
