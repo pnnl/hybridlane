@@ -9,15 +9,17 @@ from .base import Truncation
 
 
 def state(wires: Wires | None = None) -> "StateMP":
-    """State measurement process.
-    Analogous to Pennylane's state measurement (qml.state()).
-    Two major notes:
-    1) The logic of this measurement process should be handled by the device since the state is entirely dependent on the fock cutoffs set by the device.
-    2) The device level implementation should preserve Pennylane's lexicographical ordering -- ie the 'top' wire is the most significant bit in the statevector.
+    r"""State measurement process.
+    Analogous to Pennylane's state measurement (:py:func:`qml.state`), but the logic of this measurement process should be handled by the device since the state is entirely dependent on the fock cutoffs set by the device.
+
+    .. attention:: The device level implementation should preserve Pennylane's lexicographical ordering -- ie the 'top' wire is the most significant bit in the statevector.
 
 
-    Example (assume fock cutoffs of 4 for each mode):
-    ```python
+    **Examples**
+    -------
+    .. code-block:: python
+        :emphasize-lines: 8
+
         def circuit():
             hqml.FockState(  # set mode 1 to fock state 1 using qubit 0 as ancilla
                 1, [0, 1]
@@ -25,13 +27,10 @@ def state(wires: Wires | None = None) -> "StateMP":
             hqml.FockState(  # set mode 2 to fock state 2 using qubit 0 as ancilla
                 2, [0, 2]
             )
-            return hqml.state(),
-    ```
+            return hqml.state()
 
-    The returned statevector should correspond to the state |0,1,2> (with cutoffs of 2,4,4)
-    so the state |0,1,2> corresponds to the index 6 in the statevector (since (0)*4*4 + (1)*4 + (2)*1 = 6).
-
-    >>>
+    The returned statevector should correspond to the state :math:`\lvert 0,1,2 \rangle` (with cutoffs of 2,4,4)
+    so the state :math:`\lvert 0,1,2 \rangle` corresponds to the index 6 in the statevector (since (0)*4*4 + (1)*4 + (2)*1 = 6).
 
     """
 
