@@ -87,34 +87,6 @@ class TestSelectiveQubitRotation:
         assert isinstance(simplified_op, qml.Identity)
 
 
-class TestSelectiveNumberArbitraryPhase:
-    def test_init(self):
-        op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, wires=[0, 1])
-        assert op.name == "SelectiveNumberArbitraryPhase"
-        assert op.num_params == 1
-        assert op.num_wires == 2
-        assert op.parameters == [0.5]
-        assert op.hyperparameters["n"] == 1
-        assert op.wires == qml.wires.Wires([0, 1])
-
-    def test_adjoint(self):
-        op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, wires=[0, 1])
-        adj_op = op.adjoint()
-        assert isinstance(adj_op, hqml.SelectiveNumberArbitraryPhase)
-        assert adj_op.parameters == [-0.5]
-
-    def test_pow(self):
-        op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, wires=[0, 1])
-        pow_op = op.pow(2)
-        assert isinstance(pow_op[0], hqml.SelectiveNumberArbitraryPhase)
-        assert pow_op[0].parameters == [1.0]
-
-    def test_simplify(self):
-        op = hqml.SelectiveNumberArbitraryPhase(0, 1, wires=[0, 1])
-        simplified_op = op.simplify()
-        assert isinstance(simplified_op, qml.Identity)
-
-
 class TestJaynesCummings:
     def test_init(self):
         op = hqml.JaynesCummings(0.5, 0.3, wires=[0, 1])

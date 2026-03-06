@@ -15,6 +15,8 @@ from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
+import hybridlane as hqml
+
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
@@ -340,3 +342,122 @@ def _can_replace(x, y):
         and not qml.math.requires_grad(x)
         and qml.math.allclose(x, y)
     )
+
+
+class SelectiveNumberArbitraryPhase(CVOperation):
+    r"""Selective Number-dependent Arbitrary Phase (SNAP) gate :math:`SNAP(\varphi, n)`
+
+    This gate imparts a custom phase onto each Fock state of the qumode. Its expression
+    is
+
+    .. math::
+
+        SNAP(\varphi, n) = e^{-i \varphi \ket{n}\bra{n}}
+
+    with :math:`\varphi \in [0, 2\pi)` (Box III.10 of :footcite:p:`liu2026hybrid`).
+
+    .. note::
+
+        This definition differs from the vectorized version presented in the CVDV
+        paper, instead applying to a single Fock state. To apply it across multiple
+        Fock modes, consider
+
+        .. code:: python
+
+            angles = [0.25, 0.5, 0.75, 1.0]
+            fock_states = [0, 3, 7, 10]
+
+            for phi_n, n in zip(angles, fock_states):
+                SelectiveNumberArbitraryPhase(phi_n, n, 'm')
+
+    References
+    ----------
+
+    .. footbibliography::
+    """
+
+    num_params = 1
+    num_wires = 1
+    ndim_params = (0,)
+
+    resource_keys = set()
+
+    def __init__(
+        self,
+        phi: TensorLike,
+        n: int,
+        wires: WiresLike,
+        id: str | None = None,
+    ):
+        if n < 0:
+            raise ValueError(f"Fock state must be >= 0; got {n}")
+
+        self.hyperparameters["n"] = n
+        super().__init__(phi, wires=wires, id=id)
+
+    @property
+    def resource_params(self):
+        return {}
+
+    def adjoint(self):
+        phi = self.parameters[0]
+        return SelectiveNumberArbitraryPhase(
+            -phi, self.hyperparameters["n"], self.wires
+        )
+
+    def pow(self, z: int | float):
+        return [
+            SelectiveNumberArbitraryPhase(
+                self.data[0] * z, self.hyperparameters["n"], self.wires
+            )
+        ]
+
+    @classmethod
+    def _unflatten(cls, data, metadata):
+        wires = metadata[0]
+        hyperparams = dict(metadata[1])
+        return cls(data[0], hyperparams["n"], wires)
+
+    def simplify(self):
+        phi = self.data[0] % (2 * math.pi)
+        n = self.hyperparameters["n"]
+
+        if _can_replace(phi, 0):
+            return qml.Identity(self.wires)
+
+        return SelectiveNumberArbitraryPhase(phi, n, self.wires)
+
+    def label(self, decimals=None, base_label=None, cache=None):
+        n = self.hyperparameters["n"]
+        return super().label(
+            decimals=decimals, base_label=base_label or f"SNAP_{{{n}}}", cache=cache
+        )
+
+
+SNAP = SelectiveNumberArbitraryPhase
+r"""Selective Number-dependent Arbitrary Phase (SNAP) gate
+
+.. math::
+
+    SNAP(\varphi, n) = e^{-i \varphi \ket{n}\bra{n}}
+
+.. seealso::
+
+    This is an alias for :class:`~hybridlane.SelectiveNumberArbitraryPhase`
+"""
+
+
+def _snap_to_sqr_resources():
+    return {hqml.SQR: 2}
+
+
+@qml.register_resources(_snap_to_sqr_resources, work_wires={"zeroed": 1})
+def _snap_to_sqr(phi, wires, n, **_):
+    with qml.allocate(1, "zero", restored=True) as ancilla:
+        hqml.SQR(math.pi, 0, n, ancilla + wires)
+        hqml.SQR(-math.pi, phi, n, ancilla + wires)
+
+
+qml.add_decomps(SNAP, _snap_to_sqr)
+qml.add_decomps("Adjoint(SelectiveNumberArbitraryPhase)", adjoint_rotation)
+qml.add_decomps("Pow(SelectiveNumberArbitraryPhase)", pow_rotation)

@@ -53,6 +53,7 @@ cv_gate_map: dict[str, str | None] = {
     "ModeSwap": None,  # has decomposition in terms of beamsplitter
     "Rotation": "cv_r",
     "Squeezing": "cv_sq",
+    "SelectiveNumberArbitraryPhase": "cv_snap",
     "TwoModeSqueezing": "cv_sq2",
     "TwoModeSum": "cv_sum",
 }
@@ -70,7 +71,6 @@ hybrid_gate_map: dict[str, str | None] = {
     "ConditionalTwoModeSum": "cv_c_sum",
     "JaynesCummings": "cv_jc",
     "Rabi": "cv_rb",
-    "SelectiveNumberArbitraryPhase": "cv_snap",
     "SelectiveQubitRotation": "cv_sqr",
 }
 

@@ -302,6 +302,8 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
                 new_phi = phi + np.pi / 2
                 z = r * np.exp(1j * new_phi)
                 getattr(qc, method)(z, *qumodes)
+            case hqml.SNAP(parameters=parameters, hyperparameters={"n": n}):
+                getattr(qc, method)(*parameters, n, *qumodes)
             case _:
                 getattr(qc, method)(*op.parameters, *qumodes)
 
@@ -320,10 +322,7 @@ def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
             ):
                 arg = r * np.exp(1j * phi)
                 getattr(qc, method)(arg, *qumodes, *qubits)
-            case (
-                hqml.SQR(parameters=parameters, hyperparameters={"n": n})
-                | hqml.SNAP(parameters=parameters, hyperparameters={"n": n})
-            ):
+            case hqml.SQR(parameters=parameters, hyperparameters={"n": n}):
                 getattr(qc, method)(*parameters, n, *qumodes, *qubits)
             case hqml.ConditionalBeamsplitter(parameters=(theta, phi)):
                 new_theta = theta / 2

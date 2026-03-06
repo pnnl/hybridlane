@@ -49,7 +49,7 @@ gate cv_cp qubit q, qumode m { cv_cr(π) q, m; }
 gate cv_sqr(θ, φ, n) qubit q, qumode m {}
 
 // Selective Number-dependent Arbitrary Phase (SNAP) gate
-gate cv_snap(φ, n) qubit q, qumode m { cv_sqr(π, φ, n) q, m; cv_sqr(-π, φ, n) q, m; }
+gate cv_snap(φ, n) qumode m {}
 
 // Swap gate
 gate cv_swap qumode m1, qumode m2 { cv_bs(π, 0) m1, m2; cv_r(-π/2) m1; cv_r(-π/2) m2; }

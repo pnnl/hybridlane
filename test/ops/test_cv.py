@@ -181,3 +181,31 @@ class TestFockStateProjector:
         """Test the diagonalizing_gates method."""
         op = hqml.FockStateProjector(np.array([1, 0]), wires=[0, 1])
         assert op.diagonalizing_gates() == []
+
+
+class TestSelectiveNumberArbitraryPhase:
+    def test_init(self):
+        op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, 1)
+        assert op.name == "SelectiveNumberArbitraryPhase"
+        assert op.num_params == 1
+        assert op.num_wires == 1
+        assert op.parameters == [0.5]
+        assert op.hyperparameters["n"] == 1
+        assert op.wires == qml.wires.Wires([1])
+
+    def test_adjoint(self):
+        op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, 0)
+        adj_op = op.adjoint()
+        assert isinstance(adj_op, hqml.SelectiveNumberArbitraryPhase)
+        assert adj_op.parameters == [-0.5]
+
+    def test_pow(self):
+        op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, 0)
+        pow_op = op.pow(2)
+        assert isinstance(pow_op[0], hqml.SelectiveNumberArbitraryPhase)
+        assert pow_op[0].parameters == [1.0]
+
+    def test_simplify(self):
+        op = hqml.SelectiveNumberArbitraryPhase(0, 1, 0)
+        simplified_op = op.simplify()
+        assert isinstance(simplified_op, qml.Identity)
