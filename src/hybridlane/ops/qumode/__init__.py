@@ -22,6 +22,7 @@ from .parametric_ops_multi_qumode import (
     TwoModeSum,
 )
 from .parametric_ops_single_qumode import (
+    SNAP,
     C,
     CubicPhase,
     D,
@@ -31,6 +32,7 @@ from .parametric_ops_single_qumode import (
     R,
     Rotation,
     S,
+    SelectiveNumberArbitraryPhase,
     Squeezing,
 )
 
@@ -62,4 +64,6 @@ __all__ = [
     "K",
     "CubicPhase",
     "C",
+    "SNAP",
+    "SelectiveNumberArbitraryPhase",
 ]

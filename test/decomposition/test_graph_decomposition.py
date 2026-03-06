@@ -10,6 +10,7 @@ import pytest
 from pennylane.decomposition.symbolic_decomposition import pow_rotation
 from pennylane.operation import Operation
 from pennylane.templates import QuantumPhaseEstimation
+from pennylane.transforms import resolve_dynamic_wires
 
 import hybridlane as hqml
 from hybridlane.ops.mixins import Hybrid
@@ -25,7 +26,7 @@ def graph_enabled():
 
 # Necessary to define this class so we can give the pow_rotation decomposition. Otherwise,
 # pennylane uses the pow_repeat_base decomposition and that dramatically expands the circuit depth
-class DJCEvo(Operation, Hybrid):
+class Evo(Operation, Hybrid):
     num_wires = 2
     num_qumodes = 1
     num_params = 1
@@ -40,22 +41,22 @@ class DJCEvo(Operation, Hybrid):
 
 
 @qml.register_resources({qml.RZ: 1, hqml.Rotation: 1, hqml.ConditionalRotation: 1})
-def _djc_decomp(t, wires, omega_r, omega_q, chi, **_):
+def _evo_decomp(t, wires, omega_r, omega_q, chi, **_):
     qml.RZ(-omega_q * t, wires[0])
     hqml.Rotation(omega_r * t, wires[1])
     hqml.ConditionalRotation(-chi * t, wires)
 
 
-qml.add_decomps(DJCEvo, _djc_decomp)
-qml.add_decomps("Pow(DJCEvo)", pow_rotation)
+qml.add_decomps(Evo, _evo_decomp)
+qml.add_decomps("Pow(Evo)", pow_rotation)
 
 
 class TestApplications:
-    def test_dispersive_jc_qpe(self):
+    def test_dispersive_qpe(self):
         omega_r = 1
         omega_q = -1
         chi = 0.1
-        U = DJCEvo(1, omega_r, omega_q, chi, ("q", "m"))
+        U = Evo(1, omega_r, omega_q, chi, ("q", "m"))
 
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
@@ -100,17 +101,20 @@ class TestGateDecompositions:
         @qml.qnode(dev)
         def circuit():
             hqml.Displacement(0.5, 0, 0)
-            hqml.SNAP(0.5, 1, [1, 0])
-            hqml.SNAP(0.5, 2, [1, 0])
-            hqml.SNAP(0.5, 3, [1, 0])
+            hqml.SNAP(0.5, 1, 0)
+            hqml.SNAP(0.5, 2, 0)
+            hqml.SNAP(0.5, 3, 0)
             hqml.Displacement(-0.5, 0, 0)
             return hqml.expval(hqml.X(0))
 
         expval_with_snap = circuit()
 
-        sqr_circuit = qml.transforms.decompose(
-            circuit, gate_set={hqml.Displacement, hqml.SQR}
-        )
+        sqr_circuit = (
+            qml.transforms.decompose(
+                gate_set={hqml.Displacement, hqml.SQR}, num_work_wires=1
+            )
+            + resolve_dynamic_wires(min_int=1, allow_resets=False)
+        )(circuit)
         expval_with_sqr = sqr_circuit()
 
         assert np.allclose(expval_with_sqr, expval_with_snap)

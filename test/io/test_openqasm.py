@@ -61,7 +61,7 @@ class TestCircuits:
             for j in range(n):
                 qml.X(0)
                 hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
-                hqml.SelectiveNumberArbitraryPhase(0.5, j, [0, 1])
+                hqml.SelectiveNumberArbitraryPhase(0.5, j, 1)
 
             return (
                 hqml.expval(hqml.NumberOperator(1)),

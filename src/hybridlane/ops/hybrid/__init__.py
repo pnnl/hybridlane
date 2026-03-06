@@ -18,7 +18,6 @@ from .parametric_ops_single_qumode import (
     CS,
     ECD,
     JC,
-    SNAP,
     SQR,
     XCD,
     YCD,
@@ -33,7 +32,6 @@ from .parametric_ops_single_qumode import (
     JaynesCummings,
     Rabi,
     Red,
-    SelectiveNumberArbitraryPhase,
     SelectiveQubitRotation,
 )
 
@@ -52,7 +50,6 @@ __all__ = [
     "CS",
     "ECD",
     "JC",
-    "SNAP",
     "SQR",
     "XCD",
     "YCD",
@@ -67,6 +64,5 @@ __all__ = [
     "JaynesCummings",
     "Rabi",
     "Red",
-    "SelectiveNumberArbitraryPhase",
     "SelectiveQubitRotation",
 ]
