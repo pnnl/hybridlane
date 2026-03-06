@@ -8,8 +8,13 @@ from typing import Hashable
 
 import pennylane as qml
 from pennylane.measurements import MeasurementProcess
-from pennylane.operation import CV, Operator
-from pennylane.ops import CompositeOp, Controlled, ControlledOp, SymbolicOp
+from pennylane.operation import CVObservable, CVOperation, Operator
+from pennylane.ops import (
+    CompositeOp,
+    Controlled,
+    ControlledOp,
+    SymbolicOp,
+)
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
@@ -116,7 +121,13 @@ def _infer_wire_types_from_operator(op: Operator) -> dict[WiresLike, WireType]:
 
 
 @_infer_wire_types_from_operator.register
-def _(op: CV):
+def _(_: qml.Identity | qml.Snapshot | qml.GlobalPhase):
+    # None of these gates add any constraints on wire types
+    return {}
+
+
+@_infer_wire_types_from_operator.register
+def _(op: CVOperation | CVObservable):
     return {w: Qumode() for w in op.wires}
 
 

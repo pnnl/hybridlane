@@ -74,7 +74,6 @@ NATIVE_GATES = set(jaqal.QUBIT_GATES) | set(jaqal.BOSON_GATES)
 # Assign non-native CD gates a higher cost so it'll use the xCD gate
 NATIVE_GATES_WITH_COST = {g: 1 for g in NATIVE_GATES} | {
     "ConditionalDisplacement": 3,
-    "ConditionalYDisplacement": 3,
 }
 
 
@@ -244,10 +243,17 @@ def get_compiler(
             (virtual) wires that will be mapped to physical wires by the compiler.
             If False, the circuit must contain only physical wires.
     """
+    if optimize:
+        # These are macros that will limit our ability to optimize gates
+        gate_set = NATIVE_GATES_WITH_COST.copy()
+        gate_set.pop("ConditionalDisplacement")
+    else:
+        gate_set = NATIVE_GATES
+
     pipeline: qml.CompilePipeline = (
         from_pennylane
         + diagonalize_measurements
-        + dynamic_gate_decompose(gate_set=NATIVE_GATES_WITH_COST, max_qubits=max_qubits)
+        + dynamic_gate_decompose(gate_set=gate_set, max_qubits=max_qubits)
     )
 
     # At this point, everything is a native instruction so we can perform virtual
@@ -260,14 +266,14 @@ def get_compiler(
         )
 
     if optimize:
-        pipeline += (
+        pipeline += 3 * (
             commute_controlled
             + cancel_inverses
             + merge_rotations
             + single_qubit_fusion
-            + decompose(gate_set=NATIVE_GATES_WITH_COST)
             + _simplify_transform
-            + decompose(gate_set=NATIVE_GATES_WITH_COST)
+            + decompose(gate_set=gate_set)
+            + _simplify_transform
         )
 
     pipeline += combine_global_phases

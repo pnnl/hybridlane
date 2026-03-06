@@ -71,7 +71,7 @@ class Qumode:
 # Obtainable from https://gitlab.com/jaqal/qscout-gatemodels/-/blob/master/src/qscout/v1/std/jaqal_gates.py?ref_type=heads
 QUBIT_GATES = {
     "GlobalPhase": None,
-    # "I": None,
+    "Identity": None,
     "R": "R",
     "RX": "Rx",
     "RY": "Ry",
@@ -101,6 +101,13 @@ BOSON_GATES = {
     "NativeBeamsplitter": "Beamsplitter",
     "SidebandProbe": "Rt_SBProbe",
 }
+
+
+def get_qubit_gate_defs():
+    from jaqalpaq.core.usepulses import UsePulsesStatement
+
+    stmt = UsePulsesStatement("qscout.v1.std", all)
+    return stmt.load_pulses()
 
 
 # put in function so that it is not executed on import
@@ -231,12 +238,14 @@ def batch_to_jaqal(
         sa_res = sa.analyze(tape)
         num_qubits = max(num_qubits, max(sa_res.qubits) + 1)
 
-    @jaqal_circuit(inject_pulses=get_boson_gate_defs(), autoload_pulses="ignore")
+    @jaqal_circuit(
+        inject_pulses=get_boson_gate_defs() | get_qubit_gate_defs(),
+        autoload_pulses="ignore",
+    )
     def program(Q: "qsyntax.Q"):
-        Q.usepulses("qscout.v1.std")
         q = Q.register(num_qubits, "q")
         for tape in batch:
-            with Q.subcircuit(tape.shots.total_shots):
+            with Q.subcircuit():
                 for op in tape.operations:
                     gate_to_ir(op, Q, q)
 
@@ -250,8 +259,13 @@ def batch_to_jaqal(
         return generate_jaqal_program(ir).strip()
 
 
-def convert_params(params):
-    return [p.item() if hasattr(p, "item") else p for p in params]
+def convert_params(params, round_small=True):
+    params = [p.item() if hasattr(p, "item") else p for p in params]
+
+    if round_small:
+        return list(map(lambda x: round(x, 6), params))
+    else:
+        return params
 
 
 @singledispatch
@@ -311,9 +325,11 @@ def _(op: hqml.XCD | hqml.YCD | hqml.CD, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
-    [beta, angle] = convert_params(op.parameters)
+    [beta, angle] = convert_params(op.parameters, round_small=False)
     beta_re = beta * math.cos(angle)
     beta_im = beta * math.sin(angle)
+    beta_re = round(beta_re, 6)
+    beta_im = round(beta_im, 6)
     getattr(Q, gate_id)(q[qubit], mode.manifold, mode.index, beta_re, beta_im)
 
 
