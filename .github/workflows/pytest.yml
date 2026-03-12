@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 name: Pytest
+permissions:
+    contents: read
 
 on:
     pull_request:
