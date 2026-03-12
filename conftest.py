@@ -1,50 +1,30 @@
-from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
+# Based on Sybil documentation: https://sybil.readthedocs.io/en/latest/quickstart.html
+from doctest import ELLIPSIS
+from typing import Any
 
-import numpy as base_numpy
+import numpy as np
 import pennylane as qml
-import scipy as base_scipy
 from sybil import Sybil
 from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser
 
 import hybridlane as hqml
 
-try:
-    import jax
-except ImportError:
-    jax = None
 
-try:
-    import torch
-except ImportError:
-    torch = None
-
-
-namespace = {
-    "hqml": hqml,
-    "qml": qml,
-    "np": base_numpy,
-    "sp": base_scipy,
-    "pnp": qml.numpy,
-    "jax": jax,
-    "torch": torch,
-    "jnp": getattr(jax, "numpy", None),
-}
-
-
-def reset_pennylane_state(namespace):
-    qml.capture.disable()
-    qml.decomposition.disable_graph()
-
-    if jax:
-        jax.config.update("jax_dynamic_shapes", False)
+def setup(namespace: dict[str, Any]):
+    namespace |= {
+        "qml": qml,
+        "hqml": hqml,
+        "np": np,
+    }
 
 
 pytest_collect_file = Sybil(
-    setup=lambda ns: ns.update(namespace),
     parsers=[
-        DocTestParser(optionflags=ELLIPSIS | NORMALIZE_WHITESPACE),
+        DocTestParser(optionflags=ELLIPSIS),
         PythonCodeBlockParser(),
     ],
     patterns=["docs/source/*.rst", "*.py"],
-    teardown=reset_pennylane_state,
+    setup=setup,
 ).pytest()

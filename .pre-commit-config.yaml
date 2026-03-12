@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
       # Ruff version.
@@ -10,3 +12,7 @@ repos:
           # Run the formatter.
           - id: ruff-format
             types_or: [python, pyi]
+    - repo: https://codeberg.org/fsfe/reuse-tool
+      rev: v6.2.0
+      hooks:
+          - id: reuse

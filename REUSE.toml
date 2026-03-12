@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
+version = 3
+
+[[annotations]]
+path = [
+    "docs/**",
+    "examples/**",
+    "uv.lock",
+    ".python-version",
+    "DISCLAIMER.txt",
+]
+SPDX-FileCopyrightText = "2025 Battelle Memorial Institute"
+SPDX-License-Identifier = "BSD-2-Clause"

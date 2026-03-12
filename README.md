@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+SPDX-License-Identifier: BSD-2-Clause
+-->
+
 <p align="center">
   <a href="https://pypi.org/project/hybridlane/"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/hybridlane?logo=pypi"></a>
   <a href="https://pnnl.github.io/hybridlane/"><img alt="Docs" src="https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/docs.yml?branch=main&logo=githubpages&label=docs"></a>

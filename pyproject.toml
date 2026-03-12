@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
 [project]
 name = "hybridlane"
 version = "0.6.1a1"

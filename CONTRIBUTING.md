@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+SPDX-License-Identifier: BSD-2-Clause
+-->
+
 # Contributing to hybridlane
 
 First off, thank you for considering contributing to hybridlane! We really appreciate

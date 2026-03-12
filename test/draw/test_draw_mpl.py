@@ -1,7 +1,5 @@
-# Copyright (c) 2025, Battelle Memorial Institute
-
-# This software is licensed under the 2-Clause BSD License.
-# See the LICENSE.txt file for full license text.
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
 
 import pennylane as qml
 import pytest
@@ -11,9 +9,11 @@ plt = pytest.importorskip("matplotlib.pyplot")
 patches = pytest.importorskip("matplotlib.patches")
 
 import hybridlane as hqml  # noqa: E402
-from hybridlane.drawer.tape_mpl import default_qubit_color, default_qumode_color  # noqa: E402
 from hybridlane.drawer.mpldrawer import icon_face_color  # noqa: E402
-
+from hybridlane.drawer.tape_mpl import (  # noqa: E402
+    default_qubit_color,
+    default_qumode_color,
+)
 
 dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
