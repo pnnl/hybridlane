@@ -141,11 +141,19 @@ For questions, bug reports, or feature requests, please open an issue on our `Gi
 Citing hybridlane
 -------------------
 
-If you use `hybridlane` in your research, please cite our work:
+If you find ``hybridlane`` useful in your research, please cite our paper:
 
 .. code-block::
 
-    under preparation, check back soon :)
+    @misc{furches2026hybridlane,
+        title={Hybridlane: A Software Development Kit for Hybrid Continuous-Discrete Variable Quantum Computing},
+        author={Jim Furches and Timothy J. Stavenger and Carlos Ortiz Marrero},
+        year={2026},
+        eprint={2603.10919},
+        archivePrefix={arXiv},
+        primaryClass={quant-ph},
+        url={https://arxiv.org/abs/2603.10919},
+    }
 
 ----
 
