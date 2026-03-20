@@ -1,7 +1,5 @@
 #!/bin/bash
-# Install uv
+export UV_INSTALL_DIR="${HOME}/.uv"
 curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.cargo/env
-
-# Install your project with the [all] extra
+export PATH="${UV_INSTALL_DIR}:$PATH"
 uv pip install -e ".[all]"
