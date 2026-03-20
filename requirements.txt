@@ -1,0 +1,2 @@
+# This is only used for Binder, the actual project is built with uv
+-e .[all]

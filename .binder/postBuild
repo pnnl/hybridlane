@@ -1,5 +1,0 @@
-#!/bin/bash
-export UV_INSTALL_DIR="${HOME}/.uv"
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="${UV_INSTALL_DIR}:$PATH"
-uv pip install -e ".[all]"
