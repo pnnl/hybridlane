@@ -74,8 +74,24 @@ hybrid_gate_map: dict[str, str | None] = {
 
 misc_gate_map = {"Barrier": "barrier"}
 
-supported_operations = set(
-    k
-    for k, v in (dv_gate_map | cv_gate_map | hybrid_gate_map | misc_gate_map).items()
-    if v is not None
+# These require special handling so there's no clean mapping to a bosonic qiskit method
+state_prep_routines = {
+    "CatState",
+    "CoherentState",
+    # "FockState",
+    "FockStateVector",
+    "GaussianState",
+    "SqueezedState",
+    "StatePrep",
+}
+
+supported_operations = (
+    set(
+        k
+        for k, v in (
+            dv_gate_map | cv_gate_map | hybrid_gate_map | misc_gate_map
+        ).items()
+        if v is not None
+    )
+    | state_prep_routines
 )

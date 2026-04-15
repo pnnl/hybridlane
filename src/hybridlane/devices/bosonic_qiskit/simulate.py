@@ -11,7 +11,7 @@ import bosonic_qiskit as bq
 import numpy as np
 import pennylane as qml
 from pennylane.exceptions import DeviceError
-from pennylane.operation import Operator
+from pennylane.operation import Operation, Operator
 from pennylane.ops import Exp, Pow, Prod, SProd, Sum
 from pennylane.ops.cv import CVOperation
 from pennylane.tape import QuantumScript
@@ -23,6 +23,7 @@ from qiskit.result import Result as QiskitResult
 from scipy import sparse as sp
 from scipy.linalg import expm, fractional_matrix_power
 from scipy.sparse import SparseEfficiencyWarning, csc_array
+from scipy.special import factorial
 
 import hybridlane as hqml
 
@@ -37,11 +38,15 @@ from ...measurements import (
     VarianceMP,
 )
 from ...ops.mixins import Hybrid
-from .gates import cv_gate_map, dv_gate_map, hybrid_gate_map, misc_gate_map
+from .gates import (
+    cv_gate_map,
+    dv_gate_map,
+    hybrid_gate_map,
+)
 from .register_mapping import RegisterMapping
 
 # Patch to flip the conventions from |g> = |1>, |e> = |0> to |g> = |0>, |e> = |1>
-bq.operators.SMINUS[:] = bq.operators.SMINUS.T
+bq.operators.SMINUS[:] = bq.operators.SMINUS.T  # pyright: ignore[reportAttributeAccessIssue]
 bq.operators.SPLUS[:] = bq.operators.SPLUS.T
 
 
@@ -267,6 +272,13 @@ def make_cv_circuit(
     tape: QuantumScript, truncation: FockTruncation
 ) -> tuple[bq.CVCircuit, RegisterMapping]:
     res = sa.analyze(tape)
+
+    if not res.qumodes:
+        raise DeviceError(
+            "Bosonic qiskit requires at least one qumode to run. No qumodes were detected in "
+            "the circuit."
+        )
+
     regmapper = RegisterMapping(res, truncation)
     for wire, dim in regmapper.truncation.dim_sizes.items():
         if not (qubits := math.log2(dim)).is_integer():
@@ -274,13 +286,7 @@ def make_cv_circuit(
                 f"Only Fock powers of 2 are currently supported on this device, got {dim} on wire {wire} (log2: {qubits})"
             )
 
-    try:
-        qc = bq.CVCircuit(*regmapper.regs)
-    except ValueError as e:
-        raise DeviceError(
-            "Bosonic qiskit currently doesn't support executing circuits without a qumode."
-        ) from e
-
+    qc = bq.CVCircuit(*regmapper.regs)
     for op in tape.operations:
         # Validate that we have actual values in the parameters
         for p in op.parameters:
@@ -289,89 +295,190 @@ def make_cv_circuit(
                     "Need instantiated tensors to convert to qiskit. Circuit may contain Jax or TensorFlow tracing tensors."
                 )
 
-        apply_gate(qc, regmapper, op)
+        apply_gate(op, qc, regmapper)
 
     return qc, regmapper
 
 
-def apply_gate(qc: bq.CVCircuit, regmapper: RegisterMapping, op: Operator):
-    wires = op.wires
+@functools.singledispatch
+def apply_gate(op: Operation, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    if (method := dv_gate_map.get(op.name)) is None:
+        raise DeviceError(
+            f"Unsupported operation {op.name}. Either it's not supported by "
+            "Bosonic Qiskit or it wasn't captured by other branches of this function."
+        )
 
-    if method := dv_gate_map.get(op.name):
-        qubits = [regmapper.get(w) for w in wires]
+    qubits = [regmapper.get(w) for w in op.wires]
 
-        match op:
-            # This is equivalent up to a global phase of e^{-i(φ + ω)/2}
-            case qml.Rot(parameters=(phi, theta, omega)):
-                getattr(qc, method)(
-                    theta, phi, omega, *qubits
-                )  # note the reordered parameters
-            case _:
-                getattr(qc, method)(*op.parameters, *qubits)
+    match op:
+        # This is equivalent up to a global phase of e^{-i(φ + ω)/2}
+        case qml.Rot(parameters=(phi, theta, omega)):
+            getattr(qc, method)(
+                theta, phi, omega, *qubits
+            )  # note the reordered parameters
+        case _:
+            getattr(qc, method)(*op.parameters, *qubits)
 
-    elif isinstance(op, CVOperation) and (method := cv_gate_map.get(op.name)):
-        qumodes = [regmapper.get(w) for w in wires]
 
-        match op:
-            # These gates take complex parameters or differ from bosonic qiskit
-            case hqml.Displacement(parameters=(r, phi)):
-                arg = r * np.exp(1j * phi)
-                getattr(qc, method)(arg, *qumodes)
-            case hqml.Squeezing(parameters=(r, phi)):
-                arg = -r * np.exp(-1j * phi)
-                getattr(qc, method)(arg, *qumodes)
-            case hqml.Rotation(parameters=(theta,)):
-                getattr(qc, method)(-theta, *qumodes)
-            case hqml.Beamsplitter(parameters=(theta, phi)):
-                new_theta = theta / 2
-                new_phi = phi - np.pi / 2
-                z = new_theta * np.exp(1j * new_phi)
-                getattr(qc, method)(z, *qumodes)
-            case hqml.TwoModeSqueezing(parameters=(r, phi)):
-                new_phi = phi + np.pi / 2
-                z = r * np.exp(1j * new_phi)
-                getattr(qc, method)(z, *qumodes)
-            case hqml.SNAP(parameters=parameters, hyperparameters={"n": n}):
-                getattr(qc, method)(*parameters, n, *qumodes)
-            case _:
-                getattr(qc, method)(*op.parameters, *qumodes)
+@apply_gate.register
+def _(op: CVOperation, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    if (method := cv_gate_map.get(op.name)) is None:
+        raise DeviceError(
+            f"Unsupported CV operation {op.name}. This likely means the operation is not "
+            "supported by bosonic qiskit or we forgot to add it to the cv_gate_map."
+        )
 
-    elif isinstance(op, Hybrid) and (method := hybrid_gate_map.get(op.name)):
-        wire_types = op.wire_types()
+    qumodes = [regmapper.get(w) for w in op.wires]
 
-        qumodes = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qumode()]
-        qubits = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qubit()]
+    match op:
+        # These gates take complex parameters or differ from bosonic qiskit
+        case hqml.Displacement(parameters=(r, phi)):
+            arg = r * np.exp(1j * phi)
+            getattr(qc, method)(arg, *qumodes)
+        case hqml.Squeezing(parameters=(r, phi)):
+            arg = -r * np.exp(-1j * phi)
+            getattr(qc, method)(arg, *qumodes)
+        case hqml.Rotation(parameters=(theta,)):
+            getattr(qc, method)(-theta, *qumodes)
+        case hqml.Beamsplitter(parameters=(theta, phi)):
+            new_theta = theta / 2
+            new_phi = phi - np.pi / 2
+            z = new_theta * np.exp(1j * new_phi)
+            getattr(qc, method)(z, *qumodes)
+        case hqml.TwoModeSqueezing(parameters=(r, phi)):
+            new_phi = phi + np.pi / 2
+            z = r * np.exp(1j * new_phi)
+            getattr(qc, method)(z, *qumodes)
+        case hqml.SNAP(parameters=parameters, hyperparameters={"n": n}):
+            getattr(qc, method)(*parameters, n, *qumodes)
+        case _:
+            getattr(qc, method)(*op.parameters, *qumodes)
 
-        match op:
-            case hqml.ConditionalRotation(parameters=(theta,)):
-                getattr(qc, method)(-theta / 2, *qumodes, *qubits)
-            case (
-                hqml.ConditionalDisplacement(parameters=(r, phi))
-                | hqml.ConditionalSqueezing(parameters=(r, phi))
-            ):
-                arg = r * np.exp(1j * phi)
-                getattr(qc, method)(arg, *qumodes, *qubits)
-            case hqml.SQR(parameters=parameters, hyperparameters={"n": n}):
-                getattr(qc, method)(*parameters, n, *qumodes, *qubits)
-            case hqml.ConditionalBeamsplitter(parameters=(theta, phi)):
-                new_theta = theta / 2
-                new_phi = phi - np.pi / 2
-                z = new_theta * np.exp(1j * new_phi)
-                getattr(qc, method)(z, *qumodes)
-            case hqml.ConditionalTwoModeSqueezing(parameters=(r, phi)):
-                new_phi = phi + np.pi / 2
-                z = r * np.exp(1j * new_phi)
-                getattr(qc, method)(z, *qumodes, *qubits)
-            case _:
-                getattr(qc, method)(*op.parameters, *qumodes, *qubits)
 
-    elif method := misc_gate_map.get(op.name):
-        match op:
-            case qml.Barrier():
-                pass  # no-op
+@apply_gate.register
+def _(op: Hybrid, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    assert isinstance(op, Operation)
 
-    else:
-        raise DeviceError(f"Unsupported operation {op.name}")
+    if (method := hybrid_gate_map.get(op.name)) is None:
+        raise DeviceError(
+            f"Unsupported hybrid operation {op.name}. This likely means the operation is not "
+            "supported by bosonic qiskit or we forgot to add it to the hybrid_gate_map."
+        )
+
+    wire_types = op.wire_types()
+
+    qumodes = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qumode()]
+    qubits = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qubit()]
+
+    match op:
+        case hqml.ConditionalRotation(parameters=(theta,)):
+            getattr(qc, method)(-theta / 2, *qumodes, *qubits)
+        case hqml.ConditionalDisplacement(parameters=(r, phi)):
+            arg = r * np.exp(1j * phi)
+            getattr(qc, method)(arg, *qumodes, *qubits)
+        case hqml.ConditionalSqueezing(parameters=(r, phi)):
+            arg = -r * np.exp(-1j * phi)
+            getattr(qc, method)(arg, *qumodes, *qubits)
+        case hqml.SQR(parameters=parameters, hyperparameters={"n": n}):
+            getattr(qc, method)(*parameters, n, *qumodes, *qubits)
+        case hqml.ConditionalBeamsplitter(parameters=(theta, phi)):
+            new_theta = theta / 2
+            new_phi = phi - np.pi / 2
+            z = new_theta * np.exp(1j * new_phi)
+            getattr(qc, method)(z, *qumodes)
+        case hqml.ConditionalTwoModeSqueezing(parameters=(r, phi)):
+            new_phi = phi + np.pi / 2
+            z = r * np.exp(1j * new_phi)
+            getattr(qc, method)(z, *qumodes)
+        case _:
+            getattr(qc, method)(*op.parameters, *qumodes, *qubits)
+
+
+@apply_gate.register
+def _(op: qml.Barrier, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    pass  # no-op
+
+
+@apply_gate.register
+def _(op: qml.FockStateVector, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    # State if following the pennylane docs, should be a tensor of shape (N,) * M where N
+    # is the Fock cutoff and M is the number of wires. Since it doesn't appear like that
+    # gets validated, it could be a tensor of shape (n_1, ..., n_m)
+    state = op.parameters[0]
+    state = pad_statevector_to_truncation(state, regmapper, op.wires)
+    ket = qml.math.flatten(state)
+
+    # Since qiskit takes backwards wire ordering compared to pennylane, let's just flip
+    # the order of the qubits instead of the statevector 🧠
+    qubits = []
+    for w in reversed(op.wires):
+        qubits.extend(regmapper.get(w))
+
+    qc.initialize(ket, qubits=qubits)
+
+
+@apply_gate.register
+def _(op: qml.CoherentState, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    r, phi = op.parameters
+    alpha = r * np.exp(1j * phi)
+    state = coherent_state(alpha, regmapper.truncation.dim(op.wires[0]))
+    qumode = regmapper.get(op.wires[0])
+    qc.cv_initialize(state, qumode)
+
+
+@apply_gate.register
+def _(op: qml.CatState, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    a, phi, p = op.parameters
+    alpha = a * np.exp(1j * phi)
+    state_plus = coherent_state(alpha, regmapper.truncation.dim(op.wires[0]))
+    state_minus = coherent_state(-alpha, regmapper.truncation.dim(op.wires[0]))
+    norm = np.sqrt(2 * (1 + np.cos(p * np.pi) * np.exp(-2 * a**2)))
+    state = (state_plus + np.exp(1j * p * np.pi) * state_minus) / norm
+    qumode = regmapper.get(op.wires[0])
+    qc.cv_initialize(state, qumode)
+
+
+@apply_gate.register
+def _(op: qml.StatePrep, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    state = op.parameters[0]
+
+    # StatePrep can allow for sparse statevectors
+    if sp.issparse(state):
+        state = state.todense()
+
+    # Flip the qubit order to match qiskit little endian convention instead of having to
+    # permute the statevector ourselves 🧠
+    qubits = [regmapper.get(w) for w in reversed(op.wires)]
+    qc.initialize(state, qubits=qubits)
+
+
+def pad_statevector_to_truncation(
+    state: np.ndarray, regmapper: RegisterMapping, wires: Wires
+) -> np.ndarray:
+    # The state has shape (n1, ..., nm) and we need to make sure each dimension matches
+    # the truncation for that wire
+    current_shape = state.shape
+    target_shape = regmapper.truncation.shape(wires)
+
+    # Check the right number of dimensions
+    if len(current_shape) != len(wires):
+        raise ValueError(
+            f"State has shape {current_shape} but expected {len(wires)} dimensions based on wires {wires}"
+        )
+
+    # If we potentially have a lossy conversion where we're putting our state in a lower
+    # dimensional space, just error
+    if any(ts < cs for ts, cs in zip(target_shape, current_shape)):
+        raise ValueError(
+            f"State shape {current_shape} exceeds truncation limits {target_shape} for wires {wires}"
+        )
+
+    # Now check that there's at least one mismatching dimension that we will pad with 0
+    if any(ts != cs for ts, cs in zip(target_shape, current_shape)):
+        pad_width = [(0, ts - cs) for ts, cs in zip(target_shape, current_shape)]
+        state = np.pad(state, pad_width, mode="constant", constant_values=0)
+
+    return state
 
 
 # todo: write unit tests for this function
@@ -518,3 +625,10 @@ def to_scalar(tensor_like: TensorLike):
 
     # Use .item() to extract the scalar value from a 0-dimensional NumPy array
     return np_array.item()
+
+
+def coherent_state(alpha: complex, cutoff: int) -> np.ndarray:
+    n = np.arange(cutoff)
+    state = alpha**n / np.sqrt(factorial(n))
+    norm = np.exp(-0.5 * np.abs(alpha) ** 2)
+    return norm * state
