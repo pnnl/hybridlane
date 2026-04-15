@@ -104,6 +104,32 @@ class TestBosonicQiskitDevice:
         with pytest.raises(StaticAnalysisError):
             circuit()
 
+    def test_units(self):
+        alpha = 1.5
+        truncation = FockTruncation.all_fock_space([0], {0: 16})
+
+        def circuit(alpha):
+            qml.Displacement(alpha, 0, 0)
+            return hqml.expval(hqml.QuadX(0)), hqml.expval(hqml.QuadP(0))
+
+        units = "standard"
+        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation, units=units)
+        qnode = qml.QNode(circuit, dev)
+        expval_x, expval_p = qnode(alpha)
+        expected_x = np.sqrt(2) * alpha
+        expected_p = 0
+        assert np.isclose(expval_x, expected_x)
+        assert np.isclose(expval_p, expected_p)
+
+        units = "wigner"
+        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation, units=units)
+        qnode = qml.QNode(circuit, dev)
+        expval_x, expval_p = qnode(alpha)
+        expected_x = alpha
+        expected_p = 0
+        assert np.isclose(expval_x, expected_x)
+        assert np.isclose(expval_p, expected_p)
+
 
 # Integration circuit-level tests go in here
 @pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
@@ -230,8 +256,8 @@ class TestExampleCircuits:
             return hqml.expval(hqml.QuadX(0)), hqml.expval(hqml.QuadP(0))
 
         expval_x, expval_p = circuit(alpha, phi)
-        expected_x = 2 * np.cos(phi) * alpha
-        expected_p = 2 * np.sin(phi) * alpha
+        expected_x = np.sqrt(2) * np.cos(phi) * alpha
+        expected_p = np.sqrt(2) * np.sin(phi) * alpha
         assert np.isclose(expval_x, expected_x)
         assert np.isclose(expval_p, expected_p)
 
