@@ -10,7 +10,7 @@
 import importlib.util
 from collections.abc import Sequence
 from dataclasses import replace
-from typing import Hashable
+from typing import Hashable, Literal
 
 from pennylane.devices import Device
 from pennylane.devices.execution_config import ExecutionConfig
@@ -109,10 +109,10 @@ class BosonicQiskitDevice(Device):
 
     name = "Bosonic Qiskit"  # type: ignore
     shortname = "bosonic-qiskit"
-    version = "0.2.0"
+    version = "0.2.1"
     author = "PNNL"
 
-    _device_options = ("truncation", "hbar")
+    _device_options = ("truncation", "hbar", "units")
 
     def __init__(
         self,
@@ -120,21 +120,22 @@ class BosonicQiskitDevice(Device):
         shots: int | None = None,
         max_fock_level: int | None = None,
         truncation: FockTruncation | None = None,
-        hbar: float = 2,
+        hbar: float = 1,
+        units: Literal["standard", "wigner"] = "standard",
     ):
         r"""Initializes the device
 
         Args:
-            wires: An optional list of wires to expect in each circuit. If this is passed, then executing
-                a circuit will error if it has any wire not in `wires`
+            wires: An optional list of wires to expect in each circuit. If this is passed,
+                then executing a circuit will error if it has any wire not in `wires`
 
-            shots: The number of shots to use for a measurement. If `None` (the default), this performs
-                analytic measurements
+            shots: The number of shots to use for a measurement. If `None` (the default),
+                this performs analytic measurements
 
             max_fock_level: The cutoff to apply uniformly across all qumodes.
 
-            truncation: An optional truncation that allows for more granular cutoffs specified per-qumode.
-                This must be passed if `max_fock_level` is None.
+            truncation: An optional truncation that allows for more granular cutoffs
+                specified per-qumode. This must be passed if `max_fock_level` is None.
 
             hbar: The value for the constant :math:`\bar{h}`.
         """
@@ -148,6 +149,7 @@ class BosonicQiskitDevice(Device):
         self._truncation = truncation
         self._max_fock_level = max_fock_level
         self._hbar = hbar
+        self._units = units
 
         super().__init__(wires=wires, shots=shots)
 
@@ -178,8 +180,13 @@ class BosonicQiskitDevice(Device):
         else:
             truncations = [truncation] * len(circuits)
 
+        hbar = execution_config.device_options.get("hbar", self._hbar)
+        units = execution_config.device_options.get("units", self._units)
+        if units == "wigner":
+            hbar /= 2
+
         return tuple(
-            simulate(tape, truncation, hbar=self._hbar)
+            simulate(tape, truncation, hbar=hbar)
             for tape, truncation in zip(circuits, truncations)
         )
 
