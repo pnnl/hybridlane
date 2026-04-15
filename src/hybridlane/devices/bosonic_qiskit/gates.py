@@ -78,10 +78,7 @@ misc_gate_map = {"Barrier": "barrier"}
 state_prep_routines = {
     "CatState",
     "CoherentState",
-    # "FockState",
     "FockStateVector",
-    "GaussianState",
-    "SqueezedState",
     "StatePrep",
 }
 
