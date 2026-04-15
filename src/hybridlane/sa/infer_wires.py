@@ -151,6 +151,12 @@ def _(op: Controlled | ControlledOp | QubitConditioned):
     return wire_types
 
 
+@_infer_wire_types_from_operator.register
+def _(op: qml.BasisState | qml.StatePrep | qml.Superposition):
+    wire_types = {w: Qubit() for w in op.wires}
+    return wire_types
+
+
 def _infer_wire_types_from_measurement(
     m: MeasurementProcess,
 ) -> dict[WiresLike, WireType]:

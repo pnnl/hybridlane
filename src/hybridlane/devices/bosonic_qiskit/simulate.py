@@ -452,6 +452,19 @@ def _(op: qml.StatePrep, qc: bq.CVCircuit, regmapper: RegisterMapping):
     qc.initialize(state, qubits=qubits)
 
 
+@apply_gate.register
+def _(op: qml.BasisState, qc: bq.CVCircuit, regmapper: RegisterMapping):
+    # This uses the bitmask invocation of initialize
+    bitstring = op.parameters[0]
+    state = np.dot(bitstring, 2 ** np.arange(len(op.wires), dtype=int))
+    state = int(state)
+
+    # No flipping because our conversion to binary above used the little endian form with
+    # wire 0 being the LSB
+    qubits = [regmapper.get(w) for w in op.wires]
+    qc.initialize(state, qubits=qubits)
+
+
 def pad_statevector_to_truncation(
     state: np.ndarray, regmapper: RegisterMapping, wires: Wires
 ) -> np.ndarray:

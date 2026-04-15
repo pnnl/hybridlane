@@ -76,6 +76,7 @@ misc_gate_map = {"Barrier": "barrier"}
 
 # These require special handling so there's no clean mapping to a bosonic qiskit method
 state_prep_routines = {
+    "BasisState",
     "CatState",
     "CoherentState",
     "FockStateVector",

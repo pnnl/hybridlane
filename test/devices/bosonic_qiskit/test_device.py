@@ -249,6 +249,18 @@ class TestOperations:
         stabilizer, _ = circuit()
         assert np.isclose(stabilizer, 1)
 
+    def test_qubit_basis_state(self):
+        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+
+        @qml.qnode(dev)
+        def circuit():
+            qml.BasisState([1, 0, 0], wires=[0, 1, 2])
+            hqml.D(1, 1, wires=3)  # again dummy qumode
+            return hqml.expval(qml.Z(0))
+
+        expval = circuit()
+        assert np.isclose(expval, -1)
+
 
 @pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
 class TestObservableMeasurements:
