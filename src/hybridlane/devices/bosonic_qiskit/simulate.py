@@ -89,19 +89,16 @@ def simulate(
 def analytic_expval(
     state: Statevector, result: QiskitResult, obs: np.ndarray
 ) -> np.ndarray:
-    from qiskit.quantum_info import Operator
-
-    return np.array(state.expectation_value(Operator(obs)).real)
+    return hqml.math.expectation_value(obs, state.data)
 
 
 def analytic_var(
     state: Statevector, result: QiskitResult, obs: np.ndarray
 ) -> np.ndarray:
-    from qiskit.quantum_info import Operator
-
-    op = Operator(obs)
-    var = state.expectation_value(op**2) - state.expectation_value(op) ** 2
-    return np.array(var.real)
+    exp = hqml.math.expectation_value(obs, state.data)
+    exp2 = hqml.math.expectation_value(obs @ obs, state.data)
+    var = exp2 - exp**2
+    return var
 
 
 def analytic_probs(
@@ -122,27 +119,12 @@ def analytic_state(
     obs: np.ndarray,
     regmapper: RegisterMapping,
 ) -> np.ndarray:
-    source_wires = Wires(
-        range(len(regmapper.wire_order))
-    )  # auto pulling from ALL hybridlane wires
-    destination_wires = (
-        regmapper.wire_order
-    )  # how those wires map to the bq statevector wires
-    state_size = state.data.shape[0]
-
-    out_vector = -1 * np.ones(state.data.shape, dtype=complex)
-
-    order = permute_subsystems(
-        sp.diags([range(state_size)], [0], dtype=int),  # matrix
-        source_wires,  # 'observable' wires
-        destination_wires,  # 'statevector' wires
-        regmapper,
-        qiskit_order=True,
-    ).diagonal()
-    for i, idx in enumerate(order):
-        out_vector[int(idx)] = state.data[i]
-
-    assert not np.any(out_vector == -1)
+    bq_wires = regmapper.wire_order[::-1]  # inverted for qiskit ordering
+    wire_order = tuple(range(len(bq_wires)))
+    wire_dims = {w: regmapper.truncation.dim(w) for w in regmapper.wire_order}
+    out_vector = hqml.math.expand_vector(
+        state.data, bq_wires, wire_order=wire_order, wire_dims=wire_dims
+    )
     return out_vector
 
 
@@ -153,7 +135,6 @@ analytic_measurement_map: dict[
     ExpectationMP: analytic_expval,
     VarianceMP: analytic_var,
     ProbabilityMP: analytic_probs,
-    # StateMP: analytic_state,  # Don't even need StateMP if the device handles the calculation
 }
 
 
@@ -244,28 +225,16 @@ def get_observable_matrix(
         mat = get_sparse_observable_matrix(op, *cutoffs, hbar=hbar)
         op_mats.append(mat)
 
-    # Get wire dimensions
-    statevector_wires = regmapper.wire_order
-    obs_wires = Wires.all_wires([o.wires for o in op_list])
-
-    # Find the Hilbert dimension of the remaining (identity) operators and add an I gate
-    if remaining_wires := statevector_wires - obs_wires:
-        dims = regmapper.truncation.shape(remaining_wires)
-        dim = np.prod(dims)
-        op_mats.append(sp.eye_array(dim, format="csc"))  # type: ignore
-        obs_wires = Wires.all_wires([obs_wires, remaining_wires])
-
-    # Perform full tensor product and reorder the subsystem wires from those in op_list to the statevector wires
     composite_matrix = functools.reduce(sp.kron, op_mats)
-    composite_matrix = permute_subsystems(
-        composite_matrix,
-        obs_wires,
-        statevector_wires,
-        regmapper,
-        qiskit_order=True,
-    )
 
-    return composite_matrix.todense()
+    # Get wire dimensions
+    statevector_wires = regmapper.wire_order[::-1]  # reverse for qiskit ordering
+    obs_wires = Wires.all_wires([o.wires for o in op_list])
+    wire_dims = {w: regmapper.truncation.dim(w) for w in statevector_wires}
+    mat = hqml.math.expand_matrix(
+        composite_matrix, obs_wires, wire_order=statevector_wires, wire_dims=wire_dims
+    )
+    return mat.todense()
 
 
 def make_cv_circuit(
@@ -492,48 +461,6 @@ def pad_statevector_to_truncation(
         state = np.pad(state, pad_width, mode="constant", constant_values=0)
 
     return state
-
-
-# todo: write unit tests for this function
-def permute_subsystems(
-    A: sp.csc_array,
-    source_wires: Wires,
-    destination_wires: Wires,
-    regmapper: RegisterMapping,
-    qiskit_order: bool = False,
-) -> sp.csc_array:
-    # Dedicated sparse library that allows for proper nd-arrays unlike scipy.sparse
-    import sparse
-
-    # We reverse the destination to match qiskit little endian ordering.
-    if qiskit_order:
-        destination_wires = destination_wires[::-1]
-
-    if source_wires == destination_wires:
-        return A
-
-    # Get the order of the input and output axes, which will allow us to
-    # compute the appropriate permutation
-    source_oaxes = tuple(range(len(source_wires)))
-    dest_oaxes = tuple(destination_wires.indices(source_wires))
-
-    # Here we identify the permutation from x -> y
-    n = len(source_oaxes)
-    source_axes = source_oaxes + tuple(i + n for i in source_oaxes)
-    dest_axes = dest_oaxes + tuple(i + n for i in dest_oaxes)
-    perm = tuple(map(int, np.argsort(dest_axes)[np.argsort(source_axes)]))
-
-    # convert to sparse library for axes permutation
-    # Reshape the operator from (d, d) to (o1, ..., on, i1, ..., in) where oi == ii
-    hilbert_dim: int = A.shape[0]
-    source_dims = regmapper.truncation.shape(source_wires)
-    coo_A = sparse.COO.from_scipy_sparse(A)
-    coo_A = coo_A.reshape(2 * source_dims)  # first #wires are output
-    coo_A = coo_A.transpose(perm)
-
-    # Convert back to regular matrix shape and scipy format
-    coo_A = coo_A.reshape((hilbert_dim, hilbert_dim))
-    return coo_A.tocsc()
 
 
 def analytic_measurement(
