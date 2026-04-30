@@ -1,6 +1,5 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-import importlib.util
 import sys
 from functools import partial
 
@@ -22,10 +21,7 @@ def test_package_works_without_bosonic_qiskit(monkeypatch):
     import hybridlane  # noqa: F401
 
 
-missing_bosonic_qiskit = importlib.util.find_spec("bosonic_qiskit") is None
-
-
-@pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
+@pytest.mark.bq
 class TestBosonicQiskitDevice:
     @pytest.mark.unit
     def test_device_is_registered(self):
@@ -138,7 +134,7 @@ class TestBosonicQiskitDevice:
         assert np.isclose(expval_p, expected_p)
 
 
-@pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
+@pytest.mark.bq
 class TestOperations:
     @pytest.mark.integration
     def test_fockstatevector(self):
@@ -277,7 +273,7 @@ class TestOperations:
         assert np.isclose(expval, -1)
 
 
-@pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
+@pytest.mark.bq
 class TestObservableMeasurements:
     @pytest.mark.integration
     def test_vacuum_expval(self):
@@ -395,7 +391,7 @@ class TestObservableMeasurements:
         assert np.isclose(n, expval_n + expval_x)
 
 
-@pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
+@pytest.mark.bq
 class TestStateMeasurements:
     @pytest.mark.integration
     @pytest.mark.parametrize(["wires", "state_index"], [([0, 1], 1), ([1, 0], 2)])
@@ -463,7 +459,7 @@ class TestStateMeasurements:
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
+@pytest.mark.bq
 class TestIntegration:
     @pytest.mark.parametrize("n", range(6))
     def test_create_fock_state_analytic(self, n):

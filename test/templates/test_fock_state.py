@@ -16,6 +16,7 @@ class TestFockState:
         assert set(op.resource_params.keys()) == op.resource_keys
 
     @pytest.mark.integration
+    @pytest.mark.bq
     @pytest.mark.parametrize("n", range(1, 10, 2))
     def test_expval(self, n):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
@@ -29,6 +30,7 @@ class TestFockState:
         assert np.isclose(expval, n)
 
     @pytest.mark.integration
+    @pytest.mark.bq
     @pytest.mark.parametrize("n", range(1, 10, 2))
     def test_var(self, n):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)

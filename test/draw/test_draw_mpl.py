@@ -15,20 +15,24 @@ from hybridlane.drawer.tape_mpl import (  # noqa: E402
     default_qumode_color,
 )
 
-dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+
+def get_circuit1():
+    dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+
+    @qml.qnode(dev)
+    def circuit1(n):
+        qml.H(0)
+        hqml.Rotation(0.5, 1)
+
+        for i in range(n):
+            hqml.ConditionalDisplacement(0.5, 0, [0, 2 + i])
+
+        return hqml.expval(hqml.NumberOperator(n))
+
+    return circuit1
 
 
-@qml.qnode(dev)
-def circuit1(n):
-    qml.H(0)
-    hqml.Rotation(0.5, 1)
-
-    for i in range(n):
-        hqml.ConditionalDisplacement(0.5, 0, [0, 2 + i])
-
-    return hqml.expval(hqml.NumberOperator(n))
-
-
+@pytest.mark.bq
 @pytest.mark.unit
 class TestIconBehavior:
     def test_icon_colors(self):
@@ -40,6 +44,7 @@ class TestIconBehavior:
             6: "turquoise",
         }
 
+        circuit1 = get_circuit1()
         fig, ax = hqml.draw_mpl(
             circuit1,
             wire_icon_colors=icon_colors,

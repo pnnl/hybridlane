@@ -5,6 +5,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "unit: marks tests as unit tests (select with '-m \"unit\"')",
     "integration: marks tests as integration tests (select with '-m \"integration\"')",
+    "bq: marks tests that use Bosonic Qiskit (select with '-m \"bq\"')",
     "torch: marks tests that use PyTorch (select with '-m \"torch\"')",
     "jax: marks tests that use JAX (select with '-m \"jax\"')",
 ]

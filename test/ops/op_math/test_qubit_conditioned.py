@@ -95,6 +95,8 @@ class TestDecomposition:
         ]
 
 
+# Todo: We should in principle be able to rewrite these to not use bosonic qiskit
+@pytest.mark.bq
 @pytest.mark.usefixtures("enable_graph_decomp")
 @pytest.mark.integration
 class TestGraphDecomposition:

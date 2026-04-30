@@ -24,6 +24,7 @@ def cat_state_probs(alpha, ns, odd: bool):
 
 
 @pytest.mark.slow
+@pytest.mark.bq
 class TestSqueezedCatState:
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -69,6 +70,7 @@ class TestSqueezedCatState:
         assert np.allclose(expval_n, expected_mean, rtol=1e-2)
 
 
+@pytest.mark.bq
 class TestGKPState:
     @pytest.mark.integration
     @pytest.mark.slow

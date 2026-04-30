@@ -44,6 +44,7 @@ qml.add_decomps("Pow(Evo)", pow_rotation)
 
 @pytest.mark.usefixtures("enable_graph_decomp")
 class TestApplications:
+    @pytest.mark.bq
     @pytest.mark.integration
     def test_dispersive_qpe(self):
         omega_r = 1
@@ -90,6 +91,7 @@ class TestApplications:
 @pytest.mark.usefixtures("enable_graph_decomp")
 class TestGateDecompositions:
     @pytest.mark.integration
+    @pytest.mark.bq
     def test_snap_to_sqr(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=32)
 
