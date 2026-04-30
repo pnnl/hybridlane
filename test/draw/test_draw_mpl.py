@@ -29,6 +29,7 @@ def circuit1(n):
     return hqml.expval(hqml.NumberOperator(n))
 
 
+@pytest.mark.unit
 class TestIconBehavior:
     def test_icon_colors(self):
         icon_colors = {

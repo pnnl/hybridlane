@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 import pennylane as qml
+import pytest
 
 import hybridlane as hqml
 
 
+@pytest.mark.unit
 class TestConditionalRotation:
     def test_init(self):
         op = hqml.ConditionalRotation(0.5, wires=[0, 1])
@@ -36,6 +38,7 @@ class TestConditionalRotation:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestConditionalParity:
     def test_init(self):
         op = hqml.ConditionalParity(wires=[0, 1])
@@ -57,6 +60,7 @@ class TestConditionalParity:
         assert isinstance(adj_op, hqml.ConditionalRotation)
 
 
+@pytest.mark.unit
 class TestSelectiveQubitRotation:
     def test_init(self):
         op = hqml.SelectiveQubitRotation(0.5, 0.3, 1, wires=[0, 1])
@@ -85,6 +89,7 @@ class TestSelectiveQubitRotation:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestJaynesCummings:
     def test_init(self):
         op = hqml.JaynesCummings(0.5, 0.3, wires=[0, 1])
@@ -112,6 +117,7 @@ class TestJaynesCummings:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestAntiJaynesCummings:
     def test_init(self):
         op = hqml.AntiJaynesCummings(0.5, 0.3, wires=[0, 1])
@@ -139,6 +145,7 @@ class TestAntiJaynesCummings:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestRabi:
     def test_init(self):
         op = hqml.Rabi(0.5, 0.3, wires=[0, 1])
@@ -166,6 +173,7 @@ class TestRabi:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestConditionalDisplacement:
     def test_init(self):
         op = hqml.ConditionalDisplacement(0.5, 0.3, wires=[0, 1])
@@ -193,6 +201,7 @@ class TestConditionalDisplacement:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestConditionalBeamsplitter:
     def test_init(self):
         op = hqml.ConditionalBeamsplitter(0.5, 0.3, wires=[0, 1, 2])
@@ -220,6 +229,7 @@ class TestConditionalBeamsplitter:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestConditionalTwoModeSqueezing:
     def test_init(self):
         op = hqml.ConditionalTwoModeSqueezing(0.5, 0.3, wires=[0, 1, 2])
@@ -247,6 +257,7 @@ class TestConditionalTwoModeSqueezing:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestConditionalTwoModeSum:
     def test_init(self):
         op = hqml.ConditionalTwoModeSum(0.5, wires=[0, 1, 2])
@@ -274,6 +285,7 @@ class TestConditionalTwoModeSum:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestEchoedConditionalDisplacement:
     def test_init(self):
         op = hqml.EchoedConditionalDisplacement(0.5, 0, wires=[0, 1])

@@ -1,11 +1,13 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 import pennylane as qml
+import pytest
 from pennylane import numpy as np
 
 import hybridlane as hqml
 
 
+@pytest.mark.unit
 class TestTwoModeSum:
     def test_init(self):
         """Test the __init__ method."""
@@ -41,6 +43,7 @@ class TestTwoModeSum:
         assert isinstance(simplified_op, qml.Identity)
 
 
+@pytest.mark.unit
 class TestModeSwap:
     def test_init(self):
         """Test the __init__ method."""
@@ -76,6 +79,7 @@ class TestModeSwap:
         assert isinstance(pow_op_odd[0], hqml.ModeSwap)
 
 
+@pytest.mark.unit
 class TestFourier:
     def test_init(self):
         """Test the __init__ method."""
@@ -100,6 +104,7 @@ class TestFourier:
         assert isinstance(adj_op, hqml.Rotation)
 
 
+@pytest.mark.unit
 class TestQuadX:
     def test_init(self):
         """Test the __init__ method."""
@@ -115,6 +120,7 @@ class TestQuadX:
         assert op.diagonalizing_gates() == []
 
 
+@pytest.mark.unit
 class TestQuadP:
     def test_init(self):
         """Test the __init__ method."""
@@ -132,6 +138,7 @@ class TestQuadP:
         assert isinstance(gates[0], hqml.Rotation)
 
 
+@pytest.mark.unit
 class TestQuadOperator:
     def test_init(self):
         """Test the __init__ method."""
@@ -150,6 +157,7 @@ class TestQuadOperator:
         assert isinstance(gates[0], hqml.Rotation)
 
 
+@pytest.mark.unit
 class TestNumberOperator:
     def test_init(self):
         """Test the __init__ method."""
@@ -165,6 +173,7 @@ class TestNumberOperator:
         assert op.diagonalizing_gates() == []
 
 
+@pytest.mark.unit
 class TestFockStateProjector:
     def test_init(self):
         """Test the __init__ method."""
@@ -181,6 +190,7 @@ class TestFockStateProjector:
         assert op.diagonalizing_gates() == []
 
 
+@pytest.mark.unit
 class TestSelectiveNumberArbitraryPhase:
     def test_init(self):
         op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, 1)

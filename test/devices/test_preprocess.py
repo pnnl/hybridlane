@@ -9,6 +9,7 @@ from hybridlane.devices import preprocess
 from hybridlane.sa.exceptions import StaticAnalysisError
 
 
+@pytest.mark.unit
 class TestValidateWireTypes:
     def test_bad_circuit(self):
         with qml.queuing.AnnotatedQueue() as q:

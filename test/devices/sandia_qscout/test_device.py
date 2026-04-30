@@ -18,13 +18,7 @@ from hybridlane.devices.sandia_qscout import Qumode
 from hybridlane.devices.sandia_qscout import ops as ion
 
 
-@pytest.fixture(scope="class", autouse=True)
-def graph_enabled():
-    qml.decomposition.enable_graph()
-    yield
-    qml.decomposition.disable_graph()
-
-
+@pytest.mark.unit
 def test_package_works_without_jaqalpaq(monkeypatch):
     monkeypatch.delitem(sys.modules, "jaqalpaq", raising=False)
     monkeypatch.delitem(sys.modules, "qscout", raising=False)
@@ -35,8 +29,10 @@ def test_package_works_without_jaqalpaq(monkeypatch):
 missing_jaqalpaq = importlib.util.find_spec("jaqalpaq") is None
 
 
+@pytest.mark.usefixtures("enable_graph_decomp")
 @pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDevice:
+    @pytest.mark.unit
     @pytest.mark.parametrize("allow_com", (True, False))
     def test_com_modes(self, allow_com):
         dev = qml.device(
@@ -53,6 +49,7 @@ class TestDevice:
 
         assert len(dev.wires) == qubits + qumodes
 
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         "obs",
         (
@@ -72,6 +69,7 @@ class TestDevice:
 
         circuit(obs)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         "obs",
         (
@@ -91,6 +89,7 @@ class TestDevice:
         with pytest.raises(DeviceError):
             circuit(obs)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         "wires, allowed",
         (
@@ -116,6 +115,7 @@ class TestDevice:
             with pytest.raises(DeviceError):
                 circuit(wires)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         "wires, allowed",
         (
@@ -142,6 +142,7 @@ class TestDevice:
             with pytest.raises(DeviceError):
                 circuit(wires)
 
+    @pytest.mark.unit
     def too_many_qubits(self):
         dev = qml.device("sandiaqscout.hybrid")
 
@@ -155,6 +156,7 @@ class TestDevice:
         with pytest.raises(DeviceError):
             circuit()
 
+    @pytest.mark.unit
     def too_many_qumodes(self):
         dev = qml.device("sandiaqscout.hybrid")
 
@@ -169,8 +171,10 @@ class TestDevice:
             circuit()
 
 
+@pytest.mark.usefixtures("enable_graph_decomp")
 @pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestLayout:
+    @pytest.mark.integration
     def test_qumode_assignment(self):
         dev = qml.device("sandiaqscout.hybrid", n_qubits=4, use_virtual_wires=True)
 
@@ -187,6 +191,7 @@ class TestLayout:
         allowed_wires = Wires([Qumode(m, i) for m in (0, 1) for i in range(1, 4)])
         assert allowed_wires.contains_wires(sa_res.qumodes)
 
+    @pytest.mark.integration
     def test_qumode_assignment_with_com(self):
         dev = qml.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
 
@@ -203,6 +208,7 @@ class TestLayout:
         allowed_wires = Wires([Qumode(m, i) for m in (0, 1) for i in range(0, 4)])
         assert allowed_wires.contains_wires(sa_res.qumodes)
 
+    @pytest.mark.integration
     def test_no_valid_assignment(self):
         dev = qml.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
 
@@ -217,6 +223,8 @@ class TestLayout:
             construct_tape(circuit, level="device")()
 
 
+@pytest.mark.usefixtures("enable_graph_decomp")
+@pytest.mark.integration
 @pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDecomposition:
     def test_fockstate_and_conditionaldisplacement(self):

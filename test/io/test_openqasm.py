@@ -15,6 +15,7 @@ def evaluate_openqasm_compliance(s: str):
     parse(s)  # errors if there's syntax mistake
 
 
+@pytest.mark.integration
 class TestCircuits:
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_nondiagonal_measurement(self, strict):

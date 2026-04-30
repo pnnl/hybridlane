@@ -25,6 +25,7 @@ def cat_state_probs(alpha, ns, odd: bool):
 
 @pytest.mark.slow
 class TestSqueezedCatState:
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         "alpha,parity", itertools.product([3, 4, 5, 6], ("even", "odd"))
     )
@@ -47,6 +48,7 @@ class TestSqueezedCatState:
         else:
             assert parity_expval <= -0.95
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("alpha,parity", [(3, "even"), (6, "odd")])
     def test_qubit_fidelity_and_mean_photon_count(self, alpha, parity):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=256)
@@ -68,6 +70,7 @@ class TestSqueezedCatState:
 
 
 class TestGKPState:
+    @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("codeword", (0, 1))
     def test_stabilizer(self, codeword):
@@ -89,6 +92,7 @@ class TestGKPState:
         stabilizer_expval = circuit(codeword, 0.34)
         assert stabilizer_expval >= 0.99  # from table 3
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("codeword", (0, 1))
     def test_error(self, codeword):
         fock_level = 256

@@ -16,6 +16,7 @@ from hybridlane.sa.exceptions import StaticAnalysisError
 from ...util import poisson_test
 
 
+@pytest.mark.unit
 def test_package_works_without_bosonic_qiskit(monkeypatch):
     monkeypatch.delitem(sys.modules, "bosonic_qiskit", raising=False)
     import hybridlane  # noqa: F401
@@ -24,15 +25,16 @@ def test_package_works_without_bosonic_qiskit(monkeypatch):
 missing_bosonic_qiskit = importlib.util.find_spec("bosonic_qiskit") is None
 
 
-# Unit tests should go in here
 @pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
 class TestBosonicQiskitDevice:
+    @pytest.mark.unit
     def test_device_is_registered(self):
         from hybridlane.devices import BosonicQiskitDevice
 
         dev = qml.device("bosonicqiskit.hybrid")
         assert isinstance(dev, BosonicQiskitDevice)
 
+    @pytest.mark.unit
     def test_non_power_of_two_truncation(self):
         trunc = FockTruncation.all_fock_space([0, 1], {0: 2, 1: 7})
         dev = qml.device("bosonicqiskit.hybrid", truncation=trunc)
@@ -45,6 +47,7 @@ class TestBosonicQiskitDevice:
         with pytest.raises(DeviceError):
             circuit()
 
+    @pytest.mark.unit
     def test_no_inferrable_truncation(self):
         # This circuit has a qumode that should be detected through static analysis,
         # but no truncation is provided.
@@ -58,6 +61,7 @@ class TestBosonicQiskitDevice:
         with pytest.raises(DeviceError):
             circuit()
 
+    @pytest.mark.unit
     def test_infer_qubits(self):
         # This circuit should be detected as all qubit and therefore automagically
         # derive a truncation of 2 for each qubit. It'll then fail because
@@ -72,6 +76,7 @@ class TestBosonicQiskitDevice:
         with pytest.raises(DeviceError):
             circuit()
 
+    @pytest.mark.unit
     def test_wires_aliased_by_operation(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
 
@@ -85,6 +90,7 @@ class TestBosonicQiskitDevice:
         with pytest.raises(StaticAnalysisError):
             circuit()
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "obs",
         (
@@ -104,6 +110,7 @@ class TestBosonicQiskitDevice:
         with pytest.raises(StaticAnalysisError):
             circuit()
 
+    @pytest.mark.integration
     def test_units(self):
         alpha = 1.5
         truncation = FockTruncation.all_fock_space([0], {0: 16})
@@ -133,6 +140,7 @@ class TestBosonicQiskitDevice:
 
 @pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
 class TestOperations:
+    @pytest.mark.integration
     def test_fockstatevector(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=4)
 
@@ -153,6 +161,7 @@ class TestOperations:
         assert np.isclose(n0, 2)
         assert np.isclose(n1, 0.5)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("alpha", (0.2, 0.5, 1.0, -1.0, -0.5, -0.2))
     def test_displacement(self, alpha):
         # Basic circuit that prepares |α> and checks the mean photon count
@@ -170,6 +179,7 @@ class TestOperations:
         assert np.isclose(expval, np.abs(alpha) ** 2)
         assert np.isclose(var, np.abs(alpha) ** 2)
 
+    @pytest.mark.integration
     def test_multiqumode_displacement(self):
         alpha = 1
         lam = np.abs(alpha) ** 2
@@ -188,6 +198,7 @@ class TestOperations:
         assert np.isclose(n0, lam)
         assert np.isclose(n1, 0)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("phi", (0, np.pi / 2, np.pi, 3 * np.pi / 2))
     def test_rotation(self, phi):
         alpha = 1.5
@@ -207,6 +218,7 @@ class TestOperations:
         assert np.isclose(expval_x, expected_x)
         assert np.isclose(expval_p, expected_p)
 
+    @pytest.mark.integration
     def test_coherent_state(self):
         alpha = 1.5
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
@@ -219,6 +231,7 @@ class TestOperations:
         expval = circuit(alpha)
         assert np.isclose(expval, np.abs(alpha) ** 2)
 
+    @pytest.mark.integration
     def test_cat_state(self):
         alpha = 1.5
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
@@ -232,6 +245,7 @@ class TestOperations:
         expval = circuit(alpha)
         assert np.isclose(expval, -1)
 
+    @pytest.mark.integration
     def test_bell_state_prep(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
 
@@ -249,6 +263,7 @@ class TestOperations:
         stabilizer, _ = circuit()
         assert np.isclose(stabilizer, 1)
 
+    @pytest.mark.integration
     def test_qubit_basis_state(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
 
@@ -264,6 +279,7 @@ class TestOperations:
 
 @pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
 class TestObservableMeasurements:
+    @pytest.mark.integration
     def test_vacuum_expval(self):
         # The simplest test you could do, checking the vacuum state |0> has <n> = 0
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
@@ -276,6 +292,7 @@ class TestObservableMeasurements:
         assert np.ndim(result) == 0
         assert np.isclose(result, 0)
 
+    @pytest.mark.integration
     def test_vacuum_var(self):
         # Checking the vacuum state |0> has Var(n) = 0 since it's a definite eigenstate
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
@@ -288,6 +305,7 @@ class TestObservableMeasurements:
         assert np.ndim(result) == 0
         assert np.isclose(result, 0)
 
+    @pytest.mark.integration
     def test_heisenberg_uncertainty(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
 
@@ -298,6 +316,7 @@ class TestObservableMeasurements:
         dx, dp = circuit()
         assert np.sqrt(dx * dp) >= 1 / 2
 
+    @pytest.mark.integration
     @pytest.mark.parametrize("alpha", (0.2, 0.5, 1.0, -1.0, -0.5, -0.2))
     def test_sample_coherent_state(self, alpha):
         fock_levels = 16
@@ -331,6 +350,7 @@ class TestObservableMeasurements:
         # Check that we didn't reject more than a majority of our tests
         assert rejections / repetitions < 0.5
 
+    @pytest.mark.integration
     def test_complex_fock_observable_analytic(self):
         # This is another coherent state, but this time we measure n + n^2, which
         # is diagonal in fock basis. However, this tests some of the static analysis
@@ -354,6 +374,7 @@ class TestObservableMeasurements:
     # the schemas for n and x are different. However, technically in an analytic
     # simulation of bosonic qiskit, it could handle this just fine. Maybe we need to be
     # more deliberate about where verification and static analysis happen?
+    @pytest.mark.integration
     @pytest.mark.xfail
     def test_complex_multibasis_observable_analytic(self):
         # This is another coherent state, but this time we measure n + x
@@ -376,6 +397,7 @@ class TestObservableMeasurements:
 
 @pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
 class TestStateMeasurements:
+    @pytest.mark.integration
     @pytest.mark.parametrize(["wires", "state_index"], [([0, 1], 1), ([1, 0], 2)])
     def test_statevector_with_wire_flips(self, wires, state_index):
         fock_levels = 4
@@ -397,6 +419,7 @@ class TestStateMeasurements:
         target[state_index] = 1.0
         assert np.allclose(state, target)
 
+    @pytest.mark.integration
     @pytest.mark.parametrize(
         ["wires", "state_index"],
         [
@@ -438,7 +461,8 @@ class TestStateMeasurements:
         assert np.allclose(state, target)
 
 
-# Integration circuit-level tests go in here
+@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.skipif(missing_bosonic_qiskit, reason="Requires bosonic qiskit")
 class TestIntegration:
     @pytest.mark.parametrize("n", range(6))

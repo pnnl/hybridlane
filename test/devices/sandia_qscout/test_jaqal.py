@@ -23,13 +23,6 @@ from hybridlane.devices.sandia_qscout.jaqal import (  # noqa: E402
 )
 
 
-@pytest.fixture(scope="class", autouse=True)
-def graph_enabled():
-    qml.decomposition.enable_graph()
-    yield
-    qml.decomposition.disable_graph()
-
-
 def programs_equal(actual_ir, expected_ir):
     # Fake the qubit pulses as these are only valid on the emulator, not hardware
     import_statement = "from qscout.v1.std usepulses *\n"
@@ -57,6 +50,8 @@ def programs_equal(actual_ir, expected_ir):
         return actual_program == expected_program
 
 
+@pytest.mark.integration
+@pytest.mark.usefixtures("enable_graph_decomp")
 class TestToJaqal:
     def test_sample_qubit_circuit(self):
         dev = qml.device("sandiaqscout.hybrid")

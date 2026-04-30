@@ -16,6 +16,7 @@ from hybridlane.ops import NumberOperator, QuadX
 from hybridlane.sa.base import BasisSchema, ComputationalBasis
 
 
+@pytest.mark.unit
 class TestSampleMP:
     """Unit tests for the SampleMP class."""
 
