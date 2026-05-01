@@ -15,13 +15,6 @@ from hybridlane.ops.mixins import Hybrid
 from hybridlane.sa import BasisSchema, ComputationalBasis
 
 
-@pytest.fixture(scope="class", autouse=True)
-def graph_enabled():
-    qml.decomposition.enable_graph()
-    yield
-    qml.decomposition.disable_graph()
-
-
 # Necessary to define this class so we can give the pow_rotation decomposition. Otherwise,
 # pennylane uses the pow_repeat_base decomposition and that dramatically expands the circuit depth
 class Evo(Operation, Hybrid):
@@ -49,7 +42,10 @@ qml.add_decomps(Evo, _evo_decomp)
 qml.add_decomps("Pow(Evo)", pow_rotation)
 
 
+@pytest.mark.usefixtures("enable_graph_decomp")
 class TestApplications:
+    @pytest.mark.bq
+    @pytest.mark.integration
     def test_dispersive_qpe(self):
         omega_r = 1
         omega_q = -1
@@ -92,7 +88,10 @@ class TestApplications:
         assert gate_types["Rotation"] == 5  # 1 per R term
 
 
+@pytest.mark.usefixtures("enable_graph_decomp")
 class TestGateDecompositions:
+    @pytest.mark.integration
+    @pytest.mark.bq
     def test_snap_to_sqr(self):
         dev = qml.device("bosonicqiskit.hybrid", max_fock_level=32)
 

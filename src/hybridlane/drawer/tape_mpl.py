@@ -17,13 +17,15 @@ from pennylane.drawer.utils import (
 from pennylane.tape import QuantumScript
 
 from .. import ops, sa
-from .mpldrawer import HybridMPLDrawer
 
 has_mpl = True
 try:
     import matplotlib as mpl
+
+    from .mpldrawer import HybridMPLDrawer
 except (ModuleNotFoundError, ImportError):
     has_mpl = False
+    HybridMPLDrawer = object
 
 default_qumode_color = "mediumseagreen"
 default_qubit_color = "darkorchid"

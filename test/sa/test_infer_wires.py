@@ -9,6 +9,7 @@ import hybridlane as hqml
 from hybridlane import sa
 
 
+@pytest.mark.unit
 class TestWireTypeChecking:
     @pytest.mark.parametrize("obs", (hqml.NumberOperator, hqml.QuadX))
     def test_no_operations(self, obs):
