@@ -326,8 +326,6 @@ def _(op: CVOperation, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
 @apply_gate.register
 def _(op: Hybrid, qc: bq.CVCircuit, regmapper: RegisterMapping):
-    assert isinstance(op, Operation)
-
     if (method := hybrid_gate_map.get(op.name)) is None:
         raise DeviceError(
             f"Unsupported hybrid operation {op.name}. This likely means the operation is not "
