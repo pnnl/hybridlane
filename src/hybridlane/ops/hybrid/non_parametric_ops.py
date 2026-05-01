@@ -8,17 +8,18 @@ from pennylane.decomposition.symbolic_decomposition import (
     make_pow_decomp_with_period,
 )
 from pennylane.operation import Operation
+from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
-from ..mixins import Hybrid
+from ..mixins import FockRepresentation, Hybrid
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multiqcond_native,
 )
 
 
-class ConditionalParity(Operation, Hybrid):
+class ConditionalParity(Hybrid, FockRepresentation):
     r"""Qubit-conditioned number parity gate :math:`CP`
 
     This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation`
@@ -65,6 +66,12 @@ class ConditionalParity(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "CΠ", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        f = hqml.Fourier.compute_fock_matrix(wire_dims[1:])
+        fd = hqml.math.conj(hqml.math.transpose(f))
+        return hqml.math.block_diag([f, fd])
 
 
 def _cp_resources(**_):

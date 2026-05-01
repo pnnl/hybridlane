@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
+from pennylane.exceptions import MatrixUndefinedError
+from pennylane.operation import Operator, classproperty
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
@@ -71,7 +74,7 @@ class Spectral:
         )
 
 
-class Hybrid:
+class Hybrid(Operator):
     r"""Mixin for hybrid CV-DV gates
 
     This mixin adds functionality to split the wires of the gate by type into
@@ -86,8 +89,6 @@ class Hybrid:
 
     type_signature: Sequence[hqml.sa.WireType] | None = None
     """The ordered type signature of each wire"""
-
-    wires: Wires
 
     def wire_types(self) -> dict[WiresLike, hqml.sa.WireType]:
         """Identifies the type of each wire in the gate
@@ -112,3 +113,34 @@ class Hybrid:
             ] * self.num_qumodes
 
         return {w: s for w, s in zip(self.wires, type_signature)}
+
+
+class FockRepresentation(Operator):
+    r"""Mixin for gates that have a representation in the Fock basis"""
+
+    @staticmethod
+    def compute_fock_matrix(
+        wire_dims: tuple[int, ...], *params: TensorLike, **hyperparams: TensorLike
+    ) -> TensorLike:
+        raise MatrixUndefinedError
+
+    @classproperty
+    def has_fock_matrix(cls) -> bool:
+        return (
+            cls.compute_fock_matrix != FockRepresentation.compute_fock_matrix
+            or cls.fock_matrix != FockRepresentation.fock_matrix
+        )
+
+    def fock_matrix(
+        self, wire_dims: Mapping[Any, int], wire_order: WiresLike | None = None
+    ) -> TensorLike:
+        canonical_wire_dims = tuple(wire_dims[w] for w in self.wires)
+        matrix = self.compute_fock_matrix(
+            canonical_wire_dims, *self.parameters, **self.hyperparameters
+        )
+        if wire_order is None or self.wires == Wires(wire_order):
+            return matrix
+
+        return hqml.math.expand_matrix(
+            matrix, self.wires, wire_order=wire_order, wire_dims=wire_dims
+        )

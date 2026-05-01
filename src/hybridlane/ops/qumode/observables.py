@@ -12,11 +12,12 @@ from pennylane.wires import Wires, WiresLike
 
 import hybridlane as hqml
 
-from ..mixins import Spectral
+from .. import fock_utils
+from ..mixins import FockRepresentation, Spectral
 from .parametric_ops_single_qumode import Rotation
 
 
-class QuadX(qml.QuadX, Spectral):
+class QuadX(qml.QuadX, Spectral, FockRepresentation):
     @property
     def natural_basis(self):
         return hqml.sa.ComputationalBasis.Position
@@ -32,6 +33,10 @@ class QuadX(qml.QuadX, Spectral):
         inner = ", ".join(map(str, self.wires))
         return f"x̂({inner})"
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        return fock_utils.position_operator(wire_dims[0])
+
 
 X = QuadX
 r"""Position operator :math:`\hat{x}`
@@ -42,7 +47,7 @@ r"""Position operator :math:`\hat{x}`
 """
 
 
-class QuadP(qml.QuadP, Spectral):
+class QuadP(qml.QuadP, Spectral, FockRepresentation):
     @property
     def natural_basis(self):
         return hqml.sa.ComputationalBasis.Position
@@ -63,6 +68,10 @@ class QuadP(qml.QuadP, Spectral):
         inner = ", ".join(map(str, self.wires))
         return f"p̂({inner})"
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        return fock_utils.momentum_operator(wire_dims[0])
+
 
 P = QuadP
 r"""Momentum operator :math:`\hat{p}`
@@ -73,7 +82,7 @@ r"""Momentum operator :math:`\hat{p}`
 """
 
 
-class QuadOperator(qml.QuadOperator, Spectral):
+class QuadOperator(qml.QuadOperator, Spectral, FockRepresentation):
     r"""The generalized quadrature observable :math:`\hat{x}_\phi = \hat{x} \cos\phi + \hat{p} \sin\phi`
 
     When used with the :func:`~hybridlane.expval` function, the expectation
@@ -101,8 +110,18 @@ class QuadOperator(qml.QuadOperator, Spectral):
     ) -> list[qml.operation.Operator]:
         return [qml.Rotation(-params[0], wires=wires), QuadX(wires)]
 
+    def __repr__(self):
+        inner = ", ".join(map(str, self.wires))
+        return f"x̂_ϕ({inner})"
 
-class NumberOperator(qml.NumberOperator, Spectral):
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], phi) -> TensorLike:
+        x = fock_utils.position_operator(wire_dims[0], like=phi)
+        p = fock_utils.momentum_operator(wire_dims[0], like=phi)
+        return x * hqml.math.cos(phi) + p * hqml.math.sin(phi)
+
+
+class NumberOperator(qml.NumberOperator, Spectral, FockRepresentation):
     @property
     def natural_basis(self):
         return hqml.sa.ComputationalBasis.Discrete
@@ -118,6 +137,10 @@ class NumberOperator(qml.NumberOperator, Spectral):
         inner = ", ".join(map(str, self.wires))
         return f"n̂({inner})"
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        return hqml.math.diag(hqml.math.arange(wire_dims[0]))
+
 
 N = NumberOperator
 r"""Number operator :math:`\hat{n}`
@@ -128,7 +151,7 @@ r"""Number operator :math:`\hat{n}`
 """
 
 
-class FockStateProjector(qml.FockStateProjector, Spectral):
+class FockStateProjector(qml.FockStateProjector, Spectral, FockRepresentation):
     @property
     def natural_basis(self):
         return hqml.sa.ComputationalBasis.Discrete
@@ -149,3 +172,12 @@ class FockStateProjector(qml.FockStateProjector, Spectral):
             results.append(wire_states == n)
 
         return reduce(lambda x, y: x & y, results)
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], n) -> TensorLike:
+        dim = wire_dims[0]
+        if n >= dim:
+            raise ValueError(
+                f"Fock state projector cannot be constructed for n={n} with dimension {dim}"
+            )
+        return hqml.math.cast_like(hqml.math.diag(hqml.math.arange(dim) == n), n)

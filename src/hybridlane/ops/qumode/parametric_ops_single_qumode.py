@@ -15,11 +15,13 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
+from .. import fock_utils
+from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
 # Re-export since it matches the convention of Y. Liu
-class Displacement(CVOperation):
+class Displacement(CVOperation, FockRepresentation):
     r"""Phase space displacement gate :math:`D(\alpha)`
 
     .. math::
@@ -71,6 +73,14 @@ class Displacement(CVOperation):
             decimals=decimals, base_label=base_label or "D", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+        a_op = fock_utils.annihilation_operator(wire_dims[0], like=a)
+        ad_op = fock_utils.creation_operator(wire_dims[0], like=a)
+        alpha = a * hqml.math.exp(1j * phi)
+        op = alpha * ad_op - hqml.math.conj(alpha) * a_op
+        return hqml.math.expm(op)
+
 
 @qml.register_resources({Displacement: 1})
 def _pow_d(a, phi, wires, z, **_):
@@ -94,7 +104,7 @@ r"""Phase space displacement gate :math:`D(\alpha)`
 
 
 # Modify to use -i convention
-class Rotation(CVOperation):
+class Rotation(CVOperation, FockRepresentation):
     r"""Phase space rotation gate :math:`R(\theta)`
 
     .. math::
@@ -136,6 +146,12 @@ class Rotation(CVOperation):
             decimals=decimals, base_label=base_label or "R", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta) -> TensorLike:
+        n = hqml.math.arange(wire_dims[0], like=theta)
+        diag = hqml.math.exp(-1j * theta * n)
+        return hqml.math.diag(diag)
+
 
 qml.add_decomps("Adjoint(Rotation)", adjoint_rotation)
 qml.add_decomps("Pow(Rotation)", pow_rotation)
@@ -155,7 +171,7 @@ r"""Phase space rotation gate :math:`R(\theta)`
 
 
 # Re-export since it matches paper convention
-class Squeezing(CVOperation):
+class Squeezing(CVOperation, FockRepresentation):
     r"""Phase space squeezing gate :math:`S(\zeta)`
 
     .. math::
@@ -201,6 +217,14 @@ class Squeezing(CVOperation):
             decimals=decimals, base_label=base_label or "S", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+        a = fock_utils.annihilation_operator(wire_dims[0], like=r)
+        ad = fock_utils.creation_operator(wire_dims[0], like=r)
+        zeta = r * hqml.math.exp(1j * phi)
+        op = 0.5 * (hqml.math.conj(zeta) * a @ a - zeta * ad @ ad)
+        return hqml.math.expm(op)
+
 
 @qml.register_resources({Squeezing: 1})
 def _pow_s(r, phi, wires, z, **_):
@@ -225,7 +249,7 @@ r"""Phase space squeezing gate :math:`S(\zeta)`
 
 
 # Modify to have -i convention
-class Kerr(CVOperation):
+class Kerr(CVOperation, FockRepresentation):
     r"""Kerr gate :math:`K(\kappa)`
 
     .. math::
@@ -262,6 +286,12 @@ class Kerr(CVOperation):
             decimals=decimals, base_label=base_label or "K", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], kappa) -> TensorLike:
+        n = hqml.math.arange(wire_dims[0], like=kappa)
+        diag = hqml.math.exp(-1j * kappa * n**2)
+        return hqml.math.diag(diag)
+
 
 qml.add_decomps("Adjoint(Kerr)", adjoint_rotation)
 qml.add_decomps("Pow(Kerr)", pow_rotation)
@@ -280,7 +310,7 @@ r"""Kerr gate :math:`K(\kappa)`
 
 
 # Modify for -i convention
-class CubicPhase(CVOperation):
+class CubicPhase(CVOperation, FockRepresentation):
     r"""Cubic phase shift gate :math:`C(r)`
 
     .. math::
@@ -317,6 +347,12 @@ class CubicPhase(CVOperation):
             decimals=decimals, base_label=base_label or "C", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r) -> TensorLike:
+        x = fock_utils.position_operator(wire_dims[0], like=r)
+        x3 = hqml.math.linalg.matrix_power(x, 3)
+        return hqml.math.expm(-1j * r * x3)
+
 
 qml.add_decomps("Adjoint(CubicPhase)", adjoint_rotation)
 qml.add_decomps("Pow(CubicPhase)", pow_rotation)
@@ -342,7 +378,7 @@ def _can_replace(x, y):
     )
 
 
-class SelectiveNumberArbitraryPhase(CVOperation):
+class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
     r"""Selective Number-dependent Arbitrary Phase (SNAP) gate :math:`SNAP(\varphi, n)`
 
     This gate imparts a custom phase onto each Fock state of the qumode. Its expression
@@ -430,6 +466,18 @@ class SelectiveNumberArbitraryPhase(CVOperation):
         return super().label(
             decimals=decimals, base_label=base_label or f"SNAP_{{{n}}}", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(
+        wire_dims: tuple[int, ...], phase, n: int = 0
+    ) -> TensorLike:
+        indices = hqml.math.arange(wire_dims[0], like=phase)
+        diag = hqml.math.where(
+            indices == n,
+            hqml.math.exp(1j * phase),
+            hqml.math.ones(wire_dims[0], like=phase) + 0j,
+        )
+        return hqml.math.diag(diag)
 
 
 SNAP = SelectiveNumberArbitraryPhase

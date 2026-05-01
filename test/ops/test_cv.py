@@ -217,3 +217,19 @@ class TestSelectiveNumberArbitraryPhase:
         op = hqml.SelectiveNumberArbitraryPhase(0, 1, 0)
         simplified_op = op.simplify()
         assert isinstance(simplified_op, qml.Identity)
+
+    def test_matrix(self):
+        op = hqml.SNAP(0.5, 1, 0)
+        matrix = op.fock_matrix({0: 4})
+        expected_matrix = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1])
+        assert hqml.math.get_interface(matrix) == "numpy"
+        assert hqml.math.allclose(matrix, expected_matrix)
+
+    @pytest.mark.jax
+    def test_matrix_jax(self):
+        param = hqml.math.asarray(0.5, like="jax")
+        op = hqml.SNAP(param, 1, 0)
+        matrix = op.fock_matrix({0: 4})
+        expected_matrix = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1], like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
+        assert hqml.math.allclose(matrix, expected_matrix)

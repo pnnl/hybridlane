@@ -9,14 +9,16 @@ from pennylane.decomposition.symbolic_decomposition import (
     self_adjoint,
 )
 from pennylane.operation import CVOperation
+from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
+from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
-class Fourier(CVOperation):
+class Fourier(CVOperation, FockRepresentation):
     r"""Continuous-variable Fourier gate :math:`F`
 
     This gate is a special case of the CV :py:class:`~hybridlane.Rotation` gate with
@@ -42,6 +44,11 @@ class Fourier(CVOperation):
         return super().label(
             decimals=decimals, base_label=base_label or "F", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        n = hqml.math.arange(wire_dims[0])
+        return hqml.math.diag(-1j * math.pi / 2 * n)
 
 
 def _f_to_r_resources():
@@ -89,7 +96,7 @@ r"""Fourier gate
 """
 
 
-class ModeSwap(CVOperation):
+class ModeSwap(CVOperation, FockRepresentation):
     r"""Continuous-variable SWAP between two qumodes
 
     This has a decomposition in terms of a :py:class:`~hybridlane.Beamsplitter` and
@@ -127,6 +134,17 @@ class ModeSwap(CVOperation):
             return [qml.Identity(self.wires)]
         else:
             return [ModeSwap(self.wires)]
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        dim0, dim1 = wire_dims
+        mat = hqml.math.zeros((dim0 * dim1, dim0 * dim1), dtype=complex)
+        m = hqml.math.arange(dim0)[:, None]
+        n = hqml.math.arange(dim1)[None, :]
+        row_indices = n + (m * dim1)
+        col_indices = (n * dim0) + m
+        mat[row_indices.flatten(), col_indices.flatten()] = 1
+        return mat
 
 
 def _swap_to_bs_resources():

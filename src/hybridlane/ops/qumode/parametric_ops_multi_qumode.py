@@ -13,6 +13,10 @@ from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
+import hybridlane as hqml
+
+from .. import fock_utils
+from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
@@ -76,6 +80,19 @@ class Beamsplitter(CVOperation):
             decimals=decimals, base_label=base_label or "BS", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+        ad = fock_utils.creation_operator(wire_dims[0], like=theta)
+        b = fock_utils.annihilation_operator(wire_dims[1], like=theta)
+        adb = hqml.math.kron(ad, b)
+        abd = hqml.math.conj(hqml.math.transpose(adb))
+        g = (
+            -0.5j
+            * theta
+            * (hqml.math.exp(1j * phi) * adb + hqml.math.exp(-1j * phi) * abd)
+        )
+        return hqml.math.expm(g)
+
 
 @qml.register_resources({Beamsplitter: 1})
 def _pow_bs(theta, phi, wires, z, **_):
@@ -101,7 +118,7 @@ r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
 
 
 # Re-export flipping sign of r, equivalent to φ -> φ + π
-class TwoModeSqueezing(CVOperation):
+class TwoModeSqueezing(CVOperation, FockRepresentation):
     r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
 
     .. math::
@@ -160,6 +177,15 @@ class TwoModeSqueezing(CVOperation):
             decimals=decimals, base_label=base_label or "TMS", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+        ad = fock_utils.creation_operator(wire_dims[0], like=r)
+        bd = fock_utils.creation_operator(wire_dims[1], like=r)
+        adbd = hqml.math.kron(ad, bd)
+        ab = hqml.math.conj(hqml.math.transpose(adbd))
+        g = r * (hqml.math.exp(1j * phi) * adbd - hqml.math.exp(-1j * phi) * ab)
+        return hqml.math.expm(g)
+
 
 @qml.register_resources({TwoModeSqueezing: 1})
 def _pow_tms(r, phi, wires, z, **_):
@@ -183,7 +209,7 @@ r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
 """
 
 
-class TwoModeSum(CVOperation):
+class TwoModeSum(CVOperation, FockRepresentation):
     r"""Two-mode summing gate :math:`SUM(\lambda)`
 
     This continuous-variable gate implements the unitary
@@ -239,6 +265,15 @@ class TwoModeSum(CVOperation):
         return super().label(
             decimals=decimals, base_label=base_label or "SUM", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], lambda_) -> TensorLike:
+        a = fock_utils.annihilation_operator(wire_dims[0], like=lambda_)
+        ad = fock_utils.creation_operator(wire_dims[0], like=lambda_)
+        bd = fock_utils.creation_operator(wire_dims[1], like=lambda_)
+        b = fock_utils.annihilation_operator(wire_dims[1], like=lambda_)
+        g = 0.5 * lambda_ * hqml.math.kron(a + ad, bd - b)
+        return hqml.math.expm(g)
 
 
 qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)

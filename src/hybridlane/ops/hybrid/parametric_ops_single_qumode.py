@@ -12,7 +12,9 @@ from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-from ..mixins import Hybrid
+import hybridlane as hqml
+
+from ..mixins import FockRepresentation, Hybrid
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multiqcond_native,
 )
@@ -20,7 +22,7 @@ from ..qumode import Displacement, Squeezing
 from .non_parametric_ops import ConditionalParity
 
 
-class ConditionalRotation(Operation, Hybrid):
+class ConditionalRotation(Hybrid, FockRepresentation):
     r"""Qubit-conditioned phase-space rotation :math:`CR(\theta)`
 
     This operation implements a phase-space rotation on a qumode, conditioned on the
@@ -75,6 +77,12 @@ class ConditionalRotation(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "CR", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta) -> TensorLike:
+        r = hqml.R.compute_fock_matrix(wire_dims[1:], theta / 2)
+        rd = hqml.math.conj(hqml.math.transpose(r))
+        return hqml.math.block_diag([r, rd])
+
 
 qml.add_decomps("Adjoint(ConditionalRotation)", adjoint_rotation)
 qml.add_decomps("Pow(ConditionalRotation)", pow_rotation)
@@ -91,7 +99,7 @@ This is an alias for :class:`~hybridlane.ConditionalRotation`
 """
 
 
-class ConditionalDisplacement(Operation, Hybrid):
+class ConditionalDisplacement(Hybrid, FockRepresentation):
     r"""Symmetric conditional displacement gate :math:`CD(\alpha)`
 
     This is the qubit-conditioned version of the :py:class:`~hybridlane.Displacement`
@@ -162,6 +170,12 @@ class ConditionalDisplacement(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "CD", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+        d = hqml.D.compute_fock_matrix(wire_dims[1:], a, phi)
+        dd = hqml.math.conj(hqml.math.transpose(d))
+        return hqml.math.block_diag([d, dd])
+
 
 @qml.register_resources({Displacement: 1, ConditionalParity: 2})
 def _cd_parity_decomp(a, phi, wires, **_):
@@ -218,7 +232,7 @@ This is an alias for :class:`~hybridlane.ConditionalDisplacement`
 """
 
 
-class ConditionalXDisplacement(Operation, Hybrid):
+class ConditionalXDisplacement(Hybrid, FockRepresentation):
     r"""X-Conditional displacement gate :math:`xCD(\alpha)`
 
     This is the conditional displacement gate, conditioned on the :math:`X` eigenstates
@@ -269,6 +283,15 @@ class ConditionalXDisplacement(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "xCD", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+        cd = CD.compute_fock_matrix(wire_dims, a, phi)
+        dims = {i: dim for i, dim in enumerate(wire_dims)}
+        h = hqml.math.expand_matrix(
+            qml.H.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
+        )
+        return h @ cd @ h
+
 
 @qml.register_resources({ConditionalDisplacement: 1, qml.H: 2})
 def _xcd_decomp(a, phi, wires, **_):
@@ -302,7 +325,7 @@ This is an alias for :class:`~hybridlane.ConditionalXDisplacement`
 """
 
 
-class ConditionalYDisplacement(Operation, Hybrid):
+class ConditionalYDisplacement(Hybrid, FockRepresentation):
     r"""Y-Conditional displacement gate :math:`yCD(\alpha)`
 
     This is the conditional displacement gate, conditioned on the :math:`Y` eigenstates
@@ -353,6 +376,15 @@ class ConditionalYDisplacement(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "yCD", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+        xcd = XCD.compute_fock_matrix(wire_dims, a, phi)
+        dims = {i: dim for i, dim in enumerate(wire_dims)}
+        s = hqml.math.expand_matrix(
+            qml.S.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
+        )
+        return s @ xcd @ hqml.math.conj(hqml.math.transpose(s))
+
 
 def _ycd_resources():
     return {ConditionalXDisplacement: 1, qml.S: 1, adjoint_resource_rep(qml.S): 1}
@@ -390,7 +422,7 @@ This is an alias for :class:`~hybridlane.ConditionalYDisplacement`
 """
 
 
-class ConditionalSqueezing(Operation, Hybrid):
+class ConditionalSqueezing(Hybrid, FockRepresentation):
     r"""Qubit-conditioned squeezing gate :math:`CS(\zeta)`
 
     This gate implements the unitary
@@ -453,6 +485,12 @@ class ConditionalSqueezing(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "CS", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], z, phi) -> TensorLike:
+        s = hqml.S.compute_fock_matrix(wire_dims[1:], z, phi)
+        sd = hqml.math.conj(hqml.math.transpose(s))
+        return hqml.math.block_diag([s, sd])
+
 
 def _cs_decomp_resources():
     return {Squeezing: 1, CR: 1, adjoint_resource_rep(CR): 1}
@@ -486,7 +524,7 @@ This is an alias for :class:`~hybridlane.ConditionalSqueezing`
 """
 
 
-class SelectiveQubitRotation(Operation, Hybrid):
+class SelectiveQubitRotation(Hybrid, FockRepresentation):
     r"""number-Selective Qubit Rotation (SQR) gate :math:`SQR(\theta, \varphi, n)`
 
     This gate imparts customizeable rotations onto the qubit based on the state
@@ -572,6 +610,23 @@ class SelectiveQubitRotation(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or f"SQR_{{{n}}}", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi, n) -> TensorLike:
+        def r(theta, phi):
+            sigma = (
+                hqml.math.cos(phi) * qml.X.compute_matrix()
+                + hqml.math.sin(phi) * qml.Y.compute_matrix()
+            )
+            return hqml.math.exp(-1j * theta / 2 * sigma)
+
+        blocks = [hqml.math.eye(2)] * wire_dims[1]
+        blocks[n] = r(theta, phi)
+        mat = hqml.math.block_diag(blocks)
+        mat = hqml.math.expand_matrix(
+            mat, (1, 0), wire_dims={0: wire_dims[0], 1: wire_dims[1]}, wire_order=(0, 1)
+        )
+        return mat
 
 
 SQR = SelectiveQubitRotation
