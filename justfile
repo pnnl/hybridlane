@@ -20,4 +20,4 @@ test-docs:
 
 test-core:
     @uv sync --all-groups && uv pip install jax
-    @uv run pytest -m "not bq and not slow"
+    @uv run pytest -m "not bq and not slow and not docs"
