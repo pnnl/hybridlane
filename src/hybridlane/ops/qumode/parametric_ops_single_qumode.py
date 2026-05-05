@@ -15,7 +15,6 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
-from .. import fock_utils
 from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
@@ -75,10 +74,9 @@ class Displacement(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
-        a_op = fock_utils.annihilation_operator(wire_dims[0], like=a)
-        ad_op = fock_utils.creation_operator(wire_dims[0], like=a)
+        ad = hqml.math.asarray(hqml.Ad.compute_fock_matrix(wire_dims), like=a)
         alpha = a * hqml.math.exp(1j * phi)
-        op = alpha * ad_op - hqml.math.conj(alpha) * a_op
+        op = alpha * ad - hqml.math.dag(alpha * ad)
         return hqml.math.expm(op)
 
 
@@ -219,8 +217,8 @@ class Squeezing(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
-        a = fock_utils.annihilation_operator(wire_dims[0], like=r)
-        ad = fock_utils.creation_operator(wire_dims[0], like=r)
+        a = hqml.math.asarray(hqml.A.compute_fock_matrix(wire_dims), like=r)
+        ad = hqml.math.conj(hqml.math.transpose(a))
         zeta = r * hqml.math.exp(1j * phi)
         op = 0.5 * (hqml.math.conj(zeta) * a @ a - zeta * ad @ ad)
         return hqml.math.expm(op)
@@ -349,7 +347,7 @@ class CubicPhase(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r) -> TensorLike:
-        x = fock_utils.position_operator(wire_dims[0], like=r)
+        x = hqml.math.asarray(hqml.X.compute_fock_matrix(wire_dims), like=r)
         x3 = hqml.math.linalg.matrix_power(x, 3)
         return hqml.math.expm(-1j * r * x3)
 

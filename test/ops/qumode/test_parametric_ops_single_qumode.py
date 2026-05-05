@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+import math
+
 import pennylane as qml
 import pytest
 
@@ -9,7 +11,6 @@ import hybridlane as hqml
 @pytest.mark.unit
 class TestSelectiveNumberArbitraryPhase:
     def test_init(self):
-        """Test the __init__ method."""
         op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, 1)
         assert op.name == "SelectiveNumberArbitraryPhase"
         assert op.num_params == 1
@@ -19,39 +20,328 @@ class TestSelectiveNumberArbitraryPhase:
         assert op.wires == qml.wires.Wires([1])
 
     def test_adjoint(self):
-        """Test the adjoint method."""
         op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, 0)
         adj_op = op.adjoint()
         assert isinstance(adj_op, hqml.SelectiveNumberArbitraryPhase)
         assert adj_op.parameters == [-0.5]
 
     def test_pow(self):
-        """Test the pow method."""
         op = hqml.SelectiveNumberArbitraryPhase(0.5, 1, 0)
         pow_op = op.pow(2)
         assert isinstance(pow_op[0], hqml.SelectiveNumberArbitraryPhase)
         assert pow_op[0].parameters == [1.0]
 
     def test_simplify(self):
-        """Test the simplify method."""
         op = hqml.SelectiveNumberArbitraryPhase(0, 1, 0)
         simplified_op = op.simplify()
         assert isinstance(simplified_op, qml.Identity)
 
+    def test_label(self):
+        op = hqml.SNAP(0.5, 1, 0)
+        assert op.label() == "SNAP_{1}"
+
     def test_matrix(self):
-        """Test the fock_matrix method."""
         op = hqml.SNAP(0.5, 1, 0)
         matrix = op.fock_matrix({0: 4})
-        expected_matrix = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1])
+        expected = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1])
         assert hqml.math.get_interface(matrix) == "numpy"
-        assert hqml.math.allclose(matrix, expected_matrix)
+        assert matrix == pytest.approx(expected)
 
     @pytest.mark.jax
     def test_matrix_jax(self):
-        """Test the fock_matrix method with JAX."""
         param = hqml.math.asarray(0.5, like="jax")
         op = hqml.SNAP(param, 1, 0)
         matrix = op.fock_matrix({0: 4})
-        expected_matrix = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1], like="jax")
+        expected = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1], like="jax")
         assert hqml.math.get_interface(matrix) == "jax"
-        assert hqml.math.allclose(matrix, expected_matrix)
+        assert matrix == pytest.approx(expected)
+
+
+@pytest.mark.unit
+class TestDisplacement:
+    def test_init(self):
+        op = hqml.Displacement(0.5, 0.3, wires=0)
+        assert op.name == "Displacement"
+        assert op.num_params == 2
+        assert op.num_wires == 1
+        assert op.parameters == [0.5, 0.3]
+        assert op.wires == qml.wires.Wires(0)
+
+    def test_adjoint(self):
+        op = hqml.Displacement(0.5, 0.3, wires=0)
+        adj_op = op.adjoint()
+        assert isinstance(adj_op, hqml.Displacement)
+        assert adj_op.parameters[0] == 0.5
+        assert adj_op.parameters[1] == pytest.approx(0.3 + math.pi)
+
+    def test_label(self):
+        op = hqml.Displacement(0.5, 0.3, wires=0)
+        assert op.label() == "D"
+
+    def test_fock_matrix_action(self):
+        from scipy.special import factorial
+
+        alpha_r, alpha_phi = 0.3, 0.5
+        alpha = alpha_r * hqml.math.exp(1j * alpha_phi)
+        dim = 10
+
+        d_mat = hqml.D.compute_fock_matrix((dim,), alpha_r, alpha_phi)
+        d_on_vacuum = d_mat[:, 0]  # D|0>
+
+        n = hqml.math.arange(dim)
+        expected = (
+            hqml.math.exp(-(abs(alpha) ** 2) / 2)
+            * alpha**n
+            / hqml.math.sqrt(factorial(n))
+        )
+        assert d_on_vacuum == pytest.approx(expected, abs=1e-8)
+
+    def test_fock_matrix_unitary(self):
+        dim = 16
+        op = hqml.Displacement(0.3, 0.5, wires=0)
+        matrix = op.fock_matrix({0: dim})
+        assert matrix @ hqml.math.dag(matrix) == pytest.approx(
+            hqml.math.eye(dim), abs=1e-6
+        )
+
+    @pytest.mark.jax
+    def test_fock_matrix_jax(self):
+        import jax.numpy as jnp
+        from scipy.special import factorial
+
+        alpha_r = jnp.array(0.3)
+        alpha_phi = jnp.array(0.5)
+        alpha = alpha_r * hqml.math.exp(1j * alpha_phi)
+        dim = 10
+
+        op = hqml.Displacement(alpha_r, alpha_phi, wires=0)
+        d_on_vacuum = op.fock_matrix({0: dim})[:, 0]
+
+        n = jnp.arange(dim)
+        expected = (
+            hqml.math.exp(-(abs(alpha) ** 2) / 2)
+            * alpha**n
+            / hqml.math.sqrt(jnp.array(factorial(n)))
+        )
+        assert hqml.math.get_interface(d_on_vacuum) == "jax"
+        assert d_on_vacuum == pytest.approx(expected, abs=1e-6)
+
+
+@pytest.mark.unit
+class TestRotation:
+    def test_init(self):
+        op = hqml.Rotation(0.5, wires=0)
+        assert op.name == "Rotation"
+        assert op.num_params == 1
+        assert op.num_wires == 1
+        assert op.parameters == [0.5]
+        assert op.wires == qml.wires.Wires(0)
+
+    def test_adjoint(self):
+        op = hqml.Rotation(0.5, wires=0)
+        adj_op = op.adjoint()
+        assert isinstance(adj_op, hqml.Rotation)
+        assert adj_op.parameters[0] == -0.5
+
+    def test_simplify(self):
+        op = hqml.Rotation(0, wires=0)
+        assert isinstance(op.simplify(), qml.Identity)
+
+        op = hqml.Rotation(1e-9, wires=0)
+        assert isinstance(op.simplify(), qml.Identity)
+
+    def test_label(self):
+        op = hqml.Rotation(0.5, wires=0)
+        assert op.label() == "R"
+
+    def test_fock_matrix_zero(self):
+        op = hqml.Rotation(0.0, wires=0)
+        matrix = op.fock_matrix({0: 4})
+        assert matrix == pytest.approx(hqml.math.eye(4))
+
+    def test_fock_matrix_half_pi(self):
+        op = hqml.Rotation(math.pi / 2, wires=0)
+        matrix = op.fock_matrix({0: 4})
+        expected = hqml.math.diag([1, -1j, -1, 1j])
+        assert hqml.math.get_interface(matrix) == "numpy"
+        assert matrix == pytest.approx(expected)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jax(self):
+        import jax.numpy as jnp
+
+        theta = jnp.array(math.pi / 2)
+        op = hqml.Rotation(theta, wires=0)
+        matrix = op.fock_matrix({0: 4})
+        expected = hqml.math.diag(jnp.array([1, -1j, -1, 1j]))
+        assert hqml.math.get_interface(matrix) == "jax"
+        assert matrix == pytest.approx(expected)
+
+
+@pytest.mark.unit
+class TestSqueezing:
+    def test_init(self):
+        op = hqml.Squeezing(0.5, 0.3, wires=0)
+        assert op.name == "Squeezing"
+        assert op.num_params == 2
+        assert op.num_wires == 1
+        assert op.parameters == [0.5, 0.3]
+        assert op.wires == qml.wires.Wires(0)
+
+    def test_adjoint(self):
+        import numpy as np
+
+        op = hqml.Squeezing(0.5, 0.3, wires=0)
+        adj_op = op.adjoint()
+        assert isinstance(adj_op, hqml.Squeezing)
+        assert adj_op.parameters[0] == 0.5
+        assert adj_op.parameters[1] == pytest.approx((0.3 + np.pi) % (2 * np.pi))
+
+    def test_label(self):
+        op = hqml.Squeezing(0.5, 0.3, wires=0)
+        assert op.label() == "S"
+
+    def test_fock_matrix_zero(self):
+        op = hqml.Squeezing(0.0, 0.0, wires=0)
+        matrix = op.fock_matrix({0: 4})
+        assert matrix == pytest.approx(hqml.math.eye(4), abs=1e-6)
+
+    def test_fock_matrix_unitary(self):
+        op = hqml.Squeezing(0.3, 0.5, wires=0)
+        matrix = op.fock_matrix({0: 8})
+        eye = hqml.math.eye(8)
+        assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    def test_fock_matrix_action(self):
+        # Check that the uncertainty in x decreases at the expense of p
+        def var(obs, state):
+            return (
+                hqml.math.expectation_value(obs @ obs, state)
+                - hqml.math.expectation_value(obs, state) ** 2
+            )
+
+        dim = 8
+        obs = hqml.X.compute_fock_matrix((dim,))
+        vacuum = hqml.math.eye(dim)[:, 0]
+        mat = hqml.S.compute_fock_matrix((dim,), 1, 0)
+        state = mat[:, 0]  # S|0>
+        var_x = var(obs, state)
+        assert var_x < var(obs, vacuum)
+
+        obs = hqml.P.compute_fock_matrix((dim,))
+        var_p = var(obs, state)
+        assert var_p > var(obs, vacuum)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jax(self):
+        import jax.numpy as jnp
+
+        r = jnp.array(0.3)
+        phi = jnp.array(0.5)
+        op = hqml.Squeezing(r, phi, wires=0)
+        matrix = op.fock_matrix({0: 8})
+        eye = hqml.math.eye(8, like="jax")
+        assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+
+@pytest.mark.unit
+class TestKerr:
+    def test_init(self):
+        op = hqml.Kerr(0.5, wires=0)
+        assert op.name == "Kerr"
+        assert op.num_params == 1
+        assert op.num_wires == 1
+        assert op.parameters == [0.5]
+        assert op.wires == qml.wires.Wires(0)
+
+    def test_adjoint(self):
+        op = hqml.Kerr(0.5, wires=0)
+        adj_op = op.adjoint()
+        assert isinstance(adj_op, hqml.Kerr)
+        assert adj_op.parameters[0] == -0.5
+
+    def test_simplify(self):
+        op = hqml.Kerr(0, wires=0)
+        assert isinstance(op.simplify(), qml.Identity)
+
+        op = hqml.Kerr(1e-9, wires=0)
+        assert isinstance(op.simplify(), qml.Identity)
+
+    def test_label(self):
+        op = hqml.Kerr(0.5, wires=0)
+        assert op.label() == "K"
+
+    def test_fock_matrix(self):
+        kappa = math.pi / 4
+        op = hqml.Kerr(kappa, wires=0)
+        dim = 6
+        matrix = op.fock_matrix({0: dim})
+        n = hqml.math.arange(dim)
+        expected = hqml.math.diag(hqml.math.exp(-1j * kappa * n**2))
+        assert hqml.math.get_interface(matrix) == "numpy"
+        assert matrix == pytest.approx(expected)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jax(self):
+        import jax.numpy as jnp
+
+        kappa = jnp.array(math.pi / 4)
+        op = hqml.Kerr(kappa, wires=0)
+        dim = 6
+        matrix = op.fock_matrix({0: dim})
+        n = hqml.math.arange(dim, like=kappa)
+        expected = hqml.math.diag(hqml.math.exp(-1j * kappa * n**2))
+        assert hqml.math.get_interface(matrix) == "jax"
+        assert matrix == pytest.approx(expected)
+
+
+@pytest.mark.unit
+class TestCubicPhase:
+    def test_init(self):
+        op = hqml.CubicPhase(0.5, wires=0)
+        assert op.name == "CubicPhase"
+        assert op.num_params == 1
+        assert op.num_wires == 1
+        assert op.parameters == [0.5]
+        assert op.wires == qml.wires.Wires(0)
+
+    def test_adjoint(self):
+        op = hqml.CubicPhase(0.5, wires=0)
+        adj_op = op.adjoint()
+        assert isinstance(adj_op, hqml.CubicPhase)
+        assert adj_op.parameters[0] == -0.5
+
+    def test_simplify(self):
+        op = hqml.CubicPhase(0, wires=0)
+        assert isinstance(op.simplify(), qml.Identity)
+
+        op = hqml.CubicPhase(1e-9, wires=0)
+        assert isinstance(op.simplify(), qml.Identity)
+
+    def test_label(self):
+        op = hqml.CubicPhase(0.5, wires=0)
+        assert op.label() == "C"
+
+    def test_fock_matrix_zero(self):
+        op = hqml.CubicPhase(0.0, wires=0)
+        matrix = op.fock_matrix({0: 4})
+        assert matrix == pytest.approx(hqml.math.eye(4), abs=1e-6)
+
+    def test_fock_matrix_unitary(self):
+        dim = 6
+        op = hqml.CubicPhase(0.1, wires=0)
+        matrix = op.fock_matrix({0: dim})
+        eye = hqml.math.eye(dim)
+        assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jax(self):
+        import jax.numpy as jnp
+
+        dim = 6
+        r = jnp.array(0.1)
+        op = hqml.CubicPhase(r, wires=0)
+        matrix = op.fock_matrix({0: dim})
+        eye = hqml.math.eye(dim, like=r)
+        assert hqml.math.get_interface(matrix) == "jax"
+        assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)

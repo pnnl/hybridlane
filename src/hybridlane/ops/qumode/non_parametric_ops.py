@@ -8,7 +8,7 @@ from pennylane.decomposition.symbolic_decomposition import (
     pow_involutory,
     self_adjoint,
 )
-from pennylane.operation import CVOperation
+from pennylane.operation import CV, CVOperation, Operator
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
@@ -48,7 +48,7 @@ class Fourier(CVOperation, FockRepresentation):
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
         n = hqml.math.arange(wire_dims[0])
-        return hqml.math.diag(-1j * math.pi / 2 * n)
+        return hqml.math.diag(hqml.math.exp(-1j * math.pi / 2 * n))
 
 
 def _f_to_r_resources():
@@ -164,3 +164,97 @@ def _swap_to_bs(wires, **_):
 qml.add_decomps(ModeSwap, _swap_to_bs)
 qml.add_decomps("Adjoint(ModeSwap)", self_adjoint)
 qml.add_decomps("Pow(ModeSwap)", pow_involutory)
+
+
+class CreationOp(CV, Operator, FockRepresentation):
+    r"""Continuous-variable creation operator :math:`\ad`
+
+    It is defined by its action on the Fock basis as
+
+    .. math::
+
+        \ad \ket{n} = \sqrt{n+1} \ket{n+1}
+
+    It has a matrix representation in the Fock basis
+
+    >>> CreationOp.compute_fock_matrix((5,))
+    array([[0.        , 0.        , 0.        , 0.        , 0.        ],
+           [1.        , 0.        , 0.        , 0.        , 0.        ],
+           [0.        , 1.41421356, 0.        , 0.        , 0.        ],
+           [0.        , 0.        , 1.73205081, 0.        , 0.        ],
+           [0.        , 0.        , 0.        , 2.        , 0.        ]])
+
+    This operator is not Hermitian and so cannot be used as an observable.
+    """
+
+    num_params = 0
+    num_wires = 1
+    is_verified_hermitian = False
+
+    resource_keys = set()
+
+    def __init__(self, wires: WiresLike, id: str | None = None):
+        super().__init__(wires=wires, id=id)
+
+    def adjoint(self):
+        return AnnihilationOp(self.wires)
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        return hqml.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=-1)
+
+
+Ad = CreationOp
+r"""Creation operator :math:`\ad`
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.CreationOp`
+"""
+
+
+class AnnihilationOp(CV, Operator, FockRepresentation):
+    r"""Continuous-variable annihilation operator :math:`a`
+
+    It is defined by its action on the Fock basis as
+
+    .. math::
+
+        a \ket{n} = \sqrt{n} \ket{n-1}
+
+    It has a matrix representation in the Fock basis
+
+    >>> AnnihilationOp.compute_fock_matrix((5,))
+    array([[0.        , 1.        , 0.        , 0.        , 0.        ],
+           [0.        , 0.        , 1.41421356, 0.        , 0.        ],
+           [0.        , 0.        , 0.        , 1.73205081, 0.        ],
+           [0.        , 0.        , 0.        , 0.        , 2.        ],
+           [0.        , 0.        , 0.        , 0.        , 0.        ]])
+
+    This operator is not Hermitian and so cannot be used as an observable.
+    """
+
+    num_params = 0
+    num_wires = 1
+    is_verified_hermitian = False
+
+    resource_keys = set()
+
+    def __init__(self, wires: WiresLike, id: str | None = None):
+        super().__init__(wires=wires, id=id)
+
+    def adjoint(self):
+        return CreationOp(self.wires)
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+        return hqml.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=1)
+
+
+A = AnnihilationOp
+r"""Annihilation operator :math:`a`
+
+.. seealso::
+
+    This is an alias of :class:`~hybridlane.AnnihilationOp`
+"""

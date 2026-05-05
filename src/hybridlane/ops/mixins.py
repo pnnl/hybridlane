@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pennylane.exceptions import MatrixUndefinedError
-from pennylane.operation import Operator, classproperty
+from pennylane.operation import Operation, classproperty
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
@@ -74,7 +74,7 @@ class Spectral:
         )
 
 
-class Hybrid(Operator):
+class Hybrid:
     r"""Mixin for hybrid CV-DV gates
 
     This mixin adds functionality to split the wires of the gate by type into
@@ -115,7 +115,11 @@ class Hybrid(Operator):
         return {w: s for w, s in zip(self.wires, type_signature)}
 
 
-class FockRepresentation(Operator):
+class HybridOperation(Hybrid, Operation):
+    r"""Hybrid CV-DV quantum gate"""
+
+
+class FockRepresentation:
     r"""Mixin for gates that have a representation in the Fock basis"""
 
     @staticmethod

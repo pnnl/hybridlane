@@ -15,13 +15,12 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
-from .. import fock_utils
 from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
 # Change to match convention
-class Beamsplitter(CVOperation):
+class Beamsplitter(CVOperation, FockRepresentation):
     r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
 
     .. math::
@@ -82,8 +81,13 @@ class Beamsplitter(CVOperation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
-        ad = fock_utils.creation_operator(wire_dims[0], like=theta)
-        b = fock_utils.annihilation_operator(wire_dims[1], like=theta)
+        dim_a, dim_b = wire_dims
+        ad = hqml.math.asarray(
+            hqml.CreationOp.compute_fock_matrix((dim_a,)), like=theta
+        )
+        b = hqml.math.asarray(
+            hqml.AnnihilationOp.compute_fock_matrix((dim_b,)), like=theta
+        )
         adb = hqml.math.kron(ad, b)
         abd = hqml.math.conj(hqml.math.transpose(adb))
         g = (
@@ -179,8 +183,12 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
-        ad = fock_utils.creation_operator(wire_dims[0], like=r)
-        bd = fock_utils.creation_operator(wire_dims[1], like=r)
+        ad = hqml.math.asarray(
+            hqml.CreationOp.compute_fock_matrix(wire_dims[:1]), like=r
+        )
+        bd = hqml.math.asarray(
+            hqml.CreationOp.compute_fock_matrix(wire_dims[1:]), like=r
+        )
         adbd = hqml.math.kron(ad, bd)
         ab = hqml.math.conj(hqml.math.transpose(adbd))
         g = r * (hqml.math.exp(1j * phi) * adbd - hqml.math.exp(-1j * phi) * ab)
@@ -268,10 +276,14 @@ class TwoModeSum(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], lambda_) -> TensorLike:
-        a = fock_utils.annihilation_operator(wire_dims[0], like=lambda_)
-        ad = fock_utils.creation_operator(wire_dims[0], like=lambda_)
-        bd = fock_utils.creation_operator(wire_dims[1], like=lambda_)
-        b = fock_utils.annihilation_operator(wire_dims[1], like=lambda_)
+        a = hqml.math.asarray(
+            hqml.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_
+        )
+        ad = hqml.math.conj(hqml.math.transpose(a))
+        b = hqml.math.asarray(
+            hqml.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_
+        )
+        bd = hqml.math.conj(hqml.math.transpose(b))
         g = 0.5 * lambda_ * hqml.math.kron(a + ad, bd - b)
         return hqml.math.expm(g)
 
