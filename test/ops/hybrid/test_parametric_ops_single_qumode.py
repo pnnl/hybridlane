@@ -62,7 +62,41 @@ class TestConditionalRotation:
         op = hqml.ConditionalRotation(theta, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hqml.math.eye(8, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(theta):
+            op = hqml.CR(theta, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        theta = jnp.array(math.pi / 4)
+        f(theta)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dim = 4
+
+        # Should output |0>sin(xn/2) + |1>sin(-xn/2)
+        def f(theta):
+            op = hqml.CR(theta, wires=(0, 1))
+            mat = op.fock_matrix({0: 2, 1: dim})
+            return (mat @ jnp.ones(2 * dim)).imag.reshape(2, dim)
+
+        theta = jnp.array(math.pi / 4)
+        n = jnp.arange(dim)
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(theta)
+        expected_grad = -n / 2 * jnp.cos(theta / 2 * n)
+        assert grad[0] == pytest.approx(expected_grad)
+        assert grad[1] == pytest.approx(-expected_grad)
 
 
 @pytest.mark.unit
@@ -112,7 +146,50 @@ class TestSelectiveQubitRotation:
         op = hqml.SelectiveQubitRotation(theta, phi, 0, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hqml.math.eye(8, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.SQR(*x, 1, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, 0])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dims = {0: 2, 1: 4}
+        # |1,1>
+        state = hqml.math.kron(jnp.array([0.0, 1.0]), jnp.array([0.0, 1.0, 0.0, 0.0]))
+        z = hqml.math.expand_matrix(
+            qml.Z(0).matrix(), (0,), wire_order=(0, 1), wire_dims=dims
+        )
+        z = hqml.math.asarray(z, like=state)
+
+        def f(x, n):
+            op = hqml.SQR(*x, n, wires=(0, 1))
+            mat = op.fock_matrix(dims)
+            return hqml.math.expectation_value(z, mat @ state).real
+
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.grad(f)
+
+        # Because the qumode is state |1>, setting the SQR gate to act on |0> does nothing
+        grad = grad_fn(x, 0)
+        assert grad == pytest.approx(0)
+
+        # Now should act non-trivially. Because qubit is state |1>, continuing to rotate will
+        # boost the value <Z>
+        grad = grad_fn(x, 1)
+        assert grad[0] > 0
 
 
 @pytest.mark.unit
@@ -202,7 +279,46 @@ class TestJaynesCummings:
         op = hqml.JaynesCummings(theta, phi, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hqml.math.eye(8, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.JC(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, 0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dims = {0: 2, 1: 4}
+        # |1,0>
+        state = hqml.math.kron(jnp.array([0.0, 1.0]), jnp.array([1.0, 0.0, 0.0, 0.0]))
+        n = hqml.N(1).fock_matrix(wire_dims=dims, wire_order=(0, 1))
+
+        def f(x):
+            op = hqml.JC(*x, wires=(0, 1))
+            mat = op.fock_matrix(dims)
+            return hqml.math.expectation_value(n, mat @ state).real
+
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.grad(f)
+
+        grad = grad_fn(x)
+        assert grad[0] > 0
+
+        # With x[0] = 0, the phase should not affect anything, and x[0] = 0 is a local minimum
+        x = jnp.zeros_like(x)
+        grad = grad_fn(x)
+        assert grad == pytest.approx(0)
 
 
 @pytest.mark.unit
@@ -277,7 +393,52 @@ class TestAntiJaynesCummings:
         op = hqml.AntiJaynesCummings(theta, phi, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hqml.math.eye(8, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.AJC(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, 0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dims = {0: 2, 1: 4}
+        # |0,0>
+        state = hqml.math.kron(jnp.array([1.0, 0.0]), jnp.array([1.0, 0.0, 0.0, 0.0]))
+        n = hqml.N(1).fock_matrix(wire_dims=dims, wire_order=(0, 1))
+        z = hqml.math.expand_matrix(
+            qml.Z(0).matrix(), (0,), wire_order=(0, 1), wire_dims=dims
+        )
+        z = hqml.math.asarray(z, like=state)
+        obs = n - z
+
+        def f(x):
+            op = hqml.AJC(*x, wires=(0, 1))
+            mat = op.fock_matrix(dims)
+            return hqml.math.expectation_value(obs, mat @ state).real
+
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.grad(f)
+
+        # Applying to |0,0> creates quanta in both, so we have positive gradient
+        grad = grad_fn(x)
+        assert grad[0] > 0
+
+        # With x[0] = 0, the phase should not affect anything, and x[0] = 0 is a local minimum
+        x = jnp.zeros_like(x)
+        grad = grad_fn(x)
+        assert grad == pytest.approx(0)
 
 
 @pytest.mark.unit
@@ -331,7 +492,34 @@ class TestRabi:
         op = hqml.Rabi(r, phi, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hqml.math.eye(8, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.Rabi(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, 0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(x):
+            op = hqml.Rabi(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4}).real
+
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))
 
 
 @pytest.mark.unit
@@ -382,7 +570,51 @@ class TestConditionalDisplacement:
         op = hqml.ConditionalDisplacement(a, phi, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hqml.math.eye(12, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.CD(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dims = {0: 2, 1: 4}
+
+        def f(x):
+            op = hqml.CD(*x, wires=(0, 1))
+            mat = op.fock_matrix(dims)
+            # extract coherent state |-alpha>
+            state = mat.reshape((2, 4, 2, 4))[1, :, 1, 0]
+            x = hqml.X(1).fock_matrix(dims)
+            x = hqml.math.asarray(x, like=state)
+            return hqml.math.expectation_value(x, state).real
+
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.grad(f)
+        grad = grad_fn(x)
+
+        # Increasing displacement (r) should lower <x>, but phi=0 is a local maximum
+        assert grad[0] < 0
+        assert grad[1] == pytest.approx(0)
+
+        # Now displace orthogonal to x, making r have no effect. Decreasing phi back
+        # towards 0 should lower the value, meaning the grad > 0
+        x = jnp.array([0.123, jnp.pi / 2])
+        grad = grad_fn(x)
+        assert grad[0] == pytest.approx(0)
+        assert grad[1] > 0
 
 
 @pytest.mark.unit
@@ -436,7 +668,34 @@ class TestConditionalXDisplacement:
         op = hqml.ConditionalXDisplacement(a, phi, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hqml.math.eye(12, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.XCD(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(x):
+            op = hqml.XCD(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4}).real
+
+        x = jnp.array([0.123, -0.456])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))
 
 
 @pytest.mark.unit
@@ -490,7 +749,34 @@ class TestConditionalYDisplacement:
         op = hqml.ConditionalYDisplacement(a, phi, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hqml.math.eye(12, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.YCD(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(x):
+            op = hqml.YCD(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4}).real
+
+        x = jnp.array([0.123, -0.456])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))
 
 
 @pytest.mark.unit
@@ -544,7 +830,47 @@ class TestConditionalSqueezing:
         op = hqml.ConditionalSqueezing(z, phi, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 8})
         eye = hqml.math.eye(16, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.CS(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def var(obs, state):
+            return (
+                hqml.math.expectation_value(obs @ obs, state)
+                - hqml.math.expectation_value(obs, state) ** 2
+            ).real
+
+        dims = {0: 2, 1: 4}
+
+        def f(x):
+            obs = hqml.X(1).fock_matrix(dims)
+            obs = hqml.math.asarray(obs, like="jax")
+            mat = hqml.CS(*x, wires=(0, 1)).fock_matrix(dims)
+            # CS|1,0>
+            state = mat.reshape((2, 4, 2, 4))[1, :, 1, 0]
+            return var(obs, state)
+
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.grad(f)
+        grad = grad_fn(x)
+        assert grad[0] > 0
+        assert grad[1] == pytest.approx(0)
 
 
 @pytest.mark.unit
@@ -603,3 +929,29 @@ class TestEchoedConditionalDisplacement:
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hqml.math.eye(12, like="jax")
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.ECD(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(x):
+            op = hqml.ECD(*x, wires=(0, 1))
+            return op.fock_matrix({0: 2, 1: 4}).real
+
+        x = jnp.array([0.123, -0.456])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))

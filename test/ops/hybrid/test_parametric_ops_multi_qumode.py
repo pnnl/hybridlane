@@ -43,11 +43,12 @@ class TestConditionalBeamsplitter:
         matrix = op.fock_matrix({0: 2, 1: 3, 2: 3})
         assert matrix == pytest.approx(hqml.math.eye(18), abs=1e-6)
 
-    def test_fock_matrix_unitary(self):
-        op = hqml.ConditionalBeamsplitter(0.5, 0.3, wires=[0, 1, 2])
-        matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
-        eye = hqml.math.eye(32)
-        assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+    def test_fock_matrix(self):
+        dims = {0: 2, 1: 4, 2: 4}
+        bs = hqml.BS(0.5, 0.3, wires=(1, 2)).fock_matrix(dims)
+        op = hqml.CBS(0.5, 0.3, wires=[0, 1, 2])
+        matrix = op.fock_matrix(dims)
+        assert matrix == pytest.approx(hqml.math.block_diag([bs, hqml.math.dag(bs)]))
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
@@ -58,7 +59,34 @@ class TestConditionalBeamsplitter:
         op = hqml.ConditionalBeamsplitter(theta, phi, wires=[0, 1, 2])
         matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
         eye = hqml.math.eye(32, like="jax")
+        assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.CBS(*x, wires=(0, 1, 2))
+            return op.fock_matrix({0: 2, 1: 4, 2: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(x):
+            op = hqml.CBS(*x, wires=(0, 1, 2))
+            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real
+
+        x = jnp.array([0.123, -0.456])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))
 
 
 @pytest.mark.unit
@@ -92,16 +120,12 @@ class TestConditionalTwoModeSqueezing:
         op = hqml.ConditionalTwoModeSqueezing(0.5, 0.3, wires=[0, 1, 2])
         assert op.label() == "CTMS"
 
-    def test_fock_matrix_zero(self):
-        op = hqml.ConditionalTwoModeSqueezing(0.0, 0.0, wires=[0, 1, 2])
-        matrix = op.fock_matrix({0: 2, 1: 3, 2: 3})
-        assert matrix == pytest.approx(hqml.math.eye(18), abs=1e-6)
-
-    def test_fock_matrix_unitary(self):
-        op = hqml.ConditionalTwoModeSqueezing(0.3, 0.5, wires=[0, 1, 2])
-        matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
-        eye = hqml.math.eye(32)
-        assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+    def test_fock_matrix(self):
+        dims = {0: 2, 1: 4, 2: 4}
+        tms = hqml.TMS(0.3, 0.5, wires=(1, 2)).fock_matrix(dims)
+        op = hqml.CTMS(0.3, 0.5, wires=[0, 1, 2])
+        matrix = op.fock_matrix(dims)
+        assert matrix == pytest.approx(hqml.math.block_diag(tms, hqml.math.dag(tms)))
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
@@ -113,6 +137,32 @@ class TestConditionalTwoModeSqueezing:
         matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
         eye = hqml.math.eye(32, like="jax")
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.TMS(*x, wires=(0, 1, 2))
+            return op.fock_matrix({0: 2, 1: 4, 2: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(x):
+            op = hqml.TMS(*x, wires=(0, 1, 2))
+            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real
+
+        x = jnp.array([0.123, -0.456])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))
 
 
 @pytest.mark.unit
@@ -146,16 +196,12 @@ class TestConditionalTwoModeSum:
         op = hqml.ConditionalTwoModeSum(0.5, wires=[0, 1, 2])
         assert op.label() == "CSUM"
 
-    def test_fock_matrix_zero(self):
-        op = hqml.ConditionalTwoModeSum(0.0, wires=[0, 1, 2])
-        matrix = op.fock_matrix({0: 2, 1: 3, 2: 3})
-        assert matrix == pytest.approx(hqml.math.eye(18), abs=1e-6)
-
-    def test_fock_matrix_unitary(self):
-        op = hqml.ConditionalTwoModeSum(0.3, wires=[0, 1, 2])
-        matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
-        eye = hqml.math.eye(32)
-        assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+    def test_fock_matrix(self):
+        dims = {0: 2, 1: 4, 2: 4}
+        sum = hqml.SUM(0.3, wires=(1, 2)).fock_matrix(dims)
+        op = hqml.CSUM(0.3, wires=[0, 1, 2])
+        matrix = op.fock_matrix(dims)
+        assert matrix == pytest.approx(hqml.math.block_diag([sum, hqml.math.dag(sum)]))
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
@@ -166,3 +212,29 @@ class TestConditionalTwoModeSum:
         matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
         eye = hqml.math.eye(32, like="jax")
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.CSUM(*x, wires=(0, 1, 2))
+            return op.fock_matrix({0: 2, 1: 4, 2: 4})
+
+        x = jnp.array([0.123])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(x):
+            op = hqml.CSUM(*x, wires=(0, 1, 2))
+            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real
+
+        x = jnp.array([0.123])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))

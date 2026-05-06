@@ -1024,10 +1024,10 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+        dims = {i: d for i, d in enumerate(wire_dims)}
         cd = CD.compute_fock_matrix(wire_dims, a / 2, phi)
         x = qml.X.compute_matrix()
         x = hqml.math.asarray(x, like=a)
-        dims = {i: d for i, d in enumerate(wire_dims)}
         x = hqml.math.expand_matrix(x, (0,), wire_dims=dims, wire_order=(0, 1))
         return x @ cd
 
