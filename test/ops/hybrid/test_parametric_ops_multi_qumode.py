@@ -125,7 +125,7 @@ class TestConditionalTwoModeSqueezing:
         tms = hqml.TMS(0.3, 0.5, wires=(1, 2)).fock_matrix(dims)
         op = hqml.CTMS(0.3, 0.5, wires=[0, 1, 2])
         matrix = op.fock_matrix(dims)
-        assert matrix == pytest.approx(hqml.math.block_diag(tms, hqml.math.dag(tms)))
+        assert matrix == pytest.approx(hqml.math.block_diag([tms, hqml.math.dag(tms)]))
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
@@ -145,7 +145,7 @@ class TestConditionalTwoModeSqueezing:
 
         @jax.jit
         def f(x):
-            op = hqml.TMS(*x, wires=(0, 1, 2))
+            op = hqml.CTMS(*x, wires=(0, 1, 2))
             return op.fock_matrix({0: 2, 1: 4, 2: 4})
 
         x = jnp.array([0.123, -0.456])
@@ -156,7 +156,7 @@ class TestConditionalTwoModeSqueezing:
         import jax.numpy as jnp
 
         def f(x):
-            op = hqml.TMS(*x, wires=(0, 1, 2))
+            op = hqml.CTMS(*x, wires=(0, 1, 2))
             return op.fock_matrix({0: 2, 1: 4, 2: 4}).real
 
         x = jnp.array([0.123, -0.456])
