@@ -181,13 +181,6 @@ class TestNumberOperator:
         assert hqml.math.get_interface(matrix) == "numpy"
         assert matrix == pytest.approx(expected)
 
-    @pytest.mark.jax
-    def test_fock_matrix_jax(self):
-        op = hqml.NumberOperator(wires=0)
-        matrix = op.fock_matrix({0: 4})
-        expected = hqml.math.diag([0, 1, 2, 3])
-        assert matrix == pytest.approx(expected)
-
 
 @pytest.mark.unit
 class TestFockStateProjector:

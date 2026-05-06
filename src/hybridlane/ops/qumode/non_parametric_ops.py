@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import math
 
+import numpy as np
 import pennylane as qml
 from pennylane.decomposition.symbolic_decomposition import (
     make_pow_decomp_with_period,
@@ -9,7 +10,6 @@ from pennylane.decomposition.symbolic_decomposition import (
     self_adjoint,
 )
 from pennylane.operation import CV, CVOperation, Operator
-from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 import hybridlane as hqml
@@ -46,7 +46,7 @@ class Fourier(CVOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         n = hqml.math.arange(wire_dims[0])
         return hqml.math.diag(hqml.math.exp(-1j * math.pi / 2 * n))
 
@@ -136,7 +136,7 @@ class ModeSwap(CVOperation, FockRepresentation):
             return [ModeSwap(self.wires)]
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         dim0, dim1 = wire_dims
         mat = hqml.math.zeros((dim0 * dim1, dim0 * dim1), dtype=complex)
         m = hqml.math.arange(dim0)[:, None]
@@ -200,7 +200,7 @@ class CreationOp(CV, Operator, FockRepresentation):
         return AnnihilationOp(self.wires)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         return hqml.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=-1)
 
 
@@ -247,7 +247,7 @@ class AnnihilationOp(CV, Operator, FockRepresentation):
         return CreationOp(self.wires)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         return hqml.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=1)
 
 

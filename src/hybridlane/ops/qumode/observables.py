@@ -4,6 +4,7 @@ import math
 from collections.abc import Iterable, Sequence
 from typing import Any, Hashable
 
+import numpy as np
 import pennylane as qml
 from pennylane.operation import Operator
 from pennylane.typing import TensorLike
@@ -58,7 +59,7 @@ class QuadX(qml.QuadX, Spectral, FockRepresentation):
         return f"x̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         # Standard units
         lam = 1 / math.sqrt(2)
         a = hqml.CreationOp.compute_fock_matrix(wire_dims)
@@ -121,7 +122,7 @@ class QuadP(qml.QuadP, Spectral, FockRepresentation):
         return f"p̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         # Standard units
         lam = 1 / math.sqrt(2)
         a = hqml.CreationOp.compute_fock_matrix(wire_dims)
@@ -246,7 +247,7 @@ class NumberOperator(qml.NumberOperator, Spectral, FockRepresentation):
         return f"n̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         return hqml.math.diag(hqml.math.arange(wire_dims[0]))
 
 

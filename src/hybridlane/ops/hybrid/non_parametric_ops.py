@@ -2,24 +2,23 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import math
 
+import numpy as np
 import pennylane as qml
-from pennylane import numpy as np
 from pennylane.decomposition.symbolic_decomposition import (
     make_pow_decomp_with_period,
 )
 from pennylane.operation import Operation
-from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
-from ..mixins import FockRepresentation, Hybrid
+from ..mixins import FockRepresentation, HybridOperation
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multiqcond_native,
 )
 
 
-class ConditionalParity(Hybrid, FockRepresentation):
+class ConditionalParity(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned number parity gate :math:`CP`
 
     This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation`
@@ -68,7 +67,7 @@ class ConditionalParity(Hybrid, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         f = hqml.Fourier.compute_fock_matrix(wire_dims[1:])
         fd = hqml.math.conj(hqml.math.transpose(f))
         return hqml.math.block_diag([f, fd])

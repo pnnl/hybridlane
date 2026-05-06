@@ -8,13 +8,12 @@ from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
     pow_rotation,
 )
-from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 import hybridlane as hqml
 
-from ..mixins import FockRepresentation, Hybrid
+from ..mixins import FockRepresentation, HybridOperation
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multiqcond_native,
 )
@@ -22,7 +21,7 @@ from ..qumode import Displacement, Squeezing
 from .non_parametric_ops import ConditionalParity
 
 
-class ConditionalRotation(Hybrid, FockRepresentation):
+class ConditionalRotation(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned phase-space rotation :math:`CR(\theta)`
 
     This operation implements a phase-space rotation on a qumode, conditioned on the
@@ -99,7 +98,7 @@ This is an alias for :class:`~hybridlane.ConditionalRotation`
 """
 
 
-class ConditionalDisplacement(Hybrid, FockRepresentation):
+class ConditionalDisplacement(HybridOperation, FockRepresentation):
     r"""Symmetric conditional displacement gate :math:`CD(\alpha)`
 
     This is the qubit-conditioned version of the :py:class:`~hybridlane.Displacement`
@@ -232,7 +231,7 @@ This is an alias for :class:`~hybridlane.ConditionalDisplacement`
 """
 
 
-class ConditionalXDisplacement(Hybrid, FockRepresentation):
+class ConditionalXDisplacement(HybridOperation, FockRepresentation):
     r"""X-Conditional displacement gate :math:`xCD(\alpha)`
 
     This is the conditional displacement gate, conditioned on the :math:`X` eigenstates
@@ -325,7 +324,7 @@ This is an alias for :class:`~hybridlane.ConditionalXDisplacement`
 """
 
 
-class ConditionalYDisplacement(Hybrid, FockRepresentation):
+class ConditionalYDisplacement(HybridOperation, FockRepresentation):
     r"""Y-Conditional displacement gate :math:`yCD(\alpha)`
 
     This is the conditional displacement gate, conditioned on the :math:`Y` eigenstates
@@ -422,7 +421,7 @@ This is an alias for :class:`~hybridlane.ConditionalYDisplacement`
 """
 
 
-class ConditionalSqueezing(Hybrid, FockRepresentation):
+class ConditionalSqueezing(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned squeezing gate :math:`CS(\zeta)`
 
     This gate implements the unitary
@@ -524,7 +523,7 @@ This is an alias for :class:`~hybridlane.ConditionalSqueezing`
 """
 
 
-class SelectiveQubitRotation(Hybrid, FockRepresentation):
+class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     r"""number-Selective Qubit Rotation (SQR) gate :math:`SQR(\theta, \varphi, n)`
 
     This gate imparts customizeable rotations onto the qubit based on the state
@@ -618,7 +617,7 @@ class SelectiveQubitRotation(Hybrid, FockRepresentation):
                 hqml.math.cos(phi) * qml.X.compute_matrix()
                 + hqml.math.sin(phi) * qml.Y.compute_matrix()
             )
-            return hqml.math.exp(-1j * theta / 2 * sigma)
+            return hqml.math.expm(-1j * theta / 2 * sigma)
 
         blocks = [hqml.math.eye(2)] * wire_dims[1]
         blocks[n] = r(theta, phi)
@@ -651,7 +650,7 @@ qml.add_decomps("Adjoint(SelectiveQubitRotation)", adjoint_rotation)
 qml.add_decomps("Pow(SelectiveQubitRotation)", _pow_sqr)
 
 
-class JaynesCummings(Operation, Hybrid):
+class JaynesCummings(HybridOperation, FockRepresentation):
     r"""Jaynes-cummings gate :math:`JC(\theta, \varphi)`, also known as Red-Sideband
 
     This is the standard interaction for an atom exchanging a photon with a cavity,
@@ -721,6 +720,14 @@ class JaynesCummings(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "JC", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+        ad = hqml.Ad.compute_fock_matrix(wire_dims[1:])
+        ad = hqml.math.asarray(ad, like=theta)
+        sigma_minus = hqml.math.asarray([[0, 1], [0, 0]], like=theta)
+        term = hqml.math.exp(1j * phi) * hqml.math.kron(sigma_minus, ad)
+        return hqml.math.expm(-1j * theta * (term + hqml.math.dag(term)))
+
 
 Red = JaynesCummings
 r"""Red sideband gate
@@ -757,7 +764,7 @@ qml.add_decomps("Adjoint(JaynesCummings)", adjoint_rotation)
 qml.add_decomps("Pow(JaynesCummings)", _pow_jc)
 
 
-class AntiJaynesCummings(Operation, Hybrid):
+class AntiJaynesCummings(HybridOperation, FockRepresentation):
     r"""Anti-Jaynes-cummings gate :math:`AJC(\theta, \varphi)`, also known as Blue-Sideband
 
     This is given by the expression (Table III.3 of :footcite:p:`liu2026hybrid`)
@@ -825,6 +832,14 @@ class AntiJaynesCummings(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "AJC", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+        ad = hqml.Ad.compute_fock_matrix(wire_dims[1:])
+        ad = hqml.math.asarray(ad, like=theta)
+        sigma_plus = hqml.math.asarray([[0, 0], [1, 0]], like=theta)
+        term = hqml.math.exp(1j * phi) * hqml.math.kron(sigma_plus, ad)
+        return hqml.math.expm(-1j * theta * (term + hqml.math.dag(term)))
+
 
 Blue = AntiJaynesCummings
 r"""Blue sideband gate
@@ -861,7 +876,7 @@ qml.add_decomps("Adjoint(AntiJaynesCummings)", adjoint_rotation)
 qml.add_decomps("Pow(AntiJaynesCummings)", _pow_ajc)
 
 
-class Rabi(Operation, Hybrid):
+class Rabi(HybridOperation, FockRepresentation):
     r"""Rabi interaction :math:`RB(\theta)`
 
     This hybrid gate is given by the expression
@@ -915,6 +930,15 @@ class Rabi(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "RB", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+        ad = hqml.Ad.compute_fock_matrix(wire_dims[1:])
+        ad = hqml.math.asarray(ad, like=r)
+        x = qml.X.compute_matrix()
+        x = hqml.math.asarray(x, like=r)
+        term = hqml.math.exp(1j * phi) * hqml.math.kron(x, ad)
+        return hqml.math.expm(-1j * r * (term + hqml.math.dag(term)))
+
 
 @qml.register_resources({ConditionalDisplacement: 1, qml.H: 2})
 def _rb_to_cd(r, phi, wires, **_):
@@ -941,7 +965,7 @@ qml.add_decomps("Adjoint(Rabi)", adjoint_rotation)
 qml.add_decomps("Pow(Rabi)", _pow_rb)
 
 
-class EchoedConditionalDisplacement(Operation, Hybrid):
+class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
     r"""Echoed conditional displacement gate :math:`ECD(\alpha)`
 
     This is given by the unitary (p. S9 of :footcite:p:`eickbusch2022fast`)
@@ -997,6 +1021,15 @@ class EchoedConditionalDisplacement(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "ECD", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+        cd = CD.compute_fock_matrix(wire_dims, a / 2, phi)
+        x = qml.X.compute_matrix()
+        x = hqml.math.asarray(x, like=a)
+        dims = {i: d for i, d in enumerate(wire_dims)}
+        x = hqml.math.expand_matrix(x, (0,), wire_dims=dims, wire_order=(0, 1))
+        return x @ cd
 
 
 @qml.register_resources({ConditionalDisplacement: 1, qml.X: 1})

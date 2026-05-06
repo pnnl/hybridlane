@@ -7,11 +7,12 @@ from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
     pow_rotation,
 )
-from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-from ..mixins import Hybrid
+import hybridlane as hqml
+
+from ..mixins import FockRepresentation, HybridOperation
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multiqcond_native,
 )
@@ -19,7 +20,7 @@ from ..qumode import Beamsplitter, TwoModeSqueezing
 from .non_parametric_ops import ConditionalParity
 
 
-class ConditionalBeamsplitter(Operation, Hybrid):
+class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned beamsplitter :math:`CBS(\theta, \varphi)`
 
     This is a multi-qumode gate conditioned on a qubit. It is given by the expression
@@ -89,6 +90,12 @@ class ConditionalBeamsplitter(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "CBS", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+        bs = hqml.BS.compute_fock_matrix(wire_dims[1:], theta, phi)
+        bsd = hqml.math.conj(hqml.math.transpose(bs))
+        return hqml.math.block_diag([bs, bsd])
+
 
 @qml.register_resources({Beamsplitter: 1, ConditionalParity: 2})
 def _cbs_parity_decomp(theta, phi, wires, **_):
@@ -121,7 +128,7 @@ r"""Qubit-conditioned beamsplitter :math:`CBS(\theta, \varphi)`
 """
 
 
-class ConditionalTwoModeSqueezing(Operation, Hybrid):
+class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
 
     This is the qubit-conditioned version of the
@@ -194,6 +201,12 @@ class ConditionalTwoModeSqueezing(Operation, Hybrid):
             decimals=decimals, base_label=base_label or "CTMS", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+        tms = hqml.TMS.compute_fock_matrix(wire_dims[1:], r, phi)
+        tmsd = hqml.math.conj(hqml.math.transpose(tms))
+        return hqml.math.block_diag([tms, tmsd])
+
 
 @qml.register_resources({TwoModeSqueezing: 1, ConditionalParity: 2})
 def _ctms_parity_decomp(r, phi, wires, **_):
@@ -225,7 +238,7 @@ r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
 """
 
 
-class ConditionalTwoModeSum(Operation, Hybrid):
+class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
 
     This is a multi-mode gate conditioned on the state of a qubit, given by the
@@ -279,6 +292,12 @@ class ConditionalTwoModeSum(Operation, Hybrid):
         return super().label(
             decimals=decimals, base_label=base_label or "CSUM", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], lam) -> TensorLike:
+        tms = hqml.SUM.compute_fock_matrix(wire_dims[1:], lam)
+        tmsd = hqml.math.conj(hqml.math.transpose(tms))
+        return hqml.math.block_diag([tms, tmsd])
 
 
 qml.add_decomps("Adjoint(ConditionalTwoModeSum)", adjoint_rotation)
