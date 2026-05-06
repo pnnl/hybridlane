@@ -6,6 +6,18 @@ import pennylane as qp
 import pytest
 
 
+@pytest.fixture(autouse=True, scope="session")
+def use_jax_x64():
+    try:
+        import jax
+
+        jax.config.update("jax_enable_x64", True)
+        yield
+        jax.config.update("jax_enable_x64", False)
+    except ImportError:
+        yield
+
+
 @pytest.fixture(autouse=True)
 def enable_graph_decomp():
     qp.decomposition.enable_graph()

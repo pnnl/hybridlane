@@ -40,7 +40,7 @@ class TestSelectiveNumberArbitraryPhase:
         op = hqml.SNAP(0.5, 1, 0)
         assert op.label() == "SNAP_{1}"
 
-    def test_matrix(self):
+    def test_fock_matrix(self):
         op = hqml.SNAP(0.5, 1, 0)
         matrix = op.fock_matrix({0: 4})
         expected = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1])
@@ -48,13 +48,39 @@ class TestSelectiveNumberArbitraryPhase:
         assert matrix == pytest.approx(expected)
 
     @pytest.mark.jax
-    def test_matrix_jax(self):
+    def test_fock_matrix_jax(self):
         param = hqml.math.asarray(0.5, like="jax")
         op = hqml.SNAP(param, 1, 0)
         matrix = op.fock_matrix({0: 4})
         expected = hqml.math.diag([1, hqml.math.exp(0.5j), 1, 1], like="jax")
         assert hqml.math.get_interface(matrix) == "jax"
         assert matrix == pytest.approx(expected)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(theta):
+            op = hqml.SNAP(theta, 3, wires=0)
+            return op.fock_matrix({0: 4})
+
+        theta = jnp.array(0.5)
+        f(theta)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def f(theta):
+            op = hqml.SNAP(theta, 3, wires=0)
+            return hqml.math.real(op.fock_matrix({0: 4}))
+
+        theta = jnp.array(0.5)
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(theta)
+        assert not hqml.math.any(hqml.math.isnan(grad))
 
 
 @pytest.mark.unit
@@ -126,6 +152,48 @@ class TestDisplacement:
         assert hqml.math.get_interface(d_on_vacuum) == "jax"
         assert d_on_vacuum == pytest.approx(expected, abs=1e-6)
 
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.D(*x, wires=0)
+            return op.fock_matrix({0: 4})
+
+        x = jnp.array([0.5, 0.123])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dims = {0: 4}
+
+        def f(x):
+            op = hqml.D(*x, wires=0)
+            mat = op.fock_matrix(dims)
+            state = mat[:, 0]  # extract coherent state
+            x = hqml.X(0).fock_matrix(dims)
+            x = hqml.math.asarray(x, like=state)
+            return hqml.math.expectation_value(x, state).real
+
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.grad(f)
+        grad = grad_fn(x)
+
+        # Increasing displacement (r) should boost <x>, but phi=0 is a local maximum
+        assert grad[0] > 0
+        assert grad[1] == pytest.approx(0)
+
+        # Now displace orthogonal to x, making r have no effect. Decreasing phi back
+        # towards 0 should boost our value, meaning the grad < 0
+        x = jnp.array([0.123, jnp.pi / 2])
+        grad = grad_fn(x)
+        assert grad[0] == pytest.approx(0)
+        assert grad[1] < 0
+
 
 @pytest.mark.unit
 class TestRotation:
@@ -176,6 +244,38 @@ class TestRotation:
         expected = hqml.math.diag(jnp.array([1, -1j, -1, 1j]))
         assert hqml.math.get_interface(matrix) == "jax"
         assert matrix == pytest.approx(expected)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(theta):
+            op = hqml.R(theta, 0)
+            return op.fock_matrix({0: 4})
+
+        theta = jnp.array(math.pi / 4)
+        f(theta)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dim = 4
+
+        # Should output cos(xn)
+        def f(theta):
+            op = hqml.R(theta, 0)
+            mat = op.fock_matrix({0: dim})
+            return (mat @ jnp.ones(dim)).real
+
+        theta = jnp.array(math.pi / 4)
+        n = jnp.arange(dim)
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(theta)
+        expected_grad = -n * jnp.sin(theta * n)
+        assert grad == pytest.approx(expected_grad)
 
 
 @pytest.mark.unit
@@ -243,6 +343,47 @@ class TestSqueezing:
         eye = hqml.math.eye(8, like="jax")
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
 
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.S(*x, wires=0)
+            return op.fock_matrix({0: 4})
+
+        x = jnp.array([0.123, -0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        def var(obs, state):
+            return (
+                hqml.math.expectation_value(obs @ obs, state)
+                - hqml.math.expectation_value(obs, state) ** 2
+            ).real
+
+        dim = 4
+
+        def f(x):
+            obs = hqml.X.compute_fock_matrix((dim,))
+            obs = hqml.math.asarray(obs, like="jax")
+            mat = hqml.S.compute_fock_matrix((dim,), *x)
+            state = mat[:, 0]  # S|0>
+            return var(obs, state)
+
+        # Evaluating Var(x) results in:
+        #  - First parameter squeezes more, reducing variance -> negative gradient
+        #  - Second parameter controls alignment, at 0 is a local minimum
+        x = jnp.array([0.123, 0])
+        grad_fn = hqml.math.grad(f)
+        grad = grad_fn(x)
+        assert grad[0] < 0
+        assert grad[1] == pytest.approx(0)
+
 
 @pytest.mark.unit
 class TestKerr:
@@ -293,6 +434,36 @@ class TestKerr:
         expected = hqml.math.diag(hqml.math.exp(-1j * kappa * n**2))
         assert hqml.math.get_interface(matrix) == "jax"
         assert matrix == pytest.approx(expected)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.K(*x, wires=0)
+            return op.fock_matrix({0: 4})
+
+        x = jnp.array([0.123])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        # Should output cos(xn^2)
+        def f(x):
+            op = hqml.K(x, wires=0)
+            mat = op.fock_matrix({0: 4})
+            return (mat @ jnp.ones(4)).real
+
+        x = jnp.array(0.123)
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        n = jnp.arange(4)
+        expected_grad = -jnp.sin(x * n**2) * n**2
+        assert grad == pytest.approx(expected_grad)
 
 
 @pytest.mark.unit
@@ -345,3 +516,30 @@ class TestCubicPhase:
         eye = hqml.math.eye(dim, like=r)
         assert hqml.math.get_interface(matrix) == "jax"
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.C(*x, wires=0)
+            return op.fock_matrix({0: 4})
+
+        x = jnp.array([0.123])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        # todo: don't have a good understanding of this gate to build a solid test
+        def f(x):
+            op = hqml.C(x, wires=0)
+            return op.fock_matrix({0: 4}).real
+
+        x = jnp.array(0.123)
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))

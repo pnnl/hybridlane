@@ -64,6 +64,33 @@ class TestTwoModeSum:
         eye = hqml.math.eye(16, like="jax")
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
 
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.SUM(x, wires=[0, 1])
+            return op.fock_matrix({0: 4, 1: 4})
+
+        x = jnp.array([0.123])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        # todo: don't have a good understanding of this gate to build a solid test
+        def f(x):
+            op = hqml.SUM(x, wires=[0, 1])
+            return op.fock_matrix({0: 4, 1: 4}).real
+
+        x = jnp.array(0.123)
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))
+
 
 @pytest.mark.unit
 class TestBeamsplitter:
@@ -162,6 +189,50 @@ class TestBeamsplitter:
         eye = hqml.math.eye(16, like="jax")
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
 
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.BS(*x, wires=(0, 1))
+            return op.fock_matrix({0: 4, 1: 4})
+
+        x = jnp.array([0.123, 0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dims = {0: 4, 1: 4}
+        n2 = hqml.N(1).fock_matrix(dims, wire_order=(0, 1))
+        n2 = hqml.math.asarray(n2, like="jax")
+        state1 = jnp.array([0, 1, 0, 0])
+        state2 = jnp.array([1, 0, 0, 0])
+        state = hqml.math.kron(state1, state2)  # |1, 0>
+
+        # Function effectively can transfer excitation to qumode 2, and then we measure
+        # that excitation level <n2>
+        def f(x):
+            op = hqml.BS(*x, wires=(0, 1))
+            mat = op.fock_matrix(dims)
+            return hqml.math.expectation_value(n2, mat @ state).real
+
+        # x[0] increases the excitation in mode 2 up until pi, so the gradient should be
+        # positive. As for x[1], it imparts relative phases and therefore should have grad 0
+        x = jnp.array([0.123, 0.456])
+        grad_fn = hqml.math.grad(f)
+        grad = grad_fn(x)
+        assert grad[0] > 0
+        assert grad[1] == pytest.approx(0)
+
+        # pi should be local maximum
+        x = jnp.array([jnp.pi, 0.456])
+        grad = grad_fn(x)
+        assert grad == pytest.approx(0)
+
 
 @pytest.mark.unit
 class TestTwoModeSqueezing:
@@ -213,3 +284,30 @@ class TestTwoModeSqueezing:
         matrix = op.fock_matrix({0: 5, 1: 5})
         eye = hqml.math.eye(25, like="jax")
         assert matrix @ hqml.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            op = hqml.TMS(*x, wires=(0, 1))
+            return op.fock_matrix({0: 4, 1: 4})
+
+        x = jnp.array([0.123, 0.456])
+        f(x)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        # todo: don't have a good understanding of this gate to build a solid test
+        def f(x):
+            op = hqml.TMS(*x, wires=(0, 1))
+            return op.fock_matrix({0: 4, 1: 4}).real
+
+        x = jnp.array([0.123, 0.456])
+        grad_fn = hqml.math.jacobian(f)
+        grad = grad_fn(x)
+        assert not jnp.any(jnp.isnan(grad))

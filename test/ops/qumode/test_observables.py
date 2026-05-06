@@ -150,6 +150,39 @@ class TestQuadOperator:
         matrixd = hqml.math.dag(matrix)
         assert matrix == pytest.approx(matrixd)
 
+    @pytest.mark.jax
+    def test_fock_matrix_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(phi):
+            op = hqml.QuadOperator(phi, wires=0)
+            return op.fock_matrix({0: 4})
+
+        phi = jnp.array(0.5)
+        f(phi)  # errors if jit fails
+
+    @pytest.mark.jax
+    def test_fock_matrix_grad(self):
+        import jax.numpy as jnp
+
+        dims = {0: 4}
+        coherent_state = hqml.D(*jnp.array([0.123, 0]), wires=0).fock_matrix(dims)[:, 0]
+
+        def f(x):
+            mat = hqml.QuadOperator(x, wires=0).fock_matrix(dims)
+            return hqml.math.expectation_value(mat, coherent_state).real
+
+        x = jnp.array(0.123)
+        grad_fn = hqml.math.grad(f)
+        grad = grad_fn(x)
+        assert grad < 0
+
+        x = jnp.array(0.0)
+        grad = grad_fn(x)
+        assert grad == pytest.approx(0)
+
 
 @pytest.mark.unit
 class TestNumberOperator:
