@@ -706,7 +706,7 @@ wheels = [
 
 [[package]]
 name = "hybridlane"
-version = "0.6.1a1"
+version = "0.7.0a1"
 source = { editable = "." }
 dependencies = [
     { name = "pennylane" },
