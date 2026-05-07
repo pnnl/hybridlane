@@ -27,6 +27,26 @@ class Beamsplitter(CVOperation, FockRepresentation):
 
         BS(\theta,\varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b
             + e^{-i\varphi}ab^\dagger)\right]
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qumode, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)```
+
+    The beamsplitter gate conserves total excitation number, as :math:`[BS, n_a + n_b] = 0`.
+    Its representation in the Fock basis can be obtained with:
+
+    >>> BS(0.5, 0.1, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[ 1.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ,
+             0.    +0.j    ],
+           [ 0.    +0.j    ,  0.9689-0.j    , -0.0247-0.2462j,
+             0.    +0.j    ],
+           [ 0.    +0.j    ,  0.0247-0.2462j,  0.9689+0.j    ,
+             0.    +0.j    ],
+           [ 0.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ,
+             1.    +0.j    ]])
     """
 
     num_params = 2
@@ -45,10 +65,6 @@ class Beamsplitter(CVOperation, FockRepresentation):
         id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     # For the beamsplitter, both parameters are rotation-like
     # Todo: Redo this with new convention
@@ -128,6 +144,13 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
     .. math::
 
         TMS(r, \varphi) = \exp\left[r (e^{i\phi} \ad b^\dagger - e^{-i\phi} ab\right].
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qumode, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
     """
 
     num_params = 2
@@ -147,10 +170,6 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
 
     def __init__(self, r, phi, wires, id=None):
         super().__init__(r, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -226,8 +245,16 @@ class TwoModeSum(CVOperation, FockRepresentation):
 
         SUM(\lambda) = \exp[\frac{\lambda}{2}(a + \ad)(b^\dagger - b)]
 
-    where :math:`\lambda \in \mathbb{R}` is a real parameter. The action on the
-    wavefunction is given by
+    where :math:`\lambda \in \mathbb{R}` is a real parameter.
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qumode, qumode]``
+    * Number of parameters: 1
+    * Number of dimensions per parameter: ``(0,)``
+
+    The action on the wavefunction is given by
 
     .. math::
 
@@ -250,10 +277,6 @@ class TwoModeSum(CVOperation, FockRepresentation):
 
     def __init__(self, lambda_: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lambda_, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def adjoint(self):
         lambda_ = self.parameters[0]

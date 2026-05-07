@@ -36,11 +36,11 @@ class QuadX(qml.QuadX, Spectral, FockRepresentation):
     It has a representation in the Fock basis defined in standard units with :math:`\hbar = 1`
 
     >>> X.compute_fock_matrix((5,))
-    array([[0.        , 0.70710678, 0.        , 0.        , 0.        ],
-           [0.70710678, 0.        , 1.        , 0.        , 0.        ],
-           [0.        , 1.        , 0.        , 1.22474487, 0.        ],
-           [0.        , 0.        , 1.22474487, 0.        , 1.41421356],
-           [0.        , 0.        , 0.        , 1.41421356, 0.        ]])
+    array([[0.    , 0.7071, 0.    , 0.    , 0.    ],
+           [0.7071, 0.    , 1.    , 0.    , 0.    ],
+           [0.    , 1.    , 0.    , 1.2247, 0.    ],
+           [0.    , 0.    , 1.2247, 0.    , 1.4142],
+           [0.    , 0.    , 0.    , 1.4142, 0.    ]])
     """
 
     @property
@@ -95,10 +95,12 @@ class QuadP(qml.QuadP, Spectral, FockRepresentation):
 
     It has a representation in the Fock basis defined in standard units with :math:`\hbar = 1`
 
-    >>> P.compute_fock_matrix((3,))
-    array([[0.+0.j        , 0.+0.70710678j, 0.+0.j        ],
-           [0.-0.70710678j, 0.+0.j        , 0.+1.j        ],
-           [0.+0.j        , 0.-1.j        , 0.+0.j        ]])
+    >>> P.compute_fock_matrix((5,))
+    array([[0.+0.j    , 0.+0.7071j, 0.+0.j    , 0.+0.j    , 0.+0.j    ],
+           [0.-0.7071j, 0.+0.j    , 0.+1.j    , 0.+0.j    , 0.+0.j    ],
+           [0.+0.j    , 0.-1.j    , 0.+0.j    , 0.+1.2247j, 0.+0.j    ],
+           [0.+0.j    , 0.+0.j    , 0.-1.2247j, 0.+0.j    , 0.+1.4142j],
+           [0.+0.j    , 0.+0.j    , 0.+0.j    , 0.-1.4142j, 0.+0.j    ]])
     """
 
     @property
@@ -155,17 +157,10 @@ class QuadOperator(qml.QuadOperator, Spectral, FockRepresentation):
 
     Its representation in the Fock basis defined in standard units with :math:`\hbar = 1` is
 
-    .. invisible-code-block:: python
-
-        import math
-
-    >>> QuadOperator.compute_fock_matrix((3,), math.pi / 4)
-    array([[0.        +0.j        , 0.5       +0.5j       ,
-            0.        +0.j        ],
-           [0.5       -0.5j       , 0.        +0.j        ,
-            0.70710678+0.70710678j],
-           [0.        +0.j        , 0.70710678-0.70710678j,
-            0.        +0.j        ]])
+    >>> QuadOperator.compute_fock_matrix((3,), np.pi / 4)
+    array([[0.    +0.j    , 0.5   +0.5j   , 0.    +0.j    ],
+           [0.5   -0.5j   , 0.    +0.j    , 0.7071+0.7071j],
+           [0.    +0.j    , 0.7071-0.7071j, 0.    +0.j    ]])
     """
 
     @property
@@ -261,6 +256,52 @@ r"""Number operator :math:`\hat{n}`
 
 
 class FockStateProjector(qml.FockStateProjector, Spectral, FockRepresentation):
+    r"""The projector onto a multi-mode Fock state :math:`\ket{n_1, n_2, \ldots, n_m}\bra{n_1, n_2, \ldots, n_m}`
+
+    When used with the :func:`~hybridlane.expval` function, the expectation value
+    :math:`\braket{\ket{n_1, n_2, \ldots, n_m}\bra{n_1, n_2, \ldots, n_m}}` is returned. This corresponds to the probability of the system being in the Fock state :math:`\ket{n_1, n_2, \ldots, n_m}`.
+
+    **Details**:
+
+    * Number of wires: Any
+    * Wire arguments: ``[qumode, ...]``
+    * Number of parameters: Any
+    * Number of dimensions per parameter: 0
+
+    The number of parameters must match the number of wires, with each parameter being an
+    integer. For example, to measure the probability of a single mode being in state
+    :math:`\ket{3}`, the operator :math:`\ket{3}\bra{3}` would be instantiated as
+
+    >>> op = FockStateProjector(3, wires=0)
+
+    The corresponding matrix representation in the Fock basis would then be
+
+    >>> op.fock_matrix({0: 5})
+    array([[0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0.],
+           [0., 0., 0., 1., 0.],
+           [0., 0., 0., 0., 0.]])
+
+
+    The multi-mode operator :math:`\ket{1, 2}\bra{1, 2}` would be instantiated as
+
+    >>> op = FockStateProjector([1, 2], wires=[0, 1])
+
+    with the corresponding matrix representation in the Fock basis given by
+
+    >>> op.fock_matrix({0: 3, 1: 3})
+    array([[0., 0., 0., 0., 0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 1., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+           [0., 0., 0., 0., 0., 0., 0., 0., 0.]])
+    """
+
     @property
     def natural_basis(self):
         return hqml.sa.ComputationalBasis.Discrete
@@ -284,8 +325,12 @@ class FockStateProjector(qml.FockStateProjector, Spectral, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], n) -> TensorLike:
-        wire_dims = hqml.math.asarray(wire_dims, like=n)
         n = hqml.math.asarray(n)
+
+        if n.ndim == 0:
+            n = hqml.math.reshape(n, (1,))
+
+        wire_dims = hqml.math.asarray(wire_dims, like=n)
         if hqml.math.any(n >= wire_dims):
             raise ValueError(
                 f"Fock state projector cannot be constructed for n={n} with dimension {wire_dims}"

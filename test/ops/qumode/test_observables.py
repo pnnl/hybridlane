@@ -254,7 +254,7 @@ class TestFockStateProjector:
         assert result == pytest.approx(expected)
 
     def test_fock_matrix(self):
-        op = hqml.FockStateProjector([1], wires=[0])
+        op = hqml.FockStateProjector(1, wires=[0])
         matrix = op.fock_matrix({0: 4})
         expected = hqml.math.diag([0, 1, 0, 0])
         assert hqml.math.get_interface(matrix) == "numpy"

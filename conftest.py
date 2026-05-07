@@ -12,13 +12,21 @@ from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser
 
 import hybridlane as hqml
 
+try:
+    import jax.numpy as jnp
+except ImportError:
+    jnp = None
+
+printoptions = np.get_printoptions()
+
 
 def setup(namespace: dict[str, Any]):
-    namespace |= {
-        "qml": qml,
-        "hqml": hqml,
-        "np": np,
-    }
+    namespace |= {"qml": qml, "hqml": hqml, "np": np, "jnp": jnp}
+    np.set_printoptions(precision=4, suppress=True)
+
+
+def teardown(namespace: dict[str, Any]):
+    np.set_printoptions(**printoptions)
 
 
 pytest_collect_file = Sybil(
@@ -28,6 +36,7 @@ pytest_collect_file = Sybil(
     ],
     patterns=["docs/source/*.rst", "*.py"],
     setup=setup,
+    teardown=teardown,
     name="sybil",
 ).pytest()
 

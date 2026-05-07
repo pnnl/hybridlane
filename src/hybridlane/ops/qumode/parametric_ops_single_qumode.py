@@ -27,8 +27,53 @@ class Displacement(CVOperation, FockRepresentation):
 
        D(\alpha) = \exp[\alpha \ad -\alpha^* a]
 
-    where :math:`\alpha = ae^{i\phi}`. The result of applying a displacement to the
-    vacuum is a coherent state :math:`D(\alpha)\ket{0} = \ket{\alpha}`.
+    where :math:`\alpha = ae^{i\phi}`.
+
+    **Details**:
+
+    * Number of wires: 1
+    * Wire arguments: ``[qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0,0)``
+
+    The result of applying a displacement to the vacuum is a coherent state
+    :math:`D(\alpha)\ket{0} = \ket{\alpha}`. Displacement gates also compose with a global
+    phase (Box IV.1 of :footcite:p:`liu2026hybrid`):
+
+    .. math::
+
+        D(\alpha) D(\beta) = e^{i \mathrm{Im}(\alpha \beta^*)} D(\alpha + \beta).
+
+    Its symplectic representation is given (in standard units) by
+
+    .. math::
+
+        \begin{bmatrix}
+            I \\
+            \hat{x}' \\
+            \hat{p}'
+        \end{bmatrix} =
+        \begin{bmatrix}
+            1 & 0 & 0\\
+            \sqrt{2} \mathrm{Re}(\alpha) & 1 & 0 \\
+            \sqrt{2} \mathrm{Im}(\alpha) & 0 & 1 \\
+        \end{bmatrix}
+        \begin{bmatrix}
+            I \\
+            \hat{x} \\
+            \hat{p}
+        \end{bmatrix}
+
+    For specific parameter values, it may be obtained like
+
+    >>> D(0.5, 0, wires=0).heisenberg_tr((0,))
+    array([[1.    , 0.    , 0.    ],
+           [0.7071, 1.    , 0.    ],
+           [0.    , 0.    , 1.    ]])
+
+    References
+    ----------
+    .. footbibliography::
     """
 
     num_params = 2
@@ -51,16 +96,19 @@ class Displacement(CVOperation, FockRepresentation):
     ):
         super().__init__(a, phi, wires=wires, id=id)
 
-    @property
-    def resource_params(self):
-        return {}
-
     @staticmethod
     def _heisenberg_rep(p):
         c = math.cos(p[1])
         s = math.sin(p[1])
-        scale = 2  # sqrt(2 * hbar)
-        return np.array([[1, 0, 0], [scale * c * p[0], 1, 0], [scale * s * p[0], 0, 1]])
+        scale = math.sqrt(2)
+        return hqml.math.asarray(
+            [
+                [1, 0, 0],
+                [scale * c * p[0], 1, 0],
+                [scale * s * p[0], 0, 1],
+            ],
+            like=p[0],
+        )
 
     def adjoint(self):
         a, phi = self.parameters
@@ -108,6 +156,47 @@ class Rotation(CVOperation, FockRepresentation):
     .. math::
 
         R(\theta) = \exp[-i\theta \hat{n}]
+
+    **Details**:
+
+    * Number of wires: 1
+    * Wire arguments: ``[qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0,0)``
+
+    The rotation gate is diagonal in the Fock basis:
+
+    >>> R(0.5, wires=0).fock_matrix((3,))
+    array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.8776-0.4794j, 0.    +0.j    ],
+           [0.    +0.j    , 0.    +0.j    , 0.5403-0.8415j]])
+
+    Its symplectic representation is given (in standard units) by
+
+    .. math::
+
+        \begin{bmatrix}
+            I \\
+            \hat{x}' \\
+            \hat{p}'
+        \end{bmatrix} =
+        \begin{bmatrix}
+            1 & 0 & 0\\
+            0 & \cos\theta & \sin\theta \\
+            0 & -\sin\theta & \cos\theta \\
+        \end{bmatrix}
+        \begin{bmatrix}
+            I \\
+            \hat{x} \\
+            \hat{p}
+        \end{bmatrix}
+
+    For specific parameter values, it may be obtained like
+
+    >>> R(np.pi/4, wires=0).heisenberg_tr((0,))
+    array([[ 1.    ,  0.    ,  0.    ],
+           [ 0.    ,  0.7071,  0.7071],
+           [ 0.    , -0.7071,  0.7071]])
     """
 
     num_params = 1
@@ -120,10 +209,6 @@ class Rotation(CVOperation, FockRepresentation):
 
     def __init__(self, theta: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(theta, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -176,6 +261,13 @@ class Squeezing(CVOperation, FockRepresentation):
         S(\zeta) = \exp\left[\frac{1}{2}(\zeta^* a^2 - \zeta(\ad)^2)\right].
 
     where :math:`\zeta = r e^{i\phi}`.
+
+    **Details**:
+
+    * Number of wires: 1
+    * Wire arguments: ``[qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0,0)``
     """
 
     num_params = 2
@@ -195,10 +287,6 @@ class Squeezing(CVOperation, FockRepresentation):
 
     def __init__(self, r, phi, wires, id=None):
         super().__init__(r, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -253,6 +341,20 @@ class Kerr(CVOperation, FockRepresentation):
     .. math::
 
         K(\kappa) = \exp[-i \kappa \hat{n}^2].
+
+    **Details**:
+
+    * Number of wires: 1
+    * Wire arguments: ``[qumode]``
+    * Number of parameters: 1
+    * Number of dimensions per parameter: ``(0,)``
+
+    The Kerr gate is diagonal in the Fock basis:
+
+    >>> K(0.5, wires=0).fock_matrix((3,))
+    array([[ 1.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ],
+           [ 0.    +0.j    ,  0.8776-0.4794j,  0.    +0.j    ],
+           [ 0.    +0.j    ,  0.    +0.j    , -0.4161-0.9093j]])
     """
 
     num_params = 1
@@ -264,10 +366,6 @@ class Kerr(CVOperation, FockRepresentation):
 
     def __init__(self, kappa: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(kappa, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def adjoint(self):
         return Kerr(-self.parameters[0], wires=self.wires)
@@ -314,6 +412,13 @@ class CubicPhase(CVOperation, FockRepresentation):
     .. math::
 
         C(r) = e^{-i r \hat{x}^3}.
+
+    **Details**:
+
+    * Number of wires: 1
+    * Wire arguments: ``[qumode]``
+    * Number of parameters: 1
+    * Number of dimensions per parameter: ``(0,)``
     """
 
     num_params = 1
@@ -325,10 +430,6 @@ class CubicPhase(CVOperation, FockRepresentation):
 
     def __init__(self, r: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(r, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def adjoint(self):
         return CubicPhase(-self.parameters[0], wires=self.wires)
@@ -368,19 +469,10 @@ r"""Cubic phase shift gate :math:`C(r)`
 """
 
 
-def _can_replace(x, y):
-    return (
-        not qml.math.is_abstract(x)
-        and not qml.math.requires_grad(x)
-        and qml.math.allclose(x, y)
-    )
-
-
 class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
     r"""Selective Number-dependent Arbitrary Phase (SNAP) gate :math:`SNAP(\varphi, n)`
 
-    This gate imparts a custom phase onto each Fock state of the qumode. Its expression
-    is
+    This gate imparts a custom phase onto each Fock state of the qumode.
 
     .. math::
 
@@ -401,6 +493,21 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
 
             for phi_n, n in zip(angles, fock_states):
                 SelectiveNumberArbitraryPhase(phi_n, n, 'm')
+
+    **Details**:
+
+    * Number of wires: 1
+    * Wire arguments: ``[qumode]``
+    * Number of parameters: 1
+    * Number of dimensions per parameter: ``(0,)``
+
+    The SNAP gate has a diagonal representation in the Fock basis:
+
+    >>> SNAP(0.5, 2, wires=0).fock_matrix((4,))
+    array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 1.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.    +0.j    , 0.8776+0.4794j, 0.    +0.j    ],
+           [0.    +0.j    , 0.    +0.j    , 0.    +0.j    , 1.    +0.j    ]])
 
     References
     ----------
@@ -426,10 +533,6 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
 
         self.hyperparameters["n"] = n
         super().__init__(phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def adjoint(self):
         phi = self.parameters[0]
@@ -505,3 +608,11 @@ def _snap_to_sqr(phi, wires, n, **_):
 qml.add_decomps(SNAP, _snap_to_sqr)
 qml.add_decomps("Adjoint(SelectiveNumberArbitraryPhase)", adjoint_rotation)
 qml.add_decomps("Pow(SelectiveNumberArbitraryPhase)", pow_rotation)
+
+
+def _can_replace(x, y):
+    return (
+        not qml.math.is_abstract(x)
+        and not qml.math.requires_grad(x)
+        and qml.math.allclose(x, y)
+    )
