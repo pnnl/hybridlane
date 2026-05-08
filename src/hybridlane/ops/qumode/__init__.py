@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-from .non_parametric_ops import F, Fourier, ModeSwap
+from .non_parametric_ops import A, Ad, AnnihilationOp, CreationOp, F, Fourier, ModeSwap
 from .observables import (
     FockStateProjector,
     N,
@@ -38,6 +38,10 @@ __all__ = [
     "Fourier",
     "F",
     "ModeSwap",
+    "AnnihilationOp",
+    "A",
+    "CreationOp",
+    "Ad",
     "FockStateProjector",
     "N",
     "NumberOperator",

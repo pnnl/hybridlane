@@ -99,7 +99,7 @@ def expand_matrix(
     # Now we'll pad all the extra wires with identity
     if extra_wires:
         dim = int(math.prod([wire_dims[wire] for wire in extra_wires]))
-        id_mat = math.cast_like(math.eye(dim, like=interface), mat)
+        id_mat = math.eye(dim, like=interface)
         mat = _kron_with_batch(mat, id_mat, interface, batch_dim)
 
     # Permute from sub_wire_order to subset, which is a subset of our target wire order.
@@ -119,12 +119,12 @@ def expand_matrix(
     # Now pad the before and after sections with identity too
     if before_wire_order:
         dim = int(math.prod([wire_dims[wire] for wire in before_wire_order]))
-        id_mat = math.cast_like(math.eye(dim, like=interface), mat)
+        id_mat = math.eye(dim, like=interface)
         mat = _kron_with_batch(id_mat, mat, interface, batch_dim)
 
     if after_wire_order:
         dim = int(math.prod([wire_dims[wire] for wire in after_wire_order]))
-        id_mat = math.cast_like(math.eye(dim, like=interface), mat)
+        id_mat = math.eye(dim, like=interface)
         mat = _kron_with_batch(mat, id_mat, interface, batch_dim)
 
     return mat

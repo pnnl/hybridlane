@@ -13,17 +13,40 @@ from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
+import hybridlane as hqml
+
+from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
 
 # Change to match convention
-class Beamsplitter(CVOperation):
+class Beamsplitter(CVOperation, FockRepresentation):
     r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
 
     .. math::
 
         BS(\theta,\varphi) = \exp\left[-i \frac{\theta}{2} (e^{i\varphi} \ad b
             + e^{-i\varphi}ab^\dagger)\right]
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qumode, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)```
+
+    The beamsplitter gate conserves total excitation number, as :math:`[BS, n_a + n_b] = 0`.
+    Its representation in the Fock basis can be obtained with:
+
+    >>> BS(0.5, 0.1, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[ 1.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ,
+             0.    +0.j    ],
+           [ 0.    +0.j    ,  0.9689-0.j    , -0.0247-0.2462j,
+             0.    +0.j    ],
+           [ 0.    +0.j    ,  0.0247-0.2462j,  0.9689+0.j    ,
+             0.    +0.j    ],
+           [ 0.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ,
+             1.    +0.j    ]])
     """
 
     num_params = 2
@@ -42,10 +65,6 @@ class Beamsplitter(CVOperation):
         id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     # For the beamsplitter, both parameters are rotation-like
     # Todo: Redo this with new convention
@@ -76,6 +95,24 @@ class Beamsplitter(CVOperation):
             decimals=decimals, base_label=base_label or "BS", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+        dim_a, dim_b = wire_dims
+        ad = hqml.math.asarray(
+            hqml.CreationOp.compute_fock_matrix((dim_a,)), like=theta
+        )
+        b = hqml.math.asarray(
+            hqml.AnnihilationOp.compute_fock_matrix((dim_b,)), like=theta
+        )
+        adb = hqml.math.kron(ad, b)
+        abd = hqml.math.conj(hqml.math.transpose(adb))
+        g = (
+            -0.5j
+            * theta
+            * (hqml.math.exp(1j * phi) * adb + hqml.math.exp(-1j * phi) * abd)
+        )
+        return hqml.math.expm(g)
+
 
 @qml.register_resources({Beamsplitter: 1})
 def _pow_bs(theta, phi, wires, z, **_):
@@ -101,12 +138,19 @@ r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
 
 
 # Re-export flipping sign of r, equivalent to φ -> φ + π
-class TwoModeSqueezing(CVOperation):
+class TwoModeSqueezing(CVOperation, FockRepresentation):
     r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
 
     .. math::
 
         TMS(r, \varphi) = \exp\left[r (e^{i\phi} \ad b^\dagger - e^{-i\phi} ab\right].
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qumode, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
     """
 
     num_params = 2
@@ -126,10 +170,6 @@ class TwoModeSqueezing(CVOperation):
 
     def __init__(self, r, phi, wires, id=None):
         super().__init__(r, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     @staticmethod
     def _heisenberg_rep(p):
@@ -160,6 +200,19 @@ class TwoModeSqueezing(CVOperation):
             decimals=decimals, base_label=base_label or "TMS", cache=cache
         )
 
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+        ad = hqml.math.asarray(
+            hqml.CreationOp.compute_fock_matrix(wire_dims[:1]), like=r
+        )
+        bd = hqml.math.asarray(
+            hqml.CreationOp.compute_fock_matrix(wire_dims[1:]), like=r
+        )
+        adbd = hqml.math.kron(ad, bd)
+        ab = hqml.math.conj(hqml.math.transpose(adbd))
+        g = r * (hqml.math.exp(1j * phi) * adbd - hqml.math.exp(-1j * phi) * ab)
+        return hqml.math.expm(g)
+
 
 @qml.register_resources({TwoModeSqueezing: 1})
 def _pow_tms(r, phi, wires, z, **_):
@@ -183,7 +236,7 @@ r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
 """
 
 
-class TwoModeSum(CVOperation):
+class TwoModeSum(CVOperation, FockRepresentation):
     r"""Two-mode summing gate :math:`SUM(\lambda)`
 
     This continuous-variable gate implements the unitary
@@ -192,8 +245,16 @@ class TwoModeSum(CVOperation):
 
         SUM(\lambda) = \exp[\frac{\lambda}{2}(a + \ad)(b^\dagger - b)]
 
-    where :math:`\lambda \in \mathbb{R}` is a real parameter. The action on the
-    wavefunction is given by
+    where :math:`\lambda \in \mathbb{R}` is a real parameter.
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qumode, qumode]``
+    * Number of parameters: 1
+    * Number of dimensions per parameter: ``(0,)``
+
+    The action on the wavefunction is given by
 
     .. math::
 
@@ -217,10 +278,6 @@ class TwoModeSum(CVOperation):
     def __init__(self, lambda_: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lambda_, wires=wires, id=id)
 
-    @property
-    def resource_params(self):
-        return {}
-
     def adjoint(self):
         lambda_ = self.parameters[0]
         return TwoModeSum(-lambda_, wires=self.wires)
@@ -239,6 +296,19 @@ class TwoModeSum(CVOperation):
         return super().label(
             decimals=decimals, base_label=base_label or "SUM", cache=cache
         )
+
+    @staticmethod
+    def compute_fock_matrix(wire_dims: tuple[int, ...], lambda_) -> TensorLike:
+        a = hqml.math.asarray(
+            hqml.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_
+        )
+        ad = hqml.math.conj(hqml.math.transpose(a))
+        b = hqml.math.asarray(
+            hqml.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_
+        )
+        bd = hqml.math.conj(hqml.math.transpose(b))
+        g = 0.5 * lambda_ * hqml.math.kron(a + ad, bd - b)
+        return hqml.math.expm(g)
 
 
 qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
