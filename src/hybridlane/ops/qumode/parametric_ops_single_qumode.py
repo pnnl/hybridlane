@@ -48,21 +48,21 @@ class Displacement(CVOperation, FockRepresentation):
 
     .. math::
 
-        \begin{bmatrix}
+        \begin{pmatrix}
             I \\
             \hat{x}' \\
             \hat{p}'
-        \end{bmatrix} =
-        \begin{bmatrix}
+        \end{pmatrix} =
+        \begin{pmatrix}
             1 & 0 & 0\\
             \sqrt{2} \mathrm{Re}(\alpha) & 1 & 0 \\
             \sqrt{2} \mathrm{Im}(\alpha) & 0 & 1 \\
-        \end{bmatrix}
-        \begin{bmatrix}
+        \end{pmatrix}
+        \begin{pmatrix}
             I \\
             \hat{x} \\
             \hat{p}
-        \end{bmatrix}
+        \end{pmatrix}
 
     For specific parameter values, it may be obtained like
 
@@ -175,21 +175,21 @@ class Rotation(CVOperation, FockRepresentation):
 
     .. math::
 
-        \begin{bmatrix}
+        \begin{pmatrix}
             I \\
             \hat{x}' \\
             \hat{p}'
-        \end{bmatrix} =
-        \begin{bmatrix}
+        \end{pmatrix} =
+        \begin{pmatrix}
             1 & 0 & 0\\
             0 & \cos\theta & \sin\theta \\
             0 & -\sin\theta & \cos\theta \\
-        \end{bmatrix}
-        \begin{bmatrix}
+        \end{pmatrix}
+        \begin{pmatrix}
             I \\
             \hat{x} \\
             \hat{p}
-        \end{bmatrix}
+        \end{pmatrix}
 
     For specific parameter values, it may be obtained like
 
@@ -472,27 +472,11 @@ r"""Cubic phase shift gate :math:`C(r)`
 class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
     r"""Selective Number-dependent Arbitrary Phase (SNAP) gate :math:`SNAP(\varphi, n)`
 
-    This gate imparts a custom phase onto each Fock state of the qumode.
-
     .. math::
 
         SNAP(\varphi, n) = e^{-i \varphi \ket{n}\bra{n}}
 
     with :math:`\varphi \in [0, 2\pi)` (Box III.10 of :footcite:p:`liu2026hybrid`).
-
-    .. note::
-
-        This definition differs from the vectorized version presented in the CVDV
-        paper, instead applying to a single Fock state. To apply it across multiple
-        Fock modes, consider
-
-        .. code:: python
-
-            angles = [0.25, 0.5, 0.75, 1.0]
-            fock_states = [0, 3, 7, 10]
-
-            for phi_n, n in zip(angles, fock_states):
-                SelectiveNumberArbitraryPhase(phi_n, n, 'm')
 
     **Details**:
 
@@ -508,6 +492,40 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
            [0.    +0.j    , 1.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
            [0.    +0.j    , 0.    +0.j    , 0.8776+0.4794j, 0.    +0.j    ],
            [0.    +0.j    , 0.    +0.j    , 0.    +0.j    , 1.    +0.j    ]])
+
+    It has a decomposition in terms of SQR gates
+
+    .. math::
+
+        SNAP(\varphi, n) = SQR(-\pi, \varphi, n) SQR(\pi, 0, n).
+
+    Using this decomposition requires dynamic qubit allocation with ``num_work_wires >= 1``:
+
+    >>> dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+    >>> @qml.transforms.decompose(gate_set={hqml.SQR}, num_work_wires=1)
+    ... @qml.qnode(dev)
+    ... def circuit():
+    ...     hqml.SNAP(0.5, 1, wires=0)
+    >>> print(qml.draw(circuit)())
+    <DynamicWire>: ──Allocate─╭SQR_{1}(3.14,0.00)─╭SQR_{1}(-3.14,0.50)──Deallocate─┤...
+                0: ───────────╰SQR_{1}(3.14,0.00)─╰SQR_{1}(-3.14,0.50)─────────────┤...
+
+    For devices that do not support dynamic qubit allocation, this can be resolved at compile
+    time with :py:func:`~pennylane.transforms.resolve_dynamic_wires`.
+
+    .. note::
+
+        This definition differs from the vectorized version presented in the CVDV
+        paper, instead applying to a single Fock state. To apply it across multiple
+        Fock modes, consider
+
+        .. code:: python
+
+            angles = [0.25, 0.5, 0.75, 1.0]
+            fock_states = [0, 3, 7, 10]
+
+            for phi_n, n in zip(angles, fock_states):
+                SelectiveNumberArbitraryPhase(phi_n, n, 'm')
 
     References
     ----------

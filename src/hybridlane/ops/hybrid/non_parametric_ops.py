@@ -21,16 +21,33 @@ from ..op_math.decompositions.qubit_conditioned_decompositions import (
 class ConditionalParity(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned number parity gate :math:`CP`
 
-    This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation`
-    gate, with :math:`CP = CR(\pi)`, resulting in the unitary expression
-
     .. math::
 
         CP &= \exp[-i\frac{\pi}{2}\sigma_z \hat{n}] \\
-           &= \ket{0}\bra{0} \otimes F + \ket{1}\bra{1} \otimes F^\dagger
+           &= \begin{pmatrix} F & 0 \\ 0 & F^\dagger \end{pmatrix}
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 0
+    * Number of dimensions per parameter: None
+
+    This gate is a special case of the :py:class:`~hybridlane.ConditionalRotation`
+    gate, with :math:`CP = CR(\pi)`. Its representation in the Fock basis can be obtained
+    with:
+
+    >>> CP((0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[1.+0.j, 0.+0.j, 0.+0.j, 0.+0.j],
+           [0.+0.j, 0.-1.j, 0.+0.j, 0.+0.j],
+           [0.+0.j, 0.+0.j, 1.-0.j, 0.-0.j],
+           [0.+0.j, 0.+0.j, 0.-0.j, 0.+1.j]])
 
     This gate can also be viewed as the "conditioned" version of the
     :class:`~hybridlane.Fourier` gate.
+
+    >>> hqml.qcond(hqml.F(1), control_wires=0)
+    ConditionalParity(wires=[0, 1])
 
     .. seealso::
 
@@ -46,10 +63,6 @@ class ConditionalParity(HybridOperation, FockRepresentation):
     def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)
 
-    @property
-    def resource_params(self):
-        return {}
-
     def adjoint(self):
         return hqml.ConditionalRotation(-math.pi, self.wires)
 
@@ -63,7 +76,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
-            decimals=decimals, base_label=base_label or "CΠ", cache=cache
+            decimals=decimals, base_label=base_label or "CP", cache=cache
         )
 
     @staticmethod

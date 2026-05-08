@@ -43,7 +43,7 @@ class TestConditionalParity:
 
     def test_label(self):
         op = hqml.ConditionalParity(wires=[0, 1])
-        assert op.label() == "CΠ"
+        assert op.label() == "CP"
 
     def test_fock_matrix(self):
         op = hqml.ConditionalParity(wires=[0, 1])

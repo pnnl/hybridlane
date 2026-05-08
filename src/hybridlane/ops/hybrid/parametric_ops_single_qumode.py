@@ -24,17 +24,35 @@ from .non_parametric_ops import ConditionalParity
 class ConditionalRotation(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned phase-space rotation :math:`CR(\theta)`
 
-    This operation implements a phase-space rotation on a qumode, conditioned on the
-    state of a control qubit. It is given by the unitary expression
-
     .. math::
 
-        CR(\theta) = \exp[-i \frac{\theta}{2}\sigma_z \hat{n}]
+        CR(\theta) &= \exp[-i \frac{\theta}{2}\sigma_z \hat{n}] \\
+                   &= \begin{pmatrix}
+                       R(\theta/2) & 0 \\
+                       0 & R^\dagger(\theta/2)
+                   \end{pmatrix}
 
-    where :math:`\sigma_z` is the Z operator acting on the qubit, and
-    :math:`\hat{n} = \ad a` is the number operator of the qumode (Box III.8 of
-    :footcite:p:`liu2026hybrid`). With this definition, the angle parameter ranges
-    :math:`\theta \in [0, 4\pi)`.
+    where :math:`\theta \in [0, 4\pi)` (Box III.8 of :footcite:p:`liu2026hybrid`).
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 1
+    * Number of dimensions per parameter: ``(0,)``
+
+    This is the qubit-conditioned version of the :py:class:`~hybridlane.Rotation` gate.
+
+    >>> hqml.qcond(hqml.R(0.5, wires=1), control_wires=0)
+    ConditionalRotation(1.0, wires=[0, 1])
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> CR(0.5, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.9689-0.2474j, 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.    +0.j    , 1.    -0.j    , 0.    -0.j    ],
+           [0.    +0.j    , 0.    +0.j    , 0.    -0.j    , 0.9689+0.2474j]])
 
     References
     ----------
@@ -51,10 +69,6 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
 
     def __init__(self, theta: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(theta, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def adjoint(self):
         theta = self.parameters[0]
@@ -101,23 +115,39 @@ This is an alias for :class:`~hybridlane.ConditionalRotation`
 class ConditionalDisplacement(HybridOperation, FockRepresentation):
     r"""Symmetric conditional displacement gate :math:`CD(\alpha)`
 
-    This is the qubit-conditioned version of the :py:class:`~hybridlane.Displacement`
-    gate, given by
-
     .. math::
 
         CD(\alpha) = \exp[\sigma_z(\alpha \ad - \alpha^* a)]
 
     where :math:`\alpha = ae^{i\phi} \in \mathbb{C}` (Box III.7 of
-    :footcite:p:`liu2026hybrid`). There also exists a decomposition in terms of
-    :py:class:`~hybridlane.ConditionalParity` gates (eq. 20 of
-    :footcite:p:`crane2024hybrid`),
+    :footcite:p:`liu2026hybrid`).
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
+    This is the qubit-conditioned version of the :py:class:`~hybridlane.Displacement` gate.
+
+    >>> hqml.qcond(hqml.D(0.5, 0.0, wires=1), control_wires=0)
+    ConditionalDisplacement(0.5, 0.0, wires=[0, 1])
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> CD(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[ 0.8776+0.j, -0.4794+0.j,  0.    +0.j,  0.    +0.j],
+           [ 0.4794+0.j,  0.8776+0.j,  0.    +0.j,  0.    +0.j],
+           [ 0.    +0.j,  0.    +0.j,  0.8776-0.j,  0.4794-0.j],
+           [ 0.    +0.j,  0.    +0.j, -0.4794-0.j,  0.8776-0.j]])
+
+    There also exists a decomposition in terms of :py:class:`~hybridlane.ConditionalParity`
+    gates (eq. 20 of :footcite:p:`crane2024hybrid`),
 
     .. math::
 
         CD(\alpha) = CP~D(i\alpha)~CP^\dagger
-
-    The ``wires`` attribute is assumed to be ``(qubit, qumode)``.
 
     .. seealso::
 
@@ -144,10 +174,6 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
         id: str | None = None,
     ):
         super().__init__(a, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def pow(self, z: int | float):
         a, phi = self.data
@@ -234,12 +260,31 @@ This is an alias for :class:`~hybridlane.ConditionalDisplacement`
 class ConditionalXDisplacement(HybridOperation, FockRepresentation):
     r"""X-Conditional displacement gate :math:`xCD(\alpha)`
 
+    .. math::
+
+            xCD(\alpha) = \exp[\sigma_x(\alpha \ad - \alpha^* a)]
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
     This is the conditional displacement gate, conditioned on the :math:`X` eigenstates
     of the qubit instead of the usual :math:`Z` eigenstates.
 
     .. math::
 
         xCD(\alpha) = H~CD(\alpha)~H
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> XCD(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[ 0.8776+0.j,  0.    +0.j,  0.    +0.j, -0.4794+0.j],
+           [ 0.    +0.j,  0.8776+0.j,  0.4794+0.j,  0.    +0.j],
+           [ 0.    +0.j, -0.4794+0.j,  0.8776+0.j,  0.    +0.j],
+           [ 0.4794+0.j,  0.    +0.j,  0.    +0.j,  0.8776+0.j]])
     """
 
     num_params = 2
@@ -257,10 +302,6 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
         id: str | None = None,
     ):
         super().__init__(a, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def pow(self, z: int | float):
         a, phi = self.data
@@ -327,12 +368,31 @@ This is an alias for :class:`~hybridlane.ConditionalXDisplacement`
 class ConditionalYDisplacement(HybridOperation, FockRepresentation):
     r"""Y-Conditional displacement gate :math:`yCD(\alpha)`
 
+    .. math::
+
+            yCD(\alpha) = \exp[\sigma_y(\alpha \ad - \alpha^* a)]
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
     This is the conditional displacement gate, conditioned on the :math:`Y` eigenstates
     of the qubit instead of the usual :math:`Z` eigenstates.
 
     .. math::
 
         yCD(\alpha) = S~xCD(\alpha)~S^\dagger
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> YCD(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[0.8776+0.j    , 0.    +0.j    , 0.    -0.j    , 0.    +0.4794j],
+           [0.    +0.j    , 0.8776+0.j    , 0.    -0.4794j, 0.    -0.j    ],
+           [0.    +0.j    , 0.    -0.4794j, 0.8776+0.j    , 0.    +0.j    ],
+           [0.    +0.4794j, 0.    +0.j    , 0.    +0.j    , 0.8776+0.j    ]])
     """
 
     num_params = 2
@@ -350,10 +410,6 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
         id: str | None = None,
     ):
         super().__init__(a, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def pow(self, z: int | float):
         a, phi = self.data
@@ -424,15 +480,46 @@ This is an alias for :class:`~hybridlane.ConditionalYDisplacement`
 class ConditionalSqueezing(HybridOperation, FockRepresentation):
     r"""Qubit-conditioned squeezing gate :math:`CS(\zeta)`
 
-    This gate implements the unitary
-
     .. math::
 
-        CS(\zeta) = \exp\left[\frac{1}{2}\sigma_z (\zeta^* a^2 - \zeta (\ad)^2)\right]
+        CS(\zeta) &= \exp\left[\frac{1}{2}\sigma_z (\zeta^* a^2 - \zeta (\ad)^2)\right] \\
+                    &= \begin{pmatrix}
+                        S(\zeta) & 0 \\
+                        0 & S^\dagger(\zeta)
+                    \end{pmatrix}
 
-    where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (Box IV.3 of
-    :footcite:p:`liu2026hybrid`). There exists a decomposition in terms of
-    :py:class:`.ConditionalRotation` and :py:class:`~hybridlane.ops.Squeezing` gates
+    where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (Box IV.3 of :footcite:p:`liu2026hybrid`).
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
+    This is the qubit-conditioned version of the :py:class:`~hybridlane.Squeezing` gate.
+
+    >>> hqml.qcond(hqml.S(0.5, 0.0, wires=1), control_wires=0)
+    ConditionalSqueezing(0.5, 0.0, wires=[0, 1])
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> CS(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 3})
+    array([[ 0.9381+0.j,  0.    +0.j,  0.3462+0.j,  0.    +0.j,  0.    +0.j,
+             0.    +0.j],
+           [ 0.    +0.j,  1.    +0.j,  0.    +0.j,  0.    +0.j,  0.    +0.j,
+             0.    +0.j],
+           [-0.3462+0.j,  0.    +0.j,  0.9381+0.j,  0.    +0.j,  0.    +0.j,
+             0.    +0.j],
+           [ 0.    +0.j,  0.    +0.j,  0.    +0.j,  0.9381-0.j,  0.    -0.j,
+            -0.3462-0.j],
+           [ 0.    +0.j,  0.    +0.j,  0.    +0.j,  0.    -0.j,  1.    -0.j,
+             0.    -0.j],
+           [ 0.    +0.j,  0.    +0.j,  0.    +0.j,  0.3462-0.j,  0.    -0.j,
+             0.9381-0.j]])
+
+    There exists a decomposition in terms of :py:class:`.ConditionalRotation` and
+    :py:class:`~hybridlane.ops.Squeezing` gates
 
     .. math::
 
@@ -459,10 +546,6 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
         self, z: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None
     ):
         super().__init__(z, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def pow(self, n: int | float):
         z, phi = self.data
@@ -526,9 +609,6 @@ This is an alias for :class:`~hybridlane.ConditionalSqueezing`
 class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     r"""number-Selective Qubit Rotation (SQR) gate :math:`SQR(\theta, \varphi, n)`
 
-    This gate imparts customizeable rotations onto the qubit based on the state
-    of the qumode. The unitary expression for this gate is
-
     .. math::
 
         SQR(\theta, \varphi) = R_{\varphi}(\theta) \otimes \ket{n}\bra{n}
@@ -536,11 +616,26 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     with :math:`\theta \in [0, 4\pi)` and :math:`\varphi \in [0, 2\pi)` (Box III.9
     of :footcite:p:`liu2026hybrid`).
 
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> SQR(0.5, 0.0, 1, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.9689+0.j    , 0.    +0.j    , 0.    -0.2474j],
+           [0.    +0.j    , 0.    +0.j    , 1.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.    -0.2474j, 0.    +0.j    , 0.9689+0.j    ]])
+
     .. note::
 
-        This differs from the vectorized definition in the CVDV paper to act on just a
-        single Fock state :math:`\ket{n}`. To match the vectorized version, apply
-        multiple SQR gates in series with the appropriate angles and Fock states.
+        This differs from the vectorized definition in :footcite:p:`liu2026hybrid`
+        to act on just a single Fock state :math:`\ket{n}`. To match the vectorized version,
+        apply multiple SQR gates in series with the appropriate angles and Fock states.
 
     References
     ----------
@@ -570,10 +665,6 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
         self.hyperparameters["n"] = n
 
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def adjoint(self):
         theta, phi = self.parameters
@@ -653,9 +744,6 @@ qml.add_decomps("Pow(SelectiveQubitRotation)", _pow_sqr)
 class JaynesCummings(HybridOperation, FockRepresentation):
     r"""Jaynes-cummings gate :math:`JC(\theta, \varphi)`, also known as Red-Sideband
 
-    This is the standard interaction for an atom exchanging a photon with a cavity,
-    given by the expression
-
     .. math::
 
         JC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_- \ad
@@ -664,6 +752,21 @@ class JaynesCummings(HybridOperation, FockRepresentation):
     where :math:`\sigma_+` (:math:`\sigma_-`) is the raising (lowering) operator of the
     qubit, and :math:`\theta, \varphi \in [0, 2\pi)` (Table III.3 of
     :footcite:p:`liu2026hybrid`).
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> JC(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.8776+0.j    , 0.    -0.4794j, 0.    +0.j    ],
+           [0.    +0.j    , 0.    -0.4794j, 0.8776+0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.    +0.j    , 0.    +0.j    , 1.    +0.j    ]])
 
     .. note::
 
@@ -695,10 +798,6 @@ class JaynesCummings(HybridOperation, FockRepresentation):
         id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def simplify(self):
         theta = self.data[0] % (2 * math.pi)
@@ -767,15 +866,29 @@ qml.add_decomps("Pow(JaynesCummings)", _pow_jc)
 class AntiJaynesCummings(HybridOperation, FockRepresentation):
     r"""Anti-Jaynes-cummings gate :math:`AJC(\theta, \varphi)`, also known as Blue-Sideband
 
-    This is given by the expression (Table III.3 of :footcite:p:`liu2026hybrid`)
-
     .. math::
 
         AJC(\theta, \varphi) = \exp[-i\theta(e^{i\varphi}\sigma_
                                 + \ad + e^{-i\varphi}\sigma_- a)]
 
     where :math:`\sigma_+` (:math:`\sigma_-`) is the raising (lowering) operator of the
-    qubit, and :math:`\theta, \varphi \in [0, 2\pi)`.
+    qubit, and :math:`\theta, \varphi \in [0, 2\pi)` (Table III.3 of
+    :footcite:p:`liu2026hybrid`).
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> AJC(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[0.8776+0.j    , 0.    +0.j    , 0.    +0.j    , 0.    -0.4794j],
+           [0.    +0.j    , 1.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
+           [0.    +0.j    , 0.    +0.j    , 1.    +0.j    , 0.    +0.j    ],
+           [0.    -0.4794j, 0.    +0.j    , 0.    +0.j    , 0.8776+0.j    ]])
 
     .. note::
 
@@ -807,10 +920,6 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
         id: str | None = None,
     ):
         super().__init__(theta, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def simplify(self):
         theta = self.data[0] % (2 * math.pi)
@@ -879,14 +988,27 @@ qml.add_decomps("Pow(AntiJaynesCummings)", _pow_ajc)
 class Rabi(HybridOperation, FockRepresentation):
     r"""Rabi interaction :math:`RB(\theta)`
 
-    This hybrid gate is given by the expression
-
     .. math::
 
         RB(\theta) = \exp[-i\sigma_x (\theta \ad + \theta^*a)]
 
     where :math:`\theta = re^{i\varphi} \in \mathbb{C}` (Table III.3 of
     :footcite:p:`liu2026hybrid`).
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> Rabi(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[0.8776+0.j    , 0.    +0.j    , 0.    +0.j    , 0.    -0.4794j],
+           [0.    +0.j    , 0.8776+0.j    , 0.    -0.4794j, 0.    +0.j    ],
+           [0.    +0.j    , 0.    -0.4794j, 0.8776+0.j    , 0.    +0.j    ],
+           [0.    -0.4794j, 0.    +0.j    , 0.    +0.j    , 0.8776+0.j    ]])
 
     References
     ----------
@@ -905,10 +1027,6 @@ class Rabi(HybridOperation, FockRepresentation):
         self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None
     ):
         super().__init__(r, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def simplify(self):
         r = self.data[0]
@@ -968,13 +1086,27 @@ qml.add_decomps("Pow(Rabi)", _pow_rb)
 class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
     r"""Echoed conditional displacement gate :math:`ECD(\alpha)`
 
-    This is given by the unitary (p. S9 of :footcite:p:`eickbusch2022fast`)
-
     .. math::
 
         ECD(\alpha) = X~CD(\alpha/2)
 
-    where :math:`CD(\alpha)` is the :py:class:`~.ConditionalDisplacement` gate.
+    where :math:`CD(\alpha)` is the :py:class:`~.ConditionalDisplacement` gate
+    (p. S9 of :footcite:p:`eickbusch2022fast`).
+
+    **Details**:
+
+    * Number of wires: 2
+    * Wire arguments: ``[qubit, qumode]``
+    * Number of parameters: 2
+    * Number of dimensions per parameter: ``(0, 0)``
+
+    Its representation in the Fock basis can be obtained with:
+
+    >>> ECD(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    array([[ 0.    +0.j,  0.    +0.j,  0.9689+0.j,  0.2474+0.j],
+           [ 0.    +0.j,  0.    +0.j, -0.2474+0.j,  0.9689+0.j],
+           [ 0.9689+0.j, -0.2474+0.j,  0.    +0.j,  0.    +0.j],
+           [ 0.2474+0.j,  0.9689+0.j,  0.    +0.j,  0.    +0.j]])
 
     References
     ----------
@@ -997,10 +1129,6 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
         id: str | None = None,
     ):
         super().__init__(a, phi, wires=wires, id=id)
-
-    @property
-    def resource_params(self):
-        return {}
 
     def pow(self, z: int | float):
         a, phi = self.data
