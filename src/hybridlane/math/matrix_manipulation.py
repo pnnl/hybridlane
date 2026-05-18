@@ -281,7 +281,7 @@ def expand_vector(
     in through the ``wire_dims`` argument. If not specified, it defaults to 2 for all wires, which is the behavior of PennyLane.
 
     Args:
-        vec: The vector to expand. Must be square and have shape ``(d,)`` where ``d`` is
+        vec: The vector to expand. Must have shape ``(d,)`` where ``d`` is
             the composite dimension of the wires in ``wires``. Can also have a batch dimension.
 
         wires: The wires that the matrix acts on.

@@ -5,6 +5,7 @@ r"""A wrapper around :mod:`pennylane.math` providing tensor-library agnostic fun
 import autoray as ar
 from pennylane import math as pl_math
 
+from . import array_manipulation  # noqa: F401
 from .matrix_manipulation import expand_matrix, expand_vector
 
 dag = ar.dag
@@ -17,7 +18,7 @@ def __getattr__(name):
 
 def __dir__():
     # Include the functions from pennylane math library in the dir() output
-    our_stuff = set(list(globals().keys())) - {"pl_math", "ar"}
+    our_stuff = set(list(globals().keys())) - {"pl_math", "ar", "array_manipulation"}
     return list(our_stuff | set(pl_math.__dir__()))
 
 
