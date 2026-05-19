@@ -5,22 +5,22 @@ r"""Module containing the native bosonic gates of the ion trap"""
 
 import math
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ...ops.hybrid.parametric_ops_single_qumode import _can_replace
 from ...ops.mixins import Hybrid
 
-Red = hqml.Red
-Blue = hqml.Blue
-XCD = hqml.XCD
-YCD = hqml.YCD
-ZCD = hqml.CD
-FockState = hqml.FockState
+Red = hl.Red
+Blue = hl.Blue
+XCD = hl.XCD
+YCD = hl.YCD
+ZCD = hl.CD
+FockState = hl.FockState
 
 
 class ConditionalXSqueezing(Operation, Hybrid):
@@ -175,19 +175,19 @@ class R(Operation):
         theta, phi = self.data[0] % (4 * math.pi), self.data[1] % math.pi
 
         if _can_replace(theta, 0):
-            return qml.Identity(wires=self.wires)
+            return qp.Identity(wires=self.wires)
 
         elif _can_replace(phi, 0):
-            return qml.RX(theta, wires=self.wires)
+            return qp.RX(theta, wires=self.wires)
 
         elif _can_replace(phi, math.pi / 2):
-            return qml.RY(theta, wires=self.wires)
+            return qp.RY(theta, wires=self.wires)
 
         elif _can_replace(phi, -math.pi):
-            return qml.RX(-theta, wires=self.wires)
+            return qp.RX(-theta, wires=self.wires)
 
         elif _can_replace(phi, -math.pi / 2):
-            return qml.RY(theta, wires=self.wires)
+            return qp.RY(theta, wires=self.wires)
 
         return R(theta, phi, wires=self.wires)
 

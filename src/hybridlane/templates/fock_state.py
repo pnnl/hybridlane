@@ -4,7 +4,7 @@
 import math
 from typing import cast
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.ops import Operation
 from pennylane.wires import WiresLike
 
@@ -66,11 +66,11 @@ def _fockstate_resources(fock_level):
     return {
         Blue: math.ceil(fock_level / 2),
         Red: math.floor(fock_level / 2),
-        qml.X: fock_level % 2,
+        qp.X: fock_level % 2,
     }
 
 
-@qml.register_resources(_fockstate_resources)
+@qp.register_resources(_fockstate_resources)
 def _fockstate_decomp(fock_state, wires, **_):
     fock_state = cast(int, fock_state)
     for n in range(fock_state):
@@ -82,20 +82,20 @@ def _fockstate_decomp(fock_state, wires, **_):
             Red(theta, math.pi / 2, wires)
 
     if fock_state % 2 == 1:
-        qml.X(wires[0])
+        qp.X(wires[0])
 
 
 def _fock_state_with_ancilla_qubit_resources(fock_level):
-    return {qml.resource_rep(FockState, fock_level=fock_level): 1}
+    return {qp.resource_rep(FockState, fock_level=fock_level): 1}
 
 
-@qml.register_resources(
+@qp.register_resources(
     _fock_state_with_ancilla_qubit_resources, work_wires={"zeroed": 1}
 )
-def _qml_fockstate_with_ancilla_qubit(n, wires):
-    with qml.allocate(1, "zero", restored=True) as ancilla:
+def _qp_fockstate_with_ancilla_qubit(n, wires):
+    with qp.allocate(1, "zero", restored=True) as ancilla:
         FockState(n, wires=[ancilla[0], wires[0]])
 
 
-qml.add_decomps(FockState, _fockstate_decomp)
-qml.add_decomps(qml.FockState, _qml_fockstate_with_ancilla_qubit)
+qp.add_decomps(FockState, _fockstate_decomp)
+qp.add_decomps(qp.FockState, _qp_fockstate_with_ancilla_qubit)

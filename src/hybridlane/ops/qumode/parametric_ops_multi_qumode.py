@@ -3,7 +3,7 @@
 import math
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
     pow_rotation,
@@ -13,7 +13,7 @@ from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
@@ -86,7 +86,7 @@ class Beamsplitter(CVOperation, FockRepresentation):
     def simplify(self):
         theta, phi = self.data
         if _can_replace(theta, 0):
-            return qml.Identity(wires=self.wires)
+            return qp.Identity(wires=self.wires)
 
         return self
 
@@ -98,30 +98,22 @@ class Beamsplitter(CVOperation, FockRepresentation):
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
         dim_a, dim_b = wire_dims
-        ad = hqml.math.asarray(
-            hqml.CreationOp.compute_fock_matrix((dim_a,)), like=theta
-        )
-        b = hqml.math.asarray(
-            hqml.AnnihilationOp.compute_fock_matrix((dim_b,)), like=theta
-        )
-        adb = hqml.math.kron(ad, b)
-        abd = hqml.math.conj(hqml.math.transpose(adb))
-        g = (
-            -0.5j
-            * theta
-            * (hqml.math.exp(1j * phi) * adb + hqml.math.exp(-1j * phi) * abd)
-        )
-        return hqml.math.expm(g)
+        ad = hl.math.asarray(hl.CreationOp.compute_fock_matrix((dim_a,)), like=theta)
+        b = hl.math.asarray(hl.AnnihilationOp.compute_fock_matrix((dim_b,)), like=theta)
+        adb = hl.math.kron(ad, b)
+        abd = hl.math.conj(hl.math.transpose(adb))
+        g = -0.5j * theta * (hl.math.exp(1j * phi) * adb + hl.math.exp(-1j * phi) * abd)
+        return hl.math.expm(g)
 
 
-@qml.register_resources({Beamsplitter: 1})
+@qp.register_resources({Beamsplitter: 1})
 def _pow_bs(theta, phi, wires, z, **_):
     Beamsplitter(theta * z, phi, wires)
 
 
-qml.add_decomps("Adjoint(Beamsplitter)", adjoint_rotation)
-qml.add_decomps("Pow(Beamsplitter)", _pow_bs)
-qml.add_decomps("qCond(Beamsplitter)", to_native_qcond(1))
+qp.add_decomps("Adjoint(Beamsplitter)", adjoint_rotation)
+qp.add_decomps("Pow(Beamsplitter)", _pow_bs)
+qp.add_decomps("qCond(Beamsplitter)", to_native_qcond(1))
 
 BS = Beamsplitter
 r"""Beamsplitter gate :math:`BS(\theta, \varphi)`
@@ -191,7 +183,7 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
     def simplify(self):
         r = self.data[0]
         if _can_replace(r, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return self
 
@@ -202,26 +194,22 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
-        ad = hqml.math.asarray(
-            hqml.CreationOp.compute_fock_matrix(wire_dims[:1]), like=r
-        )
-        bd = hqml.math.asarray(
-            hqml.CreationOp.compute_fock_matrix(wire_dims[1:]), like=r
-        )
-        adbd = hqml.math.kron(ad, bd)
-        ab = hqml.math.conj(hqml.math.transpose(adbd))
-        g = r * (hqml.math.exp(1j * phi) * adbd - hqml.math.exp(-1j * phi) * ab)
-        return hqml.math.expm(g)
+        ad = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[:1]), like=r)
+        bd = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[1:]), like=r)
+        adbd = hl.math.kron(ad, bd)
+        ab = hl.math.conj(hl.math.transpose(adbd))
+        g = r * (hl.math.exp(1j * phi) * adbd - hl.math.exp(-1j * phi) * ab)
+        return hl.math.expm(g)
 
 
-@qml.register_resources({TwoModeSqueezing: 1})
+@qp.register_resources({TwoModeSqueezing: 1})
 def _pow_tms(r, phi, wires, z, **_):
     TwoModeSqueezing(r * z, phi, wires)
 
 
-qml.add_decomps("Adjoint(TwoModeSqueezing)", adjoint_rotation)
-qml.add_decomps("Pow(TwoModeSqueezing)", _pow_tms)
-qml.add_decomps("qCond(TwoModeSqueezing)", to_native_qcond(1))
+qp.add_decomps("Adjoint(TwoModeSqueezing)", adjoint_rotation)
+qp.add_decomps("Pow(TwoModeSqueezing)", _pow_tms)
+qp.add_decomps("qCond(TwoModeSqueezing)", to_native_qcond(1))
 
 TMS = TwoModeSqueezing
 r"""Phase space two-mode squeezing :math:`TMS(r, \varphi)`
@@ -288,7 +276,7 @@ class TwoModeSum(CVOperation, FockRepresentation):
     def simplify(self):
         lambda_ = self.data[0]
         if _can_replace(lambda_, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return TwoModeSum(lambda_, self.wires)
 
@@ -299,21 +287,21 @@ class TwoModeSum(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], lambda_) -> TensorLike:
-        a = hqml.math.asarray(
-            hqml.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_
+        a = hl.math.asarray(
+            hl.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_
         )
-        ad = hqml.math.conj(hqml.math.transpose(a))
-        b = hqml.math.asarray(
-            hqml.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_
+        ad = hl.math.conj(hl.math.transpose(a))
+        b = hl.math.asarray(
+            hl.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_
         )
-        bd = hqml.math.conj(hqml.math.transpose(b))
-        g = 0.5 * lambda_ * hqml.math.kron(a + ad, bd - b)
-        return hqml.math.expm(g)
+        bd = hl.math.conj(hl.math.transpose(b))
+        g = 0.5 * lambda_ * hl.math.kron(a + ad, bd - b)
+        return hl.math.expm(g)
 
 
-qml.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
-qml.add_decomps("Pow(TwoModeSum)", pow_rotation)
-qml.add_decomps("qCond(TwoModeSum)", to_native_qcond(1))
+qp.add_decomps("Adjoint(TwoModeSum)", adjoint_rotation)
+qp.add_decomps("Pow(TwoModeSum)", pow_rotation)
+qp.add_decomps("qCond(TwoModeSum)", to_native_qcond(1))
 
 SUM = TwoModeSum
 r"""Two-mode summing gate :math:`SUM(\lambda)`
@@ -330,7 +318,7 @@ r"""Two-mode summing gate :math:`SUM(\lambda)`
 
 def _can_replace(x, y):
     return (
-        not qml.math.is_abstract(x)
-        and not qml.math.requires_grad(x)
-        and qml.math.allclose(x, y)
+        not qp.math.is_abstract(x)
+        and not qp.math.requires_grad(x)
+        and qp.math.allclose(x, y)
     )

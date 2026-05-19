@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from functools import reduce
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.measurements import MeasurementValue
 from pennylane.measurements import SampleMP as OldSampleMP
 from pennylane.operation import Operator
@@ -141,13 +141,13 @@ class SampleMP(SampleMeasurement):
             basis = next(iter(result_bases))
 
             # We don't know how to handle mixed bases. An operator like n_1 p_0 is valid, but because
-            # n_1 is in fock basis and p_0 is in position basis, they should be separated into a qml.Prod
+            # n_1 is in fock basis and p_0 is in position basis, they should be separated into a qp.Prod
             # where we'd calculate the eigenvalues like above. This process should be handled by circuit transforms,
             # so if we reach this point, we just error.
             if len(obs_bases) > 1:
                 raise ValueError(
                     "Observable is measured across multiple bases. It should be decomposed into"
-                    " a tensor product (`qml.Prod`) of single-basis observables"
+                    " a tensor product (`qp.Prod`) of single-basis observables"
                 )
 
             # Our observable is not diagonal in the measured basis. There should have been a tape transform that
@@ -172,7 +172,7 @@ class SampleMP(SampleMeasurement):
             return eigvals
 
         # All regular observables fall here, we should just dispatch to pennylane and call it a day.
-        # Technically, qml.Hamiltonian/Sum also fall here, but if it errors, that's fine since they should
+        # Technically, qp.Hamiltonian/Sum also fall here, but if it errors, that's fine since they should
         # be decomposed using circuit transforms
         else:
             # Concatenate all of the (qubit) basis states together into a single tensor, so we go from
@@ -180,12 +180,12 @@ class SampleMP(SampleMeasurement):
             ordered_tensors = [result[w] for w in obs.wires]
             batch_dim: tuple[int, ...] = result.shape
             ordered_tensors = [
-                qml.math.reshape(t, (*batch_dim, 1)) for t in ordered_tensors
+                qp.math.reshape(t, (*batch_dim, 1)) for t in ordered_tensors
             ]
-            new_samples: TensorLike = qml.math.concatenate(
+            new_samples: TensorLike = qp.math.concatenate(
                 ordered_tensors, axis=-1
             )  # n x (..., 1) -> (..., n)
-            with qml.QueuingManager.stop_recording():
+            with qp.QueuingManager.stop_recording():
                 eigvals = OldSampleMP(
                     obs,
                     wires=None,

@@ -3,12 +3,12 @@
 from functools import wraps
 from typing import Callable
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.operation import Operator
 from pennylane.ops.op_math import SymbolicOp
 from pennylane.wires import Wires, WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 
 def qcond(op: Operator | Callable, control_wires: WiresLike):
@@ -22,28 +22,28 @@ def create_qubit_conditioned_op(op: Operator | Callable, control: WiresLike):
     key = (type(op), len(control_wires))
     decomps = base_to_custom_conditioned_op()
     if cond_op := decomps.get(key):
-        qml.QueuingManager.remove(op)
+        qp.QueuingManager.remove(op)
         return cond_op(*op.data, control_wires + op.wires)
 
     # Special case because parameter convention change
-    if isinstance(op, hqml.Rotation) and len(control_wires) == 1:
-        qml.QueuingManager.remove(op)
-        return hqml.ConditionalRotation(2 * op.data[0], control_wires + op.wires)
+    if isinstance(op, hl.Rotation) and len(control_wires) == 1:
+        qp.QueuingManager.remove(op)
+        return hl.ConditionalRotation(2 * op.data[0], control_wires + op.wires)
 
-    if isinstance(op, (qml.GlobalPhase, qml.RZ, qml.IsingZZ, qml.MultiRZ)):
-        qml.QueuingManager.remove(op)
+    if isinstance(op, (qp.GlobalPhase, qp.RZ, qp.IsingZZ, qp.MultiRZ)):
+        qp.QueuingManager.remove(op)
         return _handle_z_rotations(op, control_wires)
 
     # Nested qubit condition ops
     if isinstance(op, QubitConditioned):
         control_wires = control_wires + op.control_wires
-        qml.QueuingManager.remove(op)
+        qp.QueuingManager.remove(op)
         return qcond(op.base, control_wires)
 
     if isinstance(op, Operator):
         return QubitConditioned(op, control_wires)
 
-    # Handle qml capture stuff later
+    # Handle qp capture stuff later
 
     if not callable(op):
         raise ValueError(f"Expected an Operator or Callable, got {type(op)}")
@@ -54,21 +54,21 @@ def create_qubit_conditioned_op(op: Operator | Callable, control: WiresLike):
 def _qcond_transform(func, control: Wires):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        tape = qml.tape.make_qscript(func)(*args, **kwargs)
+        tape = qp.tape.make_qscript(func)(*args, **kwargs)
 
-        leaves, _ = qml.pytrees.flatten(
+        leaves, _ = qp.pytrees.flatten(
             (args, kwargs), lambda obj: isinstance(obj, Operator)
         )
         for leaf in leaves:
             if isinstance(leaf, Operator):
-                qml.QueuingManager.remove(leaf)
+                qp.QueuingManager.remove(leaf)
 
         for op in tape.operations:
             qcond(op, control)
 
-        if qml.QueuingManager.recording():
+        if qp.QueuingManager.recording():
             for m in tape.measurements:
-                qml.apply(m)
+                qp.apply(m)
 
         return tape.measurements
 
@@ -76,20 +76,20 @@ def _qcond_transform(func, control: Wires):
 
 
 def _handle_z_rotations(
-    op: qml.GlobalPhase | qml.RZ | qml.IsingZZ | qml.MultiRZ, control_wires: Wires
+    op: qp.GlobalPhase | qp.RZ | qp.IsingZZ | qp.MultiRZ, control_wires: Wires
 ):
     param = op.data[0]
-    if isinstance(op, qml.GlobalPhase):
+    if isinstance(op, qp.GlobalPhase):
         wires = control_wires
         param = 2 * param
     else:
         wires = control_wires + op.wires
 
-    new_type = {1: qml.RZ, 2: qml.IsingZZ}
+    new_type = {1: qp.RZ, 2: qp.IsingZZ}
     if new_op_type := new_type.get(len(wires)):
         return new_op_type(param, wires)
 
-    return qml.MultiRZ(param, wires)
+    return qp.MultiRZ(param, wires)
 
 
 class QubitConditioned(SymbolicOp):
@@ -188,7 +188,7 @@ class QubitConditioned(SymbolicOp):
         if (type(self.base), len(self.control_wires)) in known_decomps:
             return True
 
-        if type(self.base) in (qml.GlobalPhase, qml.Identity, hqml.Rotation):
+        if type(self.base) in (qp.GlobalPhase, qp.Identity, hl.Rotation):
             return True
 
         if (
@@ -205,7 +205,7 @@ class QubitConditioned(SymbolicOp):
             return self.compute_decomposition(*self.data, self.wires)
 
         if (decomp := _decompose_custom_op(self)) is None:
-            raise qml.decomposition.DecompositionUndefinedError(
+            raise qp.decomposition.DecompositionUndefinedError(
                 f"Decomposition not defined for {self}"
             )
 
@@ -216,8 +216,8 @@ class QubitConditioned(SymbolicOp):
         return self.base.has_generator
 
     def generator(self):
-        z_factors = [qml.Z(w) for w in self.control_wires]
-        return qml.prod(*z_factors, self.base.generator())
+        z_factors = [qp.Z(w) for w in self.control_wires]
+        return qp.prod(*z_factors, self.base.generator())
 
     @property
     def has_adjoint(self):
@@ -227,7 +227,7 @@ class QubitConditioned(SymbolicOp):
         return QubitConditioned(self.base.adjoint(), self.control_wires)
 
     def pow(self, z):
-        return QubitConditioned(qml.pow(self.base, z), self.control_wires)
+        return QubitConditioned(qp.pow(self.base, z), self.control_wires)
 
     def __eq__(self, other):
         if not isinstance(other, QubitConditioned):
@@ -243,28 +243,28 @@ def _decompose_custom_op(op: QubitConditioned) -> list[Operator] | None:
         return [custom_decomp(*op.data, wires=op.wires)]
 
     # We just add more Zs
-    if isinstance(op.base, qml.MultiRZ):
-        return [qml.MultiRZ(*op.base.data, wires=op.control_wires + op.base.wires)]
+    if isinstance(op.base, qp.MultiRZ):
+        return [qp.MultiRZ(*op.base.data, wires=op.control_wires + op.base.wires)]
 
     # Conditioned version of identity is identity as I = exp(-i 0 I), so exp(-i 0 ZI) = I
-    if isinstance(op.base, qml.Identity):
-        return [qml.Identity(op.control_wires + op.base.wires)]
+    if isinstance(op.base, qp.Identity):
+        return [qp.Identity(op.control_wires + op.base.wires)]
 
-    if isinstance(op.base, qml.GlobalPhase):
-        return [qml.MultiRZ(2 * op.base.data[0], wires=op.control_wires)]
+    if isinstance(op.base, qp.GlobalPhase):
+        return [qp.MultiRZ(2 * op.base.data[0], wires=op.control_wires)]
 
     # We can always use CNOTs to take a single Z in the generator and extend it to arbitrary qubits
     if len(op.control_wires) >= 2:
         cnots = [
-            qml.CNOT(wires=(c, t))
+            qp.CNOT(wires=(c, t))
             for c, t in zip(op.control_wires[:-1], op.control_wires[1:])
         ]
         return cnots + [qcond(op.base, [op.control_wires[-1]])] + cnots[::-1]
 
     # Handle the differing factor of 2 in the definitions
-    if isinstance(op.base, hqml.Rotation):
+    if isinstance(op.base, hl.Rotation):
         return [
-            hqml.ConditionalRotation(
+            hl.ConditionalRotation(
                 2 * op.base.data[0], op.control_wires + op.base.wires
             )
         ]
@@ -278,14 +278,14 @@ def _decompose_custom_op(op: QubitConditioned) -> list[Operator] | None:
 # Dictionary mapping operators to their conditional versions, if the parameters are the same
 def base_to_custom_conditioned_op() -> dict[tuple[type[Operator], int], type[Operator]]:
     return {
-        (hqml.Displacement, 1): hqml.ConditionalDisplacement,
-        (hqml.Fourier, 1): hqml.ConditionalParity,
-        (hqml.Squeezing, 1): hqml.ConditionalSqueezing,
-        (hqml.Beamsplitter, 1): hqml.ConditionalBeamsplitter,
-        (hqml.TwoModeSqueezing, 1): hqml.ConditionalTwoModeSqueezing,
-        (hqml.TwoModeSum, 1): hqml.ConditionalTwoModeSum,
-        (qml.RZ, 1): qml.IsingZZ,
-        (qml.IsingZZ, 1): qml.MultiRZ,
+        (hl.Displacement, 1): hl.ConditionalDisplacement,
+        (hl.Fourier, 1): hl.ConditionalParity,
+        (hl.Squeezing, 1): hl.ConditionalSqueezing,
+        (hl.Beamsplitter, 1): hl.ConditionalBeamsplitter,
+        (hl.TwoModeSqueezing, 1): hl.ConditionalTwoModeSqueezing,
+        (hl.TwoModeSum, 1): hl.ConditionalTwoModeSum,
+        (qp.RZ, 1): qp.IsingZZ,
+        (qp.IsingZZ, 1): qp.MultiRZ,
     }
 
 

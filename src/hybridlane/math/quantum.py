@@ -43,7 +43,7 @@ def reduce_statevector(
     array([[1.+0.j, 0.+0.j],
            [0.+0.j, 0.+0.j]])
 
-    >>> state = hqml.math.kron([1, 0], [0, 1, 0])
+    >>> state = hl.math.kron([1, 0], [0, 1, 0])
     >>> reduce_statevector(state, indices=[0], dims=[2, 3])
     array([[1.+0.j, 0.+0.j],
            [0.+0.j, 0.+0.j]])

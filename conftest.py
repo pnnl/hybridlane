@@ -5,12 +5,12 @@ from doctest import ELLIPSIS
 from typing import Any
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 import pytest
 from sybil import Sybil
 from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser
 
-import hybridlane as hqml
+import hybridlane as hl
 
 try:
     import jax
@@ -23,7 +23,7 @@ printoptions = np.get_printoptions()
 
 
 def setup(namespace: dict[str, Any]):
-    namespace |= {"qml": qml, "hqml": hqml, "np": np, "jnp": jnp}
+    namespace |= {"qp": qp, "hl": hl, "np": np, "jnp": jnp}
     np.set_printoptions(precision=4, suppress=True)
     if jax:
         jax.config.update("jax_enable_x64", True)

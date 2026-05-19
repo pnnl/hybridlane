@@ -7,27 +7,27 @@ Here we give an example with a circuit that performs a measurement that is non-d
 
 .. code-block:: python
 
-    import pennylane as qml
-    import hybridlane as hqml
+    import pennylane as qp
+    import hybridlane as hl
 
-    dev = qml.device("bosonicqiskit.hybrid")
+    dev = qp.device("bosonicqiskit.hybrid")
 
-    @qml.qnode(dev)
+    @qp.qnode(dev)
     def circuit(n):
         for j in range(n):
-            qml.X(0)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+            qp.X(0)
+            hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
 
         return (
-            hqml.var(hqml.P(1)),
-            hqml.expval(qml.Z(0)),
+            hl.var(hl.P(1)),
+            hl.expval(qp.Z(0)),
         )
 
 Output with ``strict=False`` (the default)
 
 .. doctest::
 
-    >>> qasm = hqml.to_openqasm(circuit, precision=5, strict=False)(5)
+    >>> qasm = hl.to_openqasm(circuit, precision=5, strict=False)(5)
     >>> print(qasm)
     OPENQASM 3.0;
     include "stdgates.inc";
@@ -61,7 +61,7 @@ Output with ``strict=True``:
 
 .. doctest::
 
-    >>> qasm = hqml.to_openqasm(circuit, precision=5, strict=True)(5)
+    >>> qasm = hl.to_openqasm(circuit, precision=5, strict=True)(5)
     >>> print(qasm)
     OPENQASM 3.0;
     include "stdgates.inc";
@@ -103,7 +103,7 @@ import textwrap
 from functools import wraps
 from typing import Any, Callable
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.io.to_openqasm import OPENQASM_GATES
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
@@ -167,12 +167,12 @@ def to_openqasm(
 
     Example:
 
-        >>> @qml.qnode(qml.device("bosonicqiskit.hybrid", max_fock_level=8))
+        >>> @qp.qnode(qp.device("bosonicqiskit.hybrid", max_fock_level=8))
         ... def circuit():
-        ...     qml.H(0)
-        ...     hqml.ConditionalDisplacement(0.5, 0, [0, 1])
-        ...     return hqml.expval(hqml.P(1))
-        >>> qasm = hqml.to_openqasm(circuit)()
+        ...     qp.H(0)
+        ...     hl.ConditionalDisplacement(0.5, 0, [0, 1])
+        ...     return hl.expval(hl.P(1))
+        >>> qasm = hl.to_openqasm(circuit)()
         >>> print(qasm)
         OPENQASM 3.0;
         include "stdgates.inc";
@@ -281,7 +281,7 @@ def tape_to_openqasm(
 ):
     # Preprocessing
     tape = tape.map_to_standard_wires()
-    [tape], _ = qml.transforms.convert_to_numpy_parameters(tape)
+    [tape], _ = qp.transforms.convert_to_numpy_parameters(tape)
     res = sa.analyze(tape)
 
     wire_to_str = {w: f"q[{i}]" for i, w in enumerate(res.qubits)} | {

@@ -3,7 +3,7 @@
 import math
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition.symbolic_decomposition import (
     make_pow_decomp_with_period,
     pow_involutory,
@@ -12,7 +12,7 @@ from pennylane.decomposition.symbolic_decomposition import (
 from pennylane.operation import CV, CVOperation, Operator
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
@@ -42,10 +42,10 @@ class Fourier(CVOperation, FockRepresentation):
 
     @staticmethod
     def _heisenberg_rep(_):
-        return hqml.R._heisenberg_rep((math.pi / 2,))
+        return hl.R._heisenberg_rep((math.pi / 2,))
 
     def adjoint(self):
-        return hqml.Rotation(-math.pi / 2, self.wires)
+        return hl.Rotation(-math.pi / 2, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -54,41 +54,41 @@ class Fourier(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
-        n = hqml.math.arange(wire_dims[0])
-        return hqml.math.diag(hqml.math.exp(-1j * math.pi / 2 * n))
+        n = hl.math.arange(wire_dims[0])
+        return hl.math.diag(hl.math.exp(-1j * math.pi / 2 * n))
 
 
 def _f_to_r_resources():
-    return {hqml.Rotation: 1}
+    return {hl.Rotation: 1}
 
 
-@qml.register_resources(_f_to_r_resources)
+@qp.register_resources(_f_to_r_resources)
 def _f_to_r(wires, **_):
-    hqml.Rotation(math.pi / 2, wires)
+    hl.Rotation(math.pi / 2, wires)
 
 
 def _adjoint_f_to_r_resources():
-    return {hqml.Rotation: 1}
+    return {hl.Rotation: 1}
 
 
-@qml.register_resources(_adjoint_f_to_r_resources)
+@qp.register_resources(_adjoint_f_to_r_resources)
 def _adjoint_f_to_r(wires, **_):
-    hqml.Rotation(-math.pi / 2, wires)
+    hl.Rotation(-math.pi / 2, wires)
 
 
 def _pow_f_to_r_resources(z, **_):
-    return {hqml.Rotation: 1}
+    return {hl.Rotation: 1}
 
 
-@qml.register_resources(_pow_f_to_r_resources)
+@qp.register_resources(_pow_f_to_r_resources)
 def _pow_f_to_r(wires, z, **_):
-    hqml.Rotation(math.pi / 2 * z, wires)
+    hl.Rotation(math.pi / 2 * z, wires)
 
 
-qml.add_decomps(Fourier, _f_to_r)
-qml.add_decomps("Adjoint(Fourier)", _adjoint_f_to_r)
-qml.add_decomps("Pow(Fourier)", make_pow_decomp_with_period(4), _pow_f_to_r)
-qml.add_decomps("qCond(Fourier)", to_native_qcond(1))
+qp.add_decomps(Fourier, _f_to_r)
+qp.add_decomps("Adjoint(Fourier)", _adjoint_f_to_r)
+qp.add_decomps("Pow(Fourier)", make_pow_decomp_with_period(4), _pow_f_to_r)
+qp.add_decomps("qCond(Fourier)", to_native_qcond(1))
 
 F = Fourier
 r"""Fourier gate
@@ -135,9 +135,9 @@ class ModeSwap(CVOperation, FockRepresentation):
     more accurate due to truncation effects in the :math:`BS` gate (note the phase of
     :math:`-1` on the element :math:`\ket{1, 1} \to \ket{1, 1}` in the example below):
 
-    >>> r = hqml.R(-np.pi/2, wires=0).fock_matrix({0: 2})
-    >>> bs = hqml.BS(np.pi, 0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
-    >>> hqml.math.kron(r, r) @ bs
+    >>> r = hl.R(-np.pi/2, wires=0).fock_matrix({0: 2})
+    >>> bs = hl.BS(np.pi, 0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
+    >>> hl.math.kron(r, r) @ bs
     array([[ 1.+0.j,  0.+0.j,  0.+0.j,  0.+0.j],
            [ 0.+0.j,  0.+0.j,  1.-0.j,  0.+0.j],
            [ 0.+0.j,  1.-0.j,  0.+0.j,  0.+0.j],
@@ -179,16 +179,16 @@ class ModeSwap(CVOperation, FockRepresentation):
             raise NotImplementedError("Unknown formula for inverse")
 
         if z % 2 == 0:
-            return [qml.Identity(self.wires)]
+            return [qp.Identity(self.wires)]
         else:
             return [ModeSwap(self.wires)]
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         dim0, dim1 = wire_dims
-        mat = hqml.math.zeros((dim0 * dim1, dim0 * dim1), dtype=complex)
-        m = hqml.math.arange(dim0)[:, None]
-        n = hqml.math.arange(dim1)[None, :]
+        mat = hl.math.zeros((dim0 * dim1, dim0 * dim1), dtype=complex)
+        m = hl.math.arange(dim0)[:, None]
+        n = hl.math.arange(dim1)[None, :]
         row_indices = n + (m * dim1)
         col_indices = (n * dim0) + m
         mat[row_indices.flatten(), col_indices.flatten()] = 1
@@ -197,21 +197,21 @@ class ModeSwap(CVOperation, FockRepresentation):
 
 def _swap_to_bs_resources():
     return {
-        hqml.Beamsplitter: 1,
-        hqml.Rotation: 2,
+        hl.Beamsplitter: 1,
+        hl.Rotation: 2,
     }
 
 
-@qml.register_resources(_swap_to_bs_resources)
+@qp.register_resources(_swap_to_bs_resources)
 def _swap_to_bs(wires, **_):
-    hqml.Beamsplitter(math.pi, 0, wires)
-    hqml.Rotation(-math.pi / 2, wires[0])
-    hqml.Rotation(-math.pi / 2, wires[1])
+    hl.Beamsplitter(math.pi, 0, wires)
+    hl.Rotation(-math.pi / 2, wires[0])
+    hl.Rotation(-math.pi / 2, wires[1])
 
 
-qml.add_decomps(ModeSwap, _swap_to_bs)
-qml.add_decomps("Adjoint(ModeSwap)", self_adjoint)
-qml.add_decomps("Pow(ModeSwap)", pow_involutory)
+qp.add_decomps(ModeSwap, _swap_to_bs)
+qp.add_decomps("Adjoint(ModeSwap)", self_adjoint)
+qp.add_decomps("Pow(ModeSwap)", pow_involutory)
 
 
 class CreationOp(CV, Operator, FockRepresentation):
@@ -257,7 +257,7 @@ class CreationOp(CV, Operator, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
-        return hqml.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=-1)
+        return hl.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=-1)
 
 
 Ad = CreationOp
@@ -312,7 +312,7 @@ class AnnihilationOp(CV, Operator, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
-        return hqml.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=1)
+        return hl.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=1)
 
 
 A = AnnihilationOp

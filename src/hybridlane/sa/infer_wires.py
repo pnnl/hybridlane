@@ -4,7 +4,7 @@ import functools
 from collections import OrderedDict
 from typing import Hashable
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import CVObservable, CVOperation, Operator
 from pennylane.ops import (
@@ -119,7 +119,7 @@ def _infer_wire_types_from_operator(op: Operator) -> dict[WiresLike, WireType]:
 
 
 @_infer_wire_types_from_operator.register
-def _(_: qml.Identity | qml.Snapshot | qml.GlobalPhase):
+def _(_: qp.Identity | qp.Snapshot | qp.GlobalPhase):
     # None of these gates add any constraints on wire types
     return {}
 
@@ -152,7 +152,7 @@ def _(op: Controlled | ControlledOp | QubitConditioned):
 
 
 @_infer_wire_types_from_operator.register
-def _(op: qml.BasisState | qml.StatePrep | qml.Superposition):
+def _(op: qp.BasisState | qp.StatePrep | qp.Superposition):
     wire_types = {w: Qubit() for w in op.wires}
     return wire_types
 
@@ -256,7 +256,7 @@ def infer_schema_from_tensors(tensors: dict[Hashable, TensorLike]) -> BasisSchem
     """
     wire_map = {}
     for wire, tensor in tensors.items():
-        dtype: str = qml.math.get_dtype_name(tensor)
+        dtype: str = qp.math.get_dtype_name(tensor)
 
         if dtype.startswith("int") or dtype.startswith("uint"):
             basis = ComputationalBasis.Discrete

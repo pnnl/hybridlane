@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-import pennylane as qml
+import pennylane as qp
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
 
 from .. import sa
 
 
-@qml.transform
+@qp.transform
 def static_analyze_tape(
     tape: QuantumScript, fill_missing: str | None = None
 ) -> tuple[QuantumScriptBatch, PostprocessingFn]:
@@ -23,9 +23,9 @@ def static_analyze_tape(
 
         # This would throw an error
         def bad_circuit():
-            qml.Displacement(alpha, 0, wires=[0])
-            qml.X(1)
-            qml.H(0) # error: wire 0 became a qumode earlier during Displacement
+            qp.Displacement(alpha, 0, wires=[0])
+            qp.X(1)
+            qp.H(0) # error: wire 0 became a qumode earlier during Displacement
 
     Args:
         tape: The quantum circuit to check

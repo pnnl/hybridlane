@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 
-import pennylane as qml
+import pennylane as qp
 import pytest
 
 mpl = pytest.importorskip("matplotlib")
 plt = pytest.importorskip("matplotlib.pyplot")
 patches = pytest.importorskip("matplotlib.patches")
 
-import hybridlane as hqml  # noqa: E402
+import hybridlane as hl  # noqa: E402
 from hybridlane.drawer.mpldrawer import icon_face_color  # noqa: E402
 from hybridlane.drawer.tape_mpl import (  # noqa: E402
     default_qubit_color,
@@ -17,17 +17,17 @@ from hybridlane.drawer.tape_mpl import (  # noqa: E402
 
 
 def get_circuit1():
-    dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+    dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
-    @qml.qnode(dev)
+    @qp.qnode(dev)
     def circuit1(n):
-        qml.H(0)
-        hqml.Rotation(0.5, 1)
+        qp.H(0)
+        hl.Rotation(0.5, 1)
 
         for i in range(n):
-            hqml.ConditionalDisplacement(0.5, 0, [0, 2 + i])
+            hl.ConditionalDisplacement(0.5, 0, [0, 2 + i])
 
-        return hqml.expval(hqml.NumberOperator(n))
+        return hl.expval(hl.NumberOperator(n))
 
     return circuit1
 
@@ -45,7 +45,7 @@ class TestIconBehavior:
         }
 
         circuit1 = get_circuit1()
-        fig, ax = hqml.draw_mpl(
+        fig, ax = hl.draw_mpl(
             circuit1,
             wire_icon_colors=icon_colors,
         )(5)

@@ -8,14 +8,14 @@ from types import ModuleType
 from unittest import mock
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 import pytest
 
 jaqalpaq = pytest.importorskip("jaqalpaq")
 
 from jaqalpaq.parser import parse_jaqal_string  # noqa: E402
 
-import hybridlane as hqml  # noqa: E402
+import hybridlane as hl  # noqa: E402
 from hybridlane.devices.sandia_qscout import to_jaqal  # noqa: E402
 from hybridlane.devices.sandia_qscout.jaqal import (  # noqa: E402
     QUBIT_BOSON_MODULE,
@@ -54,14 +54,14 @@ def programs_equal(actual_ir, expected_ir):
 @pytest.mark.usefixtures("enable_graph_decomp")
 class TestToJaqal:
     def test_sample_qubit_circuit(self):
-        dev = qml.device("sandiaqscout.hybrid")
+        dev = qp.device("sandiaqscout.hybrid")
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit():
-            qml.H(0)
-            qml.CNOT([0, 1])
-            return hqml.expval(qml.X(0))
+            qp.H(0)
+            qp.CNOT([0, 1])
+            return hl.expval(qp.X(0))
 
         actual_ir = to_jaqal(circuit, level="device", precision=4)()
         expected_ir = textwrap.dedent(
@@ -85,14 +85,14 @@ class TestToJaqal:
         assert programs_equal(actual_ir, expected_ir)
 
     def test_red_blue_gates(self):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=2)
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=2)
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit():
-            hqml.JC(0.5, 0, [0, "m1i1"])
-            hqml.AJC(0.5, 0, [0, "m1i1"])
-            return hqml.expval(qml.Z(0))
+            hl.JC(0.5, 0, [0, "m1i1"])
+            hl.AJC(0.5, 0, [0, "m1i1"])
+            return hl.expval(qp.Z(0))
 
         actual_ir = to_jaqal(circuit, level="device")()
         expected_ir = textwrap.dedent(
@@ -111,12 +111,12 @@ class TestToJaqal:
         assert programs_equal(actual_ir, expected_ir)
 
     def test_catstate_circuit(self):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=2)
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=2)
 
-        @qml.set_shots(1024)
-        @qml.qnode(dev)
+        @qp.set_shots(1024)
+        @qp.qnode(dev)
         def circuit(alpha):
-            hqml.SqueezedCatState(alpha, np.pi / 2, parity="even", wires=["q", "m1i1"])
+            hl.SqueezedCatState(alpha, np.pi / 2, parity="even", wires=["q", "m1i1"])
 
         actual_ir = to_jaqal(circuit, level="device", precision=4)(4)
         expected_ir = textwrap.dedent(
@@ -138,16 +138,16 @@ class TestToJaqal:
         assert programs_equal(actual_ir, expected_ir)
 
     def test_dynamic_displacement_decomposition(self):
-        dev = qml.device("sandiaqscout.hybrid", optimize=False, n_qubits=2)
+        dev = qp.device("sandiaqscout.hybrid", optimize=False, n_qubits=2)
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit(dist):
-            hqml.XCD(dist, 0, [0, "m"])
-            hqml.D(dist, math.pi / 2, "m")
-            hqml.XCD(-dist, 0, [0, "m"])
-            hqml.D(-dist, math.pi / 2, "m")
-            return hqml.expval(qml.Z(0))
+            hl.XCD(dist, 0, [0, "m"])
+            hl.D(dist, math.pi / 2, "m")
+            hl.XCD(-dist, 0, [0, "m"])
+            hl.D(-dist, math.pi / 2, "m")
+            return hl.expval(qp.Z(0))
 
         actual_ir = to_jaqal(circuit, level="device", precision=4)(1.0)
         expected_ir = textwrap.dedent(

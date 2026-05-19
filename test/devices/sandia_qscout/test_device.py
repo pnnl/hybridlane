@@ -6,13 +6,13 @@ import math
 import sys
 from collections import Counter
 
-import pennylane as qml
+import pennylane as qp
 import pytest
 from pennylane.exceptions import DeviceError
 from pennylane.wires import Wires
 from pennylane.workflow import construct_tape
 
-import hybridlane as hqml
+import hybridlane as hl
 from hybridlane import sa
 from hybridlane.devices.sandia_qscout import Qumode
 from hybridlane.devices.sandia_qscout import ops as ion
@@ -35,7 +35,7 @@ class TestDevice:
     @pytest.mark.unit
     @pytest.mark.parametrize("allow_com", (True, False))
     def test_com_modes(self, allow_com):
-        dev = qml.device(
+        dev = qp.device(
             "sandiaqscout.hybrid", enable_com_modes=allow_com, use_virtual_wires=False
         )
 
@@ -53,19 +53,19 @@ class TestDevice:
     @pytest.mark.parametrize(
         "obs",
         (
-            qml.X(0) @ qml.X(1),
-            qml.X(0) @ qml.Y(3) @ qml.Z(1),
-            qml.Z(0),
-            qml.s_prod(0.5, qml.Z(0) @ qml.X(1)),
+            qp.X(0) @ qp.X(1),
+            qp.X(0) @ qp.Y(3) @ qp.Z(1),
+            qp.Z(0),
+            qp.s_prod(0.5, qp.Z(0) @ qp.X(1)),
         ),
     )
     def test_supported_sample_observable(self, obs):
-        dev = qml.device("sandiaqscout.hybrid")
+        dev = qp.device("sandiaqscout.hybrid")
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit(obs):
-            return hqml.var(obs)
+            return hl.var(obs)
 
         circuit(obs)
 
@@ -73,18 +73,18 @@ class TestDevice:
     @pytest.mark.parametrize(
         "obs",
         (
-            qml.X(0) @ qml.X(1),
-            qml.X(0) @ qml.Y(3) @ qml.Z(1),
-            qml.Z(0),
-            qml.s_prod(0.5, qml.Z(0) @ qml.X(1)),
+            qp.X(0) @ qp.X(1),
+            qp.X(0) @ qp.Y(3) @ qp.Z(1),
+            qp.Z(0),
+            qp.s_prod(0.5, qp.Z(0) @ qp.X(1)),
         ),
     )
     def test_no_analytic_measurement(self, obs):
-        dev = qml.device("sandiaqscout.hybrid")
+        dev = qp.device("sandiaqscout.hybrid")
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(obs):
-            return hqml.expval(obs)
+            return hl.expval(obs)
 
         with pytest.raises(DeviceError):
             circuit(obs)
@@ -101,13 +101,13 @@ class TestDevice:
         ),
     )
     def test_beamsplitter_constraints(self, wires, allowed):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=6, use_virtual_wires=False)
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=6, use_virtual_wires=False)
 
-        @qml.set_shots(10)
-        @qml.qnode(dev)
+        @qp.set_shots(10)
+        @qp.qnode(dev)
         def circuit(bs_wires):
             ion.NativeBeamsplitter(1, 2, 3, 4, wires=bs_wires)
-            return hqml.expval(qml.Z(0))
+            return hl.expval(qp.Z(0))
 
         if allowed:
             circuit(wires)
@@ -128,13 +128,13 @@ class TestDevice:
         ),
     )
     def test_rampup_constraints(self, wires, allowed):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=6, use_virtual_wires=False)
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=6, use_virtual_wires=False)
 
-        @qml.set_shots(10)
-        @qml.qnode(dev)
+        @qp.set_shots(10)
+        @qp.qnode(dev)
         def circuit(wires):
             ion.ConditionalXSqueezing(0.5, wires=wires)
-            return hqml.expval(qml.Z(0))
+            return hl.expval(qp.Z(0))
 
         if allowed:
             circuit(wires)
@@ -144,28 +144,28 @@ class TestDevice:
 
     @pytest.mark.unit
     def too_many_qubits(self):
-        dev = qml.device("sandiaqscout.hybrid")
+        dev = qp.device("sandiaqscout.hybrid")
 
-        @qml.set_shots(10)
-        @qml.qnode(dev)
+        @qp.set_shots(10)
+        @qp.qnode(dev)
         def circuit():
             for i in range(dev._max_qubits):
-                qml.H(i)
-            return hqml.expval(qml.Z(0))
+                qp.H(i)
+            return hl.expval(qp.Z(0))
 
         with pytest.raises(DeviceError):
             circuit()
 
     @pytest.mark.unit
     def too_many_qumodes(self):
-        dev = qml.device("sandiaqscout.hybrid")
+        dev = qp.device("sandiaqscout.hybrid")
 
-        @qml.set_shots(10)
-        @qml.qnode(dev)
+        @qp.set_shots(10)
+        @qp.qnode(dev)
         def circuit():
             for i in range(2 * dev._max_qubits - 2 + 1):
-                hqml.Blue(0.5, 0.5, [0, i + 1])
-            return hqml.expval(qml.Z(0))
+                hl.Blue(0.5, 0.5, [0, i + 1])
+            return hl.expval(qp.Z(0))
 
         with pytest.raises(DeviceError):
             circuit()
@@ -176,14 +176,14 @@ class TestDevice:
 class TestLayout:
     @pytest.mark.integration
     def test_qumode_assignment(self):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=4, use_virtual_wires=True)
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=4, use_virtual_wires=True)
 
-        @qml.set_shots(10)
-        @qml.qnode(dev)
+        @qp.set_shots(10)
+        @qp.qnode(dev)
         def circuit():
             for i in range(5):
-                hqml.Blue(0.5, 0, wires=[0, i + 1])
-            return hqml.expval(qml.Z(0))
+                hl.Blue(0.5, 0, wires=[0, i + 1])
+            return hl.expval(qp.Z(0))
 
         tape = construct_tape(circuit, level="device")()
         sa_res = sa.analyze(tape)
@@ -193,14 +193,14 @@ class TestLayout:
 
     @pytest.mark.integration
     def test_qumode_assignment_with_com(self):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
 
-        @qml.set_shots(10)
-        @qml.qnode(dev)
+        @qp.set_shots(10)
+        @qp.qnode(dev)
         def circuit():
             for i in range(5):
-                hqml.Blue(0.5, 0, wires=[0, i + 1])
-            return hqml.expval(qml.Z(0))
+                hl.Blue(0.5, 0, wires=[0, i + 1])
+            return hl.expval(qp.Z(0))
 
         tape = construct_tape(circuit, level="device")()
         sa_res = sa.analyze(tape)
@@ -210,10 +210,10 @@ class TestLayout:
 
     @pytest.mark.integration
     def test_no_valid_assignment(self):
-        dev = qml.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=3, enable_com_modes=True)
 
-        @qml.set_shots(10)
-        @qml.qnode(dev)
+        @qp.set_shots(10)
+        @qp.qnode(dev)
         def circuit():
             # Both are hardcoded to the tilt modes, but there's only 2 tilt modes, not 3
             ion.NativeBeamsplitter(0.1, 0.2, 0.3, 0.4, [0, "m1", "m2"])
@@ -228,53 +228,53 @@ class TestLayout:
 @pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDecomposition:
     def test_fockstate_and_conditionaldisplacement(self):
-        dev = qml.device(
+        dev = qp.device(
             "sandiaqscout.hybrid", optimize=True, use_virtual_wires=False, n_qubits=3
         )
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit():
-            hqml.FockState(5, [0, "m0i1"])
-            hqml.FockState(5, [0, "m0i2"])
-            hqml.ConditionalDisplacement(0.5, 0.5, [0, "m1i1"])
-            hqml.ConditionalDisplacement(-0.5, -0.5, [0, "m1i1"])
-            return hqml.expval(qml.X(0))
+            hl.FockState(5, [0, "m0i1"])
+            hl.FockState(5, [0, "m0i2"])
+            hl.ConditionalDisplacement(0.5, 0.5, [0, "m1i1"])
+            hl.ConditionalDisplacement(-0.5, -0.5, [0, "m1i1"])
+            return hl.expval(qp.X(0))
 
         tape = construct_tape(circuit, level="device")()
         op_counts = Counter([type(op) for op in tape.operations])
 
-        assert op_counts[hqml.FockState] == 2
+        assert op_counts[hl.FockState] == 2
 
         # Check the conditional displacements are optimized away
-        assert op_counts[hqml.CD] == 0
+        assert op_counts[hl.CD] == 0
 
     def test_cnot_to_xx(self):
-        dev = qml.device("sandiaqscout.hybrid")
+        dev = qp.device("sandiaqscout.hybrid")
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit():
-            qml.H(0)
-            qml.CNOT([0, 1])
-            return hqml.expval(qml.X(0))
+            qp.H(0)
+            qp.CNOT([0, 1])
+            return hl.expval(qp.X(0))
 
         tape = construct_tape(circuit, level="device")()
         op_counts = Counter([type(op) for op in tape.operations])
-        assert op_counts[qml.IsingXX] == 1
+        assert op_counts[qp.IsingXX] == 1
 
     def test_no_beamsplitter_decomposition(self):
-        dev = qml.device(
+        dev = qp.device(
             "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
         )
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit():
             # Hybridlane Beamsplitter gate isn't defined, instead one has to use
             # NativeBeamsplitter
-            hqml.ModeSwap(wires=["m1i1", "m0i3"])
-            return hqml.expval(qml.Z(0))
+            hl.ModeSwap(wires=["m1i1", "m0i3"])
+            return hl.expval(qp.Z(0))
 
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
@@ -286,17 +286,17 @@ class TestDecomposition:
             construct_tape(circuit, level="device")()
 
     def test_no_squeezing_decomposition(self):
-        dev = qml.device(
+        dev = qp.device(
             "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
         )
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit():
             # Hybridlane CS gate isn't defined, instead one has to use
             # ConditionalXSqueezing
-            hqml.ConditionalSqueezing(1, 0, wires=[0, "m1i1"])
-            return hqml.expval(qml.Z(0))
+            hl.ConditionalSqueezing(1, 0, wires=[0, "m1i1"])
+            return hl.expval(qp.Z(0))
 
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
@@ -308,20 +308,20 @@ class TestDecomposition:
             construct_tape(circuit, level="device")()
 
     def test_dynamic_displacement_decomposition(self):
-        dev = qml.device("sandiaqscout.hybrid", optimize=True, n_qubits=6)
+        dev = qp.device("sandiaqscout.hybrid", optimize=True, n_qubits=6)
 
-        @qml.set_shots(20)
-        @qml.qnode(dev)
+        @qp.set_shots(20)
+        @qp.qnode(dev)
         def circuit(dist):
-            qml.H("q")
-            hqml.CD(dist, 0, ["q", "m"])
-            hqml.D(dist, math.pi / 2, "m")
-            hqml.CD(-dist, 0, ["q", "m"])
-            hqml.D(-dist, math.pi / 2, "m")
-            qml.H("q")
-            return hqml.expval(qml.Z("q"))
+            qp.H("q")
+            hl.CD(dist, 0, ["q", "m"])
+            hl.D(dist, math.pi / 2, "m")
+            hl.CD(-dist, 0, ["q", "m"])
+            hl.D(-dist, math.pi / 2, "m")
+            qp.H("q")
+            return hl.expval(qp.Z("q"))
 
-        specs = qml.specs(circuit, level="device")(1.0)
+        specs = qp.specs(circuit, level="device")(1.0)
         gate_count = specs.resources.gate_types
 
         # The D gates should be replaced by CD gates on an ancilla qubit

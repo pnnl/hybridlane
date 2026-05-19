@@ -9,7 +9,7 @@ from typing import Callable
 
 import bosonic_qiskit as bq
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 from pennylane.exceptions import DeviceError
 from pennylane.operation import Operation, Operator
 from pennylane.ops import Exp, Pow, Prod, SProd, Sum
@@ -25,7 +25,7 @@ from scipy.linalg import expm, fractional_matrix_power
 from scipy.sparse import SparseEfficiencyWarning, csc_array
 from scipy.special import factorial
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ... import sa, util
 from ...measurements import (
@@ -89,14 +89,14 @@ def simulate(
 def analytic_expval(
     state: Statevector, result: QiskitResult, obs: np.ndarray
 ) -> np.ndarray:
-    return hqml.math.expectation_value(obs, state.data)
+    return hl.math.expectation_value(obs, state.data)
 
 
 def analytic_var(
     state: Statevector, result: QiskitResult, obs: np.ndarray
 ) -> np.ndarray:
-    exp = hqml.math.expectation_value(obs, state.data)
-    exp2 = hqml.math.expectation_value(obs @ obs, state.data)
+    exp = hl.math.expectation_value(obs, state.data)
+    exp2 = hl.math.expectation_value(obs @ obs, state.data)
     var = exp2 - exp**2
     return var
 
@@ -122,7 +122,7 @@ def analytic_state(
     bq_wires = regmapper.wire_order[::-1]  # inverted for qiskit ordering
     wire_order = tuple(range(len(bq_wires)))
     wire_dims = {w: regmapper.truncation.dim(w) for w in regmapper.wire_order}
-    out_vector = hqml.math.expand_vector(
+    out_vector = hl.math.expand_vector(
         state.data, bq_wires, wire_order=wire_order, wire_dims=wire_dims
     )
     return out_vector
@@ -154,22 +154,22 @@ def get_sparse_observable_matrix(
         return lam * -1j * (cvops.get_a(c) - cvops.get_ad(c))
 
     match obs:
-        case qml.Identity():
+        case qp.Identity():
             return cvops.get_eye(cutoffs[0])
 
-        case hqml.NumberOperator():
+        case hl.NumberOperator():
             return cvops.get_N(cutoffs[0])
 
-        case hqml.QuadX():
+        case hl.QuadX():
             return get_x(cutoffs[0])
 
-        case hqml.QuadP():
+        case hl.QuadP():
             return get_p(cutoffs[0])
 
-        case hqml.QuadOperator(parameters=(phi,)):
+        case hl.QuadOperator(parameters=(phi,)):
             return np.cos(phi) * get_x(cutoffs[0]) + np.sin(phi) * get_p(cutoffs[0])
 
-        case hqml.FockStateProjector(parameters=(fock_states,)):
+        case hl.FockStateProjector(parameters=(fock_states,)):
             mats = [cvops.get_projector(n, c) for n, c in zip(fock_states, cutoffs)]
             return functools.reduce(sp.kron, mats).asformat("csc")
 
@@ -231,7 +231,7 @@ def get_observable_matrix(
     statevector_wires = regmapper.wire_order[::-1]  # reverse for qiskit ordering
     obs_wires = Wires.all_wires([o.wires for o in op_list])
     wire_dims = {w: regmapper.truncation.dim(w) for w in statevector_wires}
-    mat = hqml.math.expand_matrix(
+    mat = hl.math.expand_matrix(
         composite_matrix, obs_wires, wire_order=statevector_wires, wire_dims=wire_dims
     )
     return mat.todense()
@@ -259,7 +259,7 @@ def make_cv_circuit(
     for op in tape.operations:
         # Validate that we have actual values in the parameters
         for p in op.parameters:
-            if qml.math.is_abstract(p):
+            if qp.math.is_abstract(p):
                 raise DeviceError(
                     "Need instantiated tensors to convert to qiskit. Circuit may contain Jax or TensorFlow tracing tensors."
                 )
@@ -281,7 +281,7 @@ def apply_gate(op: Operation, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
     match op:
         # This is equivalent up to a global phase of e^{-i(φ + ω)/2}
-        case qml.Rot(parameters=(phi, theta, omega)):
+        case qp.Rot(parameters=(phi, theta, omega)):
             getattr(qc, method)(
                 theta, phi, omega, *qubits
             )  # note the reordered parameters
@@ -301,24 +301,24 @@ def _(op: CVOperation, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
     match op:
         # These gates take complex parameters or differ from bosonic qiskit
-        case hqml.Displacement(parameters=(r, phi)):
+        case hl.Displacement(parameters=(r, phi)):
             arg = r * np.exp(1j * phi)
             getattr(qc, method)(arg, *qumodes)
-        case hqml.Squeezing(parameters=(r, phi)):
+        case hl.Squeezing(parameters=(r, phi)):
             arg = -r * np.exp(-1j * phi)
             getattr(qc, method)(arg, *qumodes)
-        case hqml.Rotation(parameters=(theta,)):
+        case hl.Rotation(parameters=(theta,)):
             getattr(qc, method)(-theta, *qumodes)
-        case hqml.Beamsplitter(parameters=(theta, phi)):
+        case hl.Beamsplitter(parameters=(theta, phi)):
             new_theta = theta / 2
             new_phi = phi - np.pi / 2
             z = new_theta * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
-        case hqml.TwoModeSqueezing(parameters=(r, phi)):
+        case hl.TwoModeSqueezing(parameters=(r, phi)):
             new_phi = phi + np.pi / 2
             z = r * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
-        case hqml.SNAP(parameters=parameters, hyperparameters={"n": n}):
+        case hl.SNAP(parameters=parameters, hyperparameters={"n": n}):
             getattr(qc, method)(*parameters, n, *qumodes)
         case _:
             getattr(qc, method)(*op.parameters, *qumodes)
@@ -338,22 +338,22 @@ def _(op: Hybrid, qc: bq.CVCircuit, regmapper: RegisterMapping):
     qubits = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qubit()]
 
     match op:
-        case hqml.ConditionalRotation(parameters=(theta,)):
+        case hl.ConditionalRotation(parameters=(theta,)):
             getattr(qc, method)(-theta / 2, *qumodes, *qubits)
-        case hqml.ConditionalDisplacement(parameters=(r, phi)):
+        case hl.ConditionalDisplacement(parameters=(r, phi)):
             arg = r * np.exp(1j * phi)
             getattr(qc, method)(arg, *qumodes, *qubits)
-        case hqml.ConditionalSqueezing(parameters=(r, phi)):
+        case hl.ConditionalSqueezing(parameters=(r, phi)):
             arg = -r * np.exp(-1j * phi)
             getattr(qc, method)(arg, *qumodes, *qubits)
-        case hqml.SQR(parameters=parameters, hyperparameters={"n": n}):
+        case hl.SQR(parameters=parameters, hyperparameters={"n": n}):
             getattr(qc, method)(*parameters, n, *qumodes, *qubits)
-        case hqml.ConditionalBeamsplitter(parameters=(theta, phi)):
+        case hl.ConditionalBeamsplitter(parameters=(theta, phi)):
             new_theta = theta / 2
             new_phi = phi - np.pi / 2
             z = new_theta * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
-        case hqml.ConditionalTwoModeSqueezing(parameters=(r, phi)):
+        case hl.ConditionalTwoModeSqueezing(parameters=(r, phi)):
             new_phi = phi + np.pi / 2
             z = r * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
@@ -362,18 +362,18 @@ def _(op: Hybrid, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
 
 @apply_gate.register
-def _(op: qml.Barrier, qc: bq.CVCircuit, regmapper: RegisterMapping):
+def _(op: qp.Barrier, qc: bq.CVCircuit, regmapper: RegisterMapping):
     pass  # no-op
 
 
 @apply_gate.register
-def _(op: qml.FockStateVector, qc: bq.CVCircuit, regmapper: RegisterMapping):
+def _(op: qp.FockStateVector, qc: bq.CVCircuit, regmapper: RegisterMapping):
     # State if following the pennylane docs, should be a tensor of shape (N,) * M where N
     # is the Fock cutoff and M is the number of wires. Since it doesn't appear like that
     # gets validated, it could be a tensor of shape (n_1, ..., n_m)
     state = op.parameters[0]
     state = pad_statevector_to_truncation(state, regmapper, op.wires)
-    ket = qml.math.flatten(state)
+    ket = qp.math.flatten(state)
 
     # Since qiskit takes backwards wire ordering compared to pennylane, let's just flip
     # the order of the qubits instead of the statevector 🧠
@@ -385,7 +385,7 @@ def _(op: qml.FockStateVector, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
 
 @apply_gate.register
-def _(op: qml.CoherentState, qc: bq.CVCircuit, regmapper: RegisterMapping):
+def _(op: qp.CoherentState, qc: bq.CVCircuit, regmapper: RegisterMapping):
     r, phi = op.parameters
     alpha = r * np.exp(1j * phi)
     state = coherent_state(alpha, regmapper.truncation.dim(op.wires[0]))
@@ -394,7 +394,7 @@ def _(op: qml.CoherentState, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
 
 @apply_gate.register
-def _(op: qml.CatState, qc: bq.CVCircuit, regmapper: RegisterMapping):
+def _(op: qp.CatState, qc: bq.CVCircuit, regmapper: RegisterMapping):
     a, phi, p = op.parameters
     alpha = a * np.exp(1j * phi)
     state_plus = coherent_state(alpha, regmapper.truncation.dim(op.wires[0]))
@@ -406,7 +406,7 @@ def _(op: qml.CatState, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
 
 @apply_gate.register
-def _(op: qml.StatePrep, qc: bq.CVCircuit, regmapper: RegisterMapping):
+def _(op: qp.StatePrep, qc: bq.CVCircuit, regmapper: RegisterMapping):
     state = op.parameters[0]
 
     # StatePrep can allow for sparse statevectors
@@ -420,7 +420,7 @@ def _(op: qml.StatePrep, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
 
 @apply_gate.register
-def _(op: qml.BasisState, qc: bq.CVCircuit, regmapper: RegisterMapping):
+def _(op: qp.BasisState, qc: bq.CVCircuit, regmapper: RegisterMapping):
     # This uses the bitmask invocation of initialize
     bitstring = op.parameters[0]
     state = np.dot(bitstring, 2 ** np.arange(len(op.wires), dtype=int))
@@ -545,10 +545,10 @@ def to_scalar(tensor_like: TensorLike):
     if isinstance(tensor_like, (int, float, complex)):
         return tensor_like
 
-    # For PennyLane tensors (qml.numpy.ndarray, tf.Tensor, torch.Tensor, jax.numpy.ndarray)
-    # qml.numpy.asarray handles the conversion to a standard NumPy array for all interfaces.
+    # For PennyLane tensors (qp.numpy.ndarray, tf.Tensor, torch.Tensor, jax.numpy.ndarray)
+    # qp.numpy.asarray handles the conversion to a standard NumPy array for all interfaces.
     try:
-        np_array = qml.numpy.asarray(tensor_like)
+        np_array = qp.numpy.asarray(tensor_like)
     except Exception as e:
         raise TypeError(
             f"Could not convert input to a NumPy array. Original error: {e}"

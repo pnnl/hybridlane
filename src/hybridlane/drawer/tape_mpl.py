@@ -159,7 +159,7 @@ def tape_mpl(
         decimals: How many decimal points to include when formatting operation parameters.
             Default ``None`` will omit parameters from operation labels.
 
-        style: Visual style of plot. See :py:func:`qml.draw_mpl <pennylane.drawer.draw.draw_mpl>`
+        style: Visual style of plot. See :py:func:`qp.draw_mpl <pennylane.drawer.draw.draw_mpl>`
 
         show_wire_types: If True, draw qumode/qubit icons next to each wire
 
@@ -168,11 +168,11 @@ def tape_mpl(
             for qubits). Colors are anything compatible with Matplotlib.
 
     Returns:
-        matplotlib.figure.Figure, matplotlib.axes._axes.Axes: the return of :py:func:`qml.draw_mpl <pennylane.drawer.draw.draw_mpl>`
+        matplotlib.figure.Figure, matplotlib.axes._axes.Axes: the return of :py:func:`qp.draw_mpl <pennylane.drawer.draw.draw_mpl>`
 
     .. seealso::
 
-        :py:func:`qml.draw_mpl <pennylane.drawer.draw.draw_mpl>`
+        :py:func:`qp.draw_mpl <pennylane.drawer.draw.draw_mpl>`
     """
     try:
         # Patch pennylane to use our drawer instead that handles hybrid gates
