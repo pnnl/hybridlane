@@ -176,7 +176,7 @@ class FockRepresentation:
                [0.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    -0.j    ,
                 0.9689+0.2474j, 0.    -0.j    ],
                [0.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    -0.j    ,
-                0.    -0.j    , 0.8776+0.4794j]], dtype=complex64)
+                0.    -0.j    , 0.8776+0.4794j]], dtype=complex128)
 
         Args:
             wire_dims: The dimension of each wire in the order of ``self.wires``
@@ -263,7 +263,7 @@ class FockRepresentation:
         >>> hqml.R(jnp.array(0.123), wires=0).fock_matrix({0: 3})
         Array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
                [0.    +0.j    , 0.9924-0.1227j, 0.    +0.j    ],
-               [0.    +0.j    , 0.    +0.j    , 0.9699-0.2435j]],      dtype=complex64, weak_type=True)
+               [0.    +0.j    , 0.    +0.j    , 0.9699-0.2435j]],      dtype=complex128, weak_type=True)
 
         Developers of new gates should prefer to implement ``compute_fock_matrix``.
         """

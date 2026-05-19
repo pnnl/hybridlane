@@ -10,14 +10,17 @@ build-docs: test-docs
     @cd docs && uv run make html
 
 test-all:
-    @uv sync --all-extras --all-groups
-    @uv pip install jax torch --torch-backend=cpu
+    @uv sync --all-extras --all-groups && uv pip install jax torch --torch-backend=cpu
     @uv run pytest
 
 test-docs:
     @uv sync --all-extras --all-groups && uv pip install jax torch --torch-backend=cpu
     @uv run pytest -m "docs"
 
+test-core-tensorlibs:
+    @uv sync --all-groups && uv pip install jax torch --torch-backend=cpu
+    @uv run pytest -m "not (bq or slow or docs)"
+
 test-core:
-    @uv sync --all-groups && uv pip install jax
-    @uv run pytest -m "not bq and not slow and not docs"
+    @uv sync --all-groups
+    @uv run pytest -m "not (bq or slow or docs or jax)"
