@@ -3,7 +3,7 @@
 import math
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
     pow_rotation,
@@ -13,7 +13,7 @@ from pennylane.ops.cv import _rotation, _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
@@ -101,7 +101,7 @@ class Displacement(CVOperation, FockRepresentation):
         c = math.cos(p[1])
         s = math.sin(p[1])
         scale = math.sqrt(2)
-        return hqml.math.asarray(
+        return hl.math.asarray(
             [
                 [1, 0, 0],
                 [scale * c * p[0], 1, 0],
@@ -122,20 +122,20 @@ class Displacement(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
-        ad = hqml.math.asarray(hqml.Ad.compute_fock_matrix(wire_dims), like=a)
-        alpha = a * hqml.math.exp(1j * phi)
-        op = alpha * ad - hqml.math.dag(alpha * ad)
-        return hqml.math.expm(op)
+        ad = hl.math.asarray(hl.Ad.compute_fock_matrix(wire_dims), like=a)
+        alpha = a * hl.math.exp(1j * phi)
+        op = alpha * ad - hl.math.dag(alpha * ad)
+        return hl.math.expm(op)
 
 
-@qml.register_resources({Displacement: 1})
+@qp.register_resources({Displacement: 1})
 def _pow_d(a, phi, wires, z, **_):
     Displacement(a * z, phi, wires)
 
 
-qml.add_decomps("Adjoint(Displacement)", adjoint_rotation)
-qml.add_decomps("Pow(Displacement)", _pow_d)
-qml.add_decomps("qCond(Displacement)", to_native_qcond(1))
+qp.add_decomps("Adjoint(Displacement)", adjoint_rotation)
+qp.add_decomps("Pow(Displacement)", _pow_d)
+qp.add_decomps("qCond(Displacement)", to_native_qcond(1))
 
 D = Displacement
 r"""Phase space displacement gate :math:`D(\alpha)`
@@ -220,7 +220,7 @@ class Rotation(CVOperation, FockRepresentation):
     def simplify(self):
         theta = self.data[0]
         if _can_replace(theta, 0):
-            return qml.Identity(wires=self.wires)
+            return qp.Identity(wires=self.wires)
 
         return self
 
@@ -231,14 +231,14 @@ class Rotation(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta) -> TensorLike:
-        n = hqml.math.arange(wire_dims[0], like=theta)
-        diag = hqml.math.exp(-1j * theta * n)
-        return hqml.math.diag(diag)
+        n = hl.math.arange(wire_dims[0], like=theta)
+        diag = hl.math.exp(-1j * theta * n)
+        return hl.math.diag(diag)
 
 
-qml.add_decomps("Adjoint(Rotation)", adjoint_rotation)
-qml.add_decomps("Pow(Rotation)", pow_rotation)
-qml.add_decomps("qCond(Rotation)", to_native_qcond(1))
+qp.add_decomps("Adjoint(Rotation)", adjoint_rotation)
+qp.add_decomps("Pow(Rotation)", pow_rotation)
+qp.add_decomps("qCond(Rotation)", to_native_qcond(1))
 
 R = Rotation
 r"""Phase space rotation gate :math:`R(\theta)`
@@ -305,21 +305,21 @@ class Squeezing(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
-        a = hqml.math.asarray(hqml.A.compute_fock_matrix(wire_dims), like=r)
-        ad = hqml.math.conj(hqml.math.transpose(a))
-        zeta = r * hqml.math.exp(1j * phi)
-        op = 0.5 * (hqml.math.conj(zeta) * a @ a - zeta * ad @ ad)
-        return hqml.math.expm(op)
+        a = hl.math.asarray(hl.A.compute_fock_matrix(wire_dims), like=r)
+        ad = hl.math.conj(hl.math.transpose(a))
+        zeta = r * hl.math.exp(1j * phi)
+        op = 0.5 * (hl.math.conj(zeta) * a @ a - zeta * ad @ ad)
+        return hl.math.expm(op)
 
 
-@qml.register_resources({Squeezing: 1})
+@qp.register_resources({Squeezing: 1})
 def _pow_s(r, phi, wires, z, **_):
     Squeezing(r * z, phi, wires)
 
 
-qml.add_decomps("Adjoint(Squeezing)", adjoint_rotation)
-qml.add_decomps("Pow(Squeezing)", _pow_s)
-qml.add_decomps("qCond(Squeezing)", to_native_qcond(1))
+qp.add_decomps("Adjoint(Squeezing)", adjoint_rotation)
+qp.add_decomps("Pow(Squeezing)", _pow_s)
+qp.add_decomps("qCond(Squeezing)", to_native_qcond(1))
 
 S = Squeezing
 r"""Phase space squeezing gate :math:`S(\zeta)`
@@ -373,7 +373,7 @@ class Kerr(CVOperation, FockRepresentation):
     def simplify(self):
         kappa = self.data[0]
         if _can_replace(kappa, 0):
-            return qml.Identity(wires=self.wires)
+            return qp.Identity(wires=self.wires)
 
         return self
 
@@ -384,13 +384,13 @@ class Kerr(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], kappa) -> TensorLike:
-        n = hqml.math.arange(wire_dims[0], like=kappa)
-        diag = hqml.math.exp(-1j * kappa * n**2)
-        return hqml.math.diag(diag)
+        n = hl.math.arange(wire_dims[0], like=kappa)
+        diag = hl.math.exp(-1j * kappa * n**2)
+        return hl.math.diag(diag)
 
 
-qml.add_decomps("Adjoint(Kerr)", adjoint_rotation)
-qml.add_decomps("Pow(Kerr)", pow_rotation)
+qp.add_decomps("Adjoint(Kerr)", adjoint_rotation)
+qp.add_decomps("Pow(Kerr)", pow_rotation)
 
 K = Kerr
 r"""Kerr gate :math:`K(\kappa)`
@@ -437,7 +437,7 @@ class CubicPhase(CVOperation, FockRepresentation):
     def simplify(self):
         r = self.data[0]
         if _can_replace(r, 0):
-            return qml.Identity(wires=self.wires)
+            return qp.Identity(wires=self.wires)
 
         return self
 
@@ -448,13 +448,13 @@ class CubicPhase(CVOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r) -> TensorLike:
-        x = hqml.math.asarray(hqml.X.compute_fock_matrix(wire_dims), like=r)
-        x3 = hqml.math.linalg.matrix_power(x, 3)
-        return hqml.math.expm(-1j * r * x3)
+        x = hl.math.asarray(hl.X.compute_fock_matrix(wire_dims), like=r)
+        x3 = hl.math.linalg.matrix_power(x, 3)
+        return hl.math.expm(-1j * r * x3)
 
 
-qml.add_decomps("Adjoint(CubicPhase)", adjoint_rotation)
-qml.add_decomps("Pow(CubicPhase)", pow_rotation)
+qp.add_decomps("Adjoint(CubicPhase)", adjoint_rotation)
+qp.add_decomps("Pow(CubicPhase)", pow_rotation)
 
 C = CubicPhase
 r"""Cubic phase shift gate :math:`C(r)`
@@ -501,12 +501,12 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
 
     Using this decomposition requires dynamic qubit allocation with ``num_work_wires >= 1``:
 
-    >>> dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
-    >>> @qml.transforms.decompose(gate_set={hqml.SQR}, num_work_wires=1)
-    ... @qml.qnode(dev)
+    >>> dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+    >>> @qp.transforms.decompose(gate_set={hl.SQR}, num_work_wires=1)
+    ... @qp.qnode(dev)
     ... def circuit():
-    ...     hqml.SNAP(0.5, 1, wires=0)
-    >>> print(qml.draw(circuit)())
+    ...     hl.SNAP(0.5, 1, wires=0)
+    >>> print(qp.draw(circuit)())
     <DynamicWire>: ──Allocate─╭SQR_{1}(3.14,0.00)─╭SQR_{1}(-3.14,0.50)──Deallocate─┤...
                 0: ───────────╰SQR_{1}(3.14,0.00)─╰SQR_{1}(-3.14,0.50)─────────────┤...
 
@@ -576,7 +576,7 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
         n = self.hyperparameters["n"]
 
         if _can_replace(phi, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return SelectiveNumberArbitraryPhase(phi, n, self.wires)
 
@@ -590,13 +590,13 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
     def compute_fock_matrix(
         wire_dims: tuple[int, ...], phase, n: int = 0
     ) -> TensorLike:
-        indices = hqml.math.arange(wire_dims[0], like=phase)
-        diag = hqml.math.where(
+        indices = hl.math.arange(wire_dims[0], like=phase)
+        diag = hl.math.where(
             indices == n,
-            hqml.math.exp(1j * phase),
-            hqml.math.ones(wire_dims[0], like=phase) + 0j,
+            hl.math.exp(1j * phase),
+            hl.math.ones(wire_dims[0], like=phase) + 0j,
         )
-        return hqml.math.diag(diag)
+        return hl.math.diag(diag)
 
 
 SNAP = SelectiveNumberArbitraryPhase
@@ -613,24 +613,24 @@ r"""Selective Number-dependent Arbitrary Phase (SNAP) gate
 
 
 def _snap_to_sqr_resources():
-    return {hqml.SQR: 2}
+    return {hl.SQR: 2}
 
 
-@qml.register_resources(_snap_to_sqr_resources, work_wires={"zeroed": 1})
+@qp.register_resources(_snap_to_sqr_resources, work_wires={"zeroed": 1})
 def _snap_to_sqr(phi, wires, n, **_):
-    with qml.allocate(1, "zero", restored=True) as ancilla:
-        hqml.SQR(math.pi, 0, n, ancilla + wires)
-        hqml.SQR(-math.pi, phi, n, ancilla + wires)
+    with qp.allocate(1, "zero", restored=True) as ancilla:
+        hl.SQR(math.pi, 0, n, ancilla + wires)
+        hl.SQR(-math.pi, phi, n, ancilla + wires)
 
 
-qml.add_decomps(SNAP, _snap_to_sqr)
-qml.add_decomps("Adjoint(SelectiveNumberArbitraryPhase)", adjoint_rotation)
-qml.add_decomps("Pow(SelectiveNumberArbitraryPhase)", pow_rotation)
+qp.add_decomps(SNAP, _snap_to_sqr)
+qp.add_decomps("Adjoint(SelectiveNumberArbitraryPhase)", adjoint_rotation)
+qp.add_decomps("Pow(SelectiveNumberArbitraryPhase)", pow_rotation)
 
 
 def _can_replace(x, y):
     return (
-        not qml.math.is_abstract(x)
-        and not qml.math.requires_grad(x)
-        and qml.math.allclose(x, y)
+        not qp.math.is_abstract(x)
+        and not qp.math.requires_grad(x)
+        and qp.math.allclose(x, y)
     )

@@ -3,7 +3,7 @@ Exporting Circuits
 
 To facilitate the integration of simulators and hardware devices, Hybridlane provides an intermediate representation (IR) format based on `OpenQASM 3.0 <https://openqasm.com/index.html>`_, with a few (minimal) modifications to capture hybrid CV-DV programs. We detail the extensions to OpenQASM in a later section to first focus on introducing how to use it.
 
-A quantum program can be exported using the :py:func:`~hybridlane.to_openqasm` function. This function inspects the circuit for qumodes and qubits, and declares them separately in registers `m` and `q`, respectively. Based on the measurements and their observables, it also infers whether to use homodyne (``hqml.X``) or Fock number (``hqml.N``) measurements. Finally, noncommuting measurements are run on separate calls to the state preparation circuit, so a single OpenQASM program may contain multiple circuit executions using the function invocation feature of OpenQASM 3.0.
+A quantum program can be exported using the :py:func:`~hybridlane.to_openqasm` function. This function inspects the circuit for qumodes and qubits, and declares them separately in registers `m` and `q`, respectively. Based on the measurements and their observables, it also infers whether to use homodyne (``hl.X``) or Fock number (``hl.N``) measurements. Finally, noncommuting measurements are run on separate calls to the state preparation circuit, so a single OpenQASM program may contain multiple circuit executions using the function invocation feature of OpenQASM 3.0.
 
 Example
 -------
@@ -12,24 +12,24 @@ Here we give an example of exporting a basic circuit to OpenQASM. Consider the f
 
 .. code-block:: python
 
-    dev = qml.device("bosonicqiskit.hybrid")
+    dev = qp.device("bosonicqiskit.hybrid")
 
-    @qml.qnode(dev)
+    @qp.qnode(dev)
     def circuit(n):
         for j in range(n):
-            qml.X(0)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+            qp.X(0)
+            hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
 
         return (
-            hqml.var(hqml.QuadP(1)),
-            hqml.expval(qml.PauliZ(0)),
+            hl.var(hl.QuadP(1)),
+            hl.expval(qp.PauliZ(0)),
         )
 
 Note that it has DV gates, hybrid gates, and DV and CV measurements. Furthermore, the ``QuadP`` observable is not diagonal in the position basis. This can be exported with
 
 .. code-block:: python
 
-    qasm = hqml.to_openqasm(circuit, precision=5)(5)
+    qasm = hl.to_openqasm(circuit, precision=5)(5)
 
 which produces the following IR
 
@@ -71,7 +71,7 @@ circuits. This will remove the custom CV-DV extensions.
 
 .. code-block:: python
 
-    qasm = hqml.to_openqasm(circuit, precision=5, strict=True)(5)
+    qasm = hl.to_openqasm(circuit, precision=5, strict=True)(5)
 
 produces
 
@@ -160,4 +160,4 @@ Our superset of OpenQASM contains the following extra features:
         // or can do a lower-precision measurement
         uint[5] c2 = measure_n m[1];
 
-4. We introduce a CV-DV standard gate library based on Liu et al., 2024 (`arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_). This library should be handled by compilers using the statement ``include "cvstdgates.inc";``, and we include its definitions in the file ``examples/cvstdgates.inc``. All of our gates follow the definitions of this library, so you can use the documentation of ``hqml.ops`` as a reference.
+4. We introduce a CV-DV standard gate library based on Liu et al., 2024 (`arXiv:2407.10381 <https://arxiv.org/abs/2407.10381>`_). This library should be handled by compilers using the statement ``include "cvstdgates.inc";``, and we include its definitions in the file ``examples/cvstdgates.inc``. All of our gates follow the definitions of this library, so you can use the documentation of ``hl.ops`` as a reference.

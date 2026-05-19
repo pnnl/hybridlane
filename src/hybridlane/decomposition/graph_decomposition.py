@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 from unittest.mock import patch
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition import CompressedResourceOp, DecompositionRule
 from pennylane.decomposition import DecompositionGraph as PLDG
 from typing_extensions import override
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..ops.op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multi_qcond,
@@ -20,7 +20,7 @@ class DecompositionGraph(PLDG):
     def _get_decompositions(self, op: CompressedResourceOp) -> list[DecompositionRule]:
         decomps = super()._get_decompositions(op)
 
-        if op.op_type in (hqml.ops.QubitConditioned,):
+        if op.op_type in (hl.ops.QubitConditioned,):
             decomps.extend(self._get_qubit_conditioned_decompositions(op))
 
         return decomps
@@ -45,7 +45,7 @@ class DecompositionGraph(PLDG):
         )
 
         # General case is to apply qcond to each gate in the decomposition
-        base = qml.resource_rep(base_class, **base_params)
+        base = qp.resource_rep(base_class, **base_params)
         rules = [make_qcond_decomp(decomp) for decomp in self._get_decompositions(base)]
 
         # Can always reduce to 1 condition qubit
@@ -58,7 +58,7 @@ class DecompositionGraph(PLDG):
     def _get_pow_decompositions(op: CompressedResourceOp) -> list[DecompositionRule]:
         decomps = PLDG._get_pow_decompositions(op)
 
-        if op.params["base_class"] in (hqml.ops.QubitConditioned,):
+        if op.params["base_class"] in (hl.ops.QubitConditioned,):
             decomps.append(flip_pow_qcond)
 
         return decomps

@@ -10,7 +10,7 @@ from pennylane.operation import Operation
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 
 class Spectral:
@@ -22,7 +22,7 @@ class Spectral:
     """
 
     @property
-    def natural_basis(self) -> hqml.sa.ComputationalBasis:
+    def natural_basis(self) -> hl.sa.ComputationalBasis:
         raise NotImplementedError(
             "Observable did not define its best basis to measure in"
         )
@@ -87,10 +87,10 @@ class Hybrid:
     num_qumodes: int | None = None
     """The number of qumodes the gate acts on"""
 
-    type_signature: Sequence[hqml.sa.WireType] | None = None
+    type_signature: Sequence[hl.sa.WireType] | None = None
     """The ordered type signature of each wire"""
 
-    def wire_types(self) -> dict[WiresLike, hqml.sa.WireType]:
+    def wire_types(self) -> dict[WiresLike, hl.sa.WireType]:
         """Identifies the type of each wire in the gate
 
         Returns:
@@ -108,8 +108,8 @@ class Hybrid:
         type_signature = self.type_signature
         if self.num_qumodes is not None:
             qubits = len(self.wires) - self.num_qumodes
-            type_signature = [hqml.sa.Qubit()] * qubits + [
-                hqml.sa.Qumode()
+            type_signature = [hl.sa.Qubit()] * qubits + [
+                hl.sa.Qumode()
             ] * self.num_qumodes
 
         return {w: s for w, s in zip(self.wires, type_signature)}
@@ -143,7 +143,7 @@ class FockRepresentation:
         An example using the ``CR`` gate, which has wire types ``[qubit, qumode]``, using
         dimension 2 for the qubit and a dimension of 3 for the qumode:
 
-        >>> hqml.CR.compute_fock_matrix((2, 3), 0.5)
+        >>> hl.CR.compute_fock_matrix((2, 3), 0.5)
         array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ,
                 0.    +0.j    , 0.    +0.j    ],
                [0.    +0.j    , 0.9689-0.2474j, 0.    +0.j    , 0.    +0.j    ,
@@ -164,7 +164,7 @@ class FockRepresentation:
         Using the same example as above with a JAX array as a parameter, the resulting matrix
         is a differentiable JAX ``Array``:
 
-        >>> hqml.CR.compute_fock_matrix((2, 3), jnp.array(0.5))
+        >>> hl.CR.compute_fock_matrix((2, 3), jnp.array(0.5))
         Array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ,
                 0.    +0.j    , 0.    +0.j    ],
                [0.    +0.j    , 0.9689-0.2474j, 0.    +0.j    , 0.    +0.j    ,
@@ -208,7 +208,7 @@ class FockRepresentation:
 
         An example using the :math:`R` gate with a Fock truncation of 3:
 
-        >>> hqml.R(0.123, wires=0).fock_matrix({0: 3})
+        >>> hl.R(0.123, wires=0).fock_matrix({0: 3})
         array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
                [0.    +0.j    , 0.9924-0.1227j, 0.    +0.j    ],
                [0.    +0.j    , 0.    +0.j    , 0.9699-0.2435j]])
@@ -222,7 +222,7 @@ class FockRepresentation:
         with the qubit as wire 0 and the qumode as wire 1, the matrix will be expanded
         as :math:`I_2 \otimes R`:
 
-        >>> hqml.R(0.123, wires=1).fock_matrix({0: 2, 1: 3}, wire_order=(0, 1))
+        >>> hl.R(0.123, wires=1).fock_matrix({0: 2, 1: 3}, wire_order=(0, 1))
         array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ,
                 0.    +0.j    , 0.    +0.j    ],
                [0.    +0.j    , 0.9924-0.1227j, 0.    +0.j    , 0.    +0.j    ,
@@ -238,7 +238,7 @@ class FockRepresentation:
 
         Passing a different ``wire_order`` returns a permuted matrix :math:`R \otimes I_2`:
 
-        >>> hqml.R(0.123, wires=1).fock_matrix({0: 2, 1: 3}, wire_order=(1, 0))
+        >>> hl.R(0.123, wires=1).fock_matrix({0: 2, 1: 3}, wire_order=(1, 0))
         array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    , 0.    +0.j    ,
                 0.    +0.j    , 0.    +0.j    ],
                [0.    +0.j    , 1.    +0.j    , 0.    +0.j    , 0.    +0.j    ,
@@ -260,7 +260,7 @@ class FockRepresentation:
 
         An example using JAX:
 
-        >>> hqml.R(jnp.array(0.123), wires=0).fock_matrix({0: 3})
+        >>> hl.R(jnp.array(0.123), wires=0).fock_matrix({0: 3})
         Array([[1.    +0.j    , 0.    +0.j    , 0.    +0.j    ],
                [0.    +0.j    , 0.9924-0.1227j, 0.    +0.j    ],
                [0.    +0.j    , 0.    +0.j    , 0.9699-0.2435j]],      dtype=complex128, weak_type=True)
@@ -274,6 +274,6 @@ class FockRepresentation:
         if wire_order is None or self.wires == Wires(wire_order):
             return matrix
 
-        return hqml.math.expand_matrix(
+        return hl.math.expand_matrix(
             matrix, self.wires, wire_order=wire_order, wire_dims=wire_dims
         )

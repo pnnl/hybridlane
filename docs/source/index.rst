@@ -78,22 +78,22 @@ For detailed instructions, see the `Getting Started Guide <https://pnnl.github.i
 .. code-block:: python
 
     import numpy as np
-    import pennylane as qml
-    import hybridlane as hqml
+    import pennylane as qp
+    import hybridlane as hl
 
     # Create a bosonic qiskit simulator with a custom Fock truncation
-    dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+    dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
     # Define a hybrid circuit with familiar PennyLane syntax
-    @qml.qnode(dev)
+    @qp.qnode(dev)
     def circuit(n):
         for j in range(n):
-            qml.X(0)  # Wire `0` is inferred to be a qubit
+            qp.X(0)  # Wire `0` is inferred to be a qubit
             # Use hybrid CV-DV gates from hybridlane
-            hqml.JC(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m"])
+            hl.JC(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m"])
 
         # Mix qubit and qumode observables
-        return hqml.expval(hqml.N("m") @ qml.Z(0))
+        return hl.expval(hl.N("m") @ qp.Z(0))
 
     # Execute the circuit
     expval = circuit(5)
@@ -184,12 +184,12 @@ This project was supported by the U.S. Department of Energy, Office of Science, 
     :caption: API Reference
     :hidden:
 
-    hqml <_autoapi/hybridlane/index>
-    hqml.devices <_autoapi/hybridlane/devices/index>
-    hqml.io <_autoapi/hybridlane/io/index>
-    hqml.measurements <_autoapi/hybridlane/measurements/index>
-    hqml.ops <_autoapi/hybridlane/ops/index>
-    hqml.sa <_autoapi/hybridlane/sa/index>
-    hqml.templates <_autoapi/hybridlane/templates/index>
-    hqml.transforms <_autoapi/hybridlane/transforms/index>
+    hl <_autoapi/hybridlane/index>
+    hl.devices <_autoapi/hybridlane/devices/index>
+    hl.io <_autoapi/hybridlane/io/index>
+    hl.measurements <_autoapi/hybridlane/measurements/index>
+    hl.ops <_autoapi/hybridlane/ops/index>
+    hl.sa <_autoapi/hybridlane/sa/index>
+    hl.templates <_autoapi/hybridlane/templates/index>
+    hl.transforms <_autoapi/hybridlane/transforms/index>
 ..    _autoapi/hybridlane/util/index

@@ -3,7 +3,7 @@
 from unittest.mock import Mock, patch
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 import pytest
 from pennylane.measurements import SampleMP as OldSampleMP
 from pennylane.wires import Wires
@@ -22,7 +22,7 @@ class TestSampleMP:
 
     def test_shape(self):
         """Test the shape method."""
-        mp = SampleMP(qml.Identity(0))
+        mp = SampleMP(qp.Identity(0))
         assert mp.shape(shots=100) == (100,)
 
     def test_process_samples_pass_through(self):
@@ -41,7 +41,7 @@ class TestSampleMP:
 
     def test_process_samples_value_error(self):
         """Test that process_samples raises ValueError if eigenvalues are provided."""
-        mp = SampleMP(obs=qml.PauliX(0))
+        mp = SampleMP(obs=qp.PauliX(0))
         samples = Mock(is_basis_states=False)
         with pytest.raises(ValueError, match="Already provided eigenvalues"):
             mp.process_samples(samples, wire_order=Wires(0))
@@ -49,10 +49,10 @@ class TestSampleMP:
     @pytest.mark.parametrize(
         "obs, expected",
         [
-            (qml.PauliX(0), False),
+            (qp.PauliX(0), False),
             (QuadX(0), True),
-            (qml.prod(QuadX(0), qml.PauliZ(1)), True),
-            (qml.prod(qml.PauliX(0), qml.PauliZ(1)), False),
+            (qp.prod(QuadX(0), qp.PauliZ(1)), True),
+            (qp.prod(qp.PauliX(0), qp.PauliZ(1)), False),
             (NumberOperator(0), True),
         ],
     )
@@ -62,9 +62,9 @@ class TestSampleMP:
         assert mp._has_spectral_part(obs) == expected
 
     def test_sample_observable_prod(self):
-        """Test _sample_observable with a qml.Prod."""
+        """Test _sample_observable with a qp.Prod."""
 
-        prod_obs = qml.prod(qml.PauliZ(0), QuadX(1))
+        prod_obs = qp.prod(qp.PauliZ(0), QuadX(1))
         mp = SampleMP(obs=prod_obs)
 
         z = np.array([0, 1, 1, 0])
@@ -84,10 +84,10 @@ class TestSampleMP:
         assert np.array_equal(eigvals, expected_eigvals)
 
     def test_sample_observable_sprod(self):
-        """Test _sample_observable with a qml.SProd."""
+        """Test _sample_observable with a qp.SProd."""
         coeff = 2.5
-        prod_obs = qml.prod(qml.PauliZ(0), QuadX(1))
-        sprod_obs = qml.s_prod(coeff, prod_obs)
+        prod_obs = qp.prod(qp.PauliZ(0), QuadX(1))
+        sprod_obs = qp.s_prod(coeff, prod_obs)
         mp = SampleMP(obs=sprod_obs)
 
         z = np.array([0, 1, 1, 0])
@@ -107,10 +107,10 @@ class TestSampleMP:
         assert np.array_equal(eigvals, expected_eigvals)
 
     def test_sample_observable_pow(self):
-        """Test _sample_observable with a qml.Pow."""
+        """Test _sample_observable with a qp.Pow."""
         power = 2
-        prod_obs = qml.prod(qml.PauliZ(0), QuadX(1))
-        pow_obs = qml.pow(prod_obs, power)
+        prod_obs = qp.prod(qp.PauliZ(0), QuadX(1))
+        pow_obs = qp.pow(prod_obs, power)
         mp = SampleMP(obs=pow_obs)
 
         z = np.array([0, 1, 1, 0])
@@ -146,7 +146,7 @@ class TestSampleMP:
 
     def test_sample_observable_regular_operator(self):
         """Test _sample_observable with a regular PennyLane operator."""
-        obs = qml.PauliX(0)
+        obs = qp.PauliX(0)
         mp = SampleMP(obs=obs)
         samples = SampleResult({0: np.array([[1], [0]])})
 

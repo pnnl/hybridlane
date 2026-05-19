@@ -4,11 +4,11 @@ import sys
 from functools import partial
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 import pytest
 from pennylane.exceptions import DeviceError
 
-import hybridlane as hqml
+import hybridlane as hl
 from hybridlane.measurements import FockTruncation
 from hybridlane.sa.exceptions import StaticAnalysisError
 
@@ -27,18 +27,18 @@ class TestBosonicQiskitDevice:
     def test_device_is_registered(self):
         from hybridlane.devices import BosonicQiskitDevice
 
-        dev = qml.device("bosonicqiskit.hybrid")
+        dev = qp.device("bosonicqiskit.hybrid")
         assert isinstance(dev, BosonicQiskitDevice)
 
     @pytest.mark.unit
     def test_non_power_of_two_truncation(self):
         trunc = FockTruncation.all_fock_space([0, 1], {0: 2, 1: 7})
-        dev = qml.device("bosonicqiskit.hybrid", truncation=trunc)
+        dev = qp.device("bosonicqiskit.hybrid", truncation=trunc)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.ConditionalDisplacement(1.0, 0, [0, 1])
-            return hqml.expval(hqml.NumberOperator(1))
+            hl.ConditionalDisplacement(1.0, 0, [0, 1])
+            return hl.expval(hl.NumberOperator(1))
 
         with pytest.raises(DeviceError):
             circuit()
@@ -47,12 +47,12 @@ class TestBosonicQiskitDevice:
     def test_no_inferrable_truncation(self):
         # This circuit has a qumode that should be detected through static analysis,
         # but no truncation is provided.
-        dev = qml.device("bosonicqiskit.hybrid")
+        dev = qp.device("bosonicqiskit.hybrid")
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.Rotation(0.5, 0)
-            return hqml.expval(hqml.NumberOperator(0))
+            qp.Rotation(0.5, 0)
+            return hl.expval(hl.NumberOperator(0))
 
         with pytest.raises(DeviceError):
             circuit()
@@ -62,26 +62,26 @@ class TestBosonicQiskitDevice:
         # This circuit should be detected as all qubit and therefore automagically
         # derive a truncation of 2 for each qubit. It'll then fail because
         # we only simulate hybrid programs.
-        dev = qml.device("bosonicqiskit.hybrid")
+        dev = qp.device("bosonicqiskit.hybrid")
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.H(0)
-            return hqml.expval(qml.Z(0) @ qml.X(1))
+            qp.H(0)
+            return hl.expval(qp.Z(0) @ qp.X(1))
 
         with pytest.raises(DeviceError):
             circuit()
 
     @pytest.mark.unit
     def test_wires_aliased_by_operation(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.ConditionalDisplacement(
+            hl.ConditionalDisplacement(
                 1.0, 0, [0, 1]
             )  # wire 0 established as a qubit here
-            return hqml.expval(hqml.NumberOperator(0))  # measure wire 0 in fock basis
+            return hl.expval(hl.NumberOperator(0))  # measure wire 0 in fock basis
 
         with pytest.raises(StaticAnalysisError):
             circuit()
@@ -90,18 +90,18 @@ class TestBosonicQiskitDevice:
     @pytest.mark.parametrize(
         "obs",
         (
-            hqml.NumberOperator(0) @ qml.PauliZ(0),
-            hqml.NumberOperator(0) + qml.PauliZ(0),
-            qml.s_prod(0.5, hqml.NumberOperator(0) @ qml.PauliZ(0)),
-            qml.s_prod(0.5, hqml.NumberOperator(0) + qml.PauliZ(0)),
+            hl.NumberOperator(0) @ qp.PauliZ(0),
+            hl.NumberOperator(0) + qp.PauliZ(0),
+            qp.s_prod(0.5, hl.NumberOperator(0) @ qp.PauliZ(0)),
+            qp.s_prod(0.5, hl.NumberOperator(0) + qp.PauliZ(0)),
         ),
     )
     def test_wires_aliased_by_observable(self, obs):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            return hqml.expval(obs)
+            return hl.expval(obs)
 
         with pytest.raises(StaticAnalysisError):
             circuit()
@@ -112,12 +112,12 @@ class TestBosonicQiskitDevice:
         truncation = FockTruncation.all_fock_space([0], {0: 16})
 
         def circuit(alpha):
-            qml.Displacement(alpha, 0, 0)
-            return hqml.expval(hqml.QuadX(0)), hqml.expval(hqml.QuadP(0))
+            qp.Displacement(alpha, 0, 0)
+            return hl.expval(hl.QuadX(0)), hl.expval(hl.QuadP(0))
 
         units = "standard"
-        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation, units=units)
-        qnode = qml.QNode(circuit, dev)
+        dev = qp.device("bosonicqiskit.hybrid", truncation=truncation, units=units)
+        qnode = qp.QNode(circuit, dev)
         expval_x, expval_p = qnode(alpha)
         expected_x = np.sqrt(2) * alpha
         expected_p = 0
@@ -125,8 +125,8 @@ class TestBosonicQiskitDevice:
         assert np.isclose(expval_p, expected_p)
 
         units = "wigner"
-        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation, units=units)
-        qnode = qml.QNode(circuit, dev)
+        dev = qp.device("bosonicqiskit.hybrid", truncation=truncation, units=units)
+        qnode = qp.QNode(circuit, dev)
         expval_x, expval_p = qnode(alpha)
         expected_x = alpha
         expected_p = 0
@@ -138,7 +138,7 @@ class TestBosonicQiskitDevice:
 class TestOperations:
     @pytest.mark.integration
     def test_fockstatevector(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=4)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=4)
 
         # Put qumode 0 in state |2> and put qumode 1 in a superposition of |0> and |1>
         state0 = np.zeros((4,), dtype=complex)
@@ -148,10 +148,10 @@ class TestOperations:
         state1[1] = 1 / np.sqrt(2)
         state = np.kron(state0, state1).reshape(4, 4)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.FockStateVector(state, wires=[0, 1])
-            return (hqml.expval(hqml.N(0)), hqml.expval(hqml.N(1)))
+            qp.FockStateVector(state, wires=[0, 1])
+            return (hl.expval(hl.N(0)), hl.expval(hl.N(1)))
 
         n0, n1 = circuit()
         assert np.isclose(n0, 2)
@@ -162,12 +162,12 @@ class TestOperations:
     def test_displacement(self, alpha):
         # Basic circuit that prepares |α> and checks the mean photon count
         # is <n> = |α|^2
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.Displacement(alpha, 0, 0)
-            return hqml.expval(hqml.NumberOperator(0)), hqml.var(hqml.NumberOperator(0))
+            qp.Displacement(alpha, 0, 0)
+            return hl.expval(hl.NumberOperator(0)), hl.var(hl.NumberOperator(0))
 
         expval, var = circuit(alpha)
         assert np.ndim(expval) == 0
@@ -181,14 +181,12 @@ class TestOperations:
         lam = np.abs(alpha) ** 2
         truncation = FockTruncation.all_fock_space([0, 1], {0: 16, 1: 4})
 
-        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation)
+        dev = qp.device("bosonicqiskit.hybrid", truncation=truncation)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.Displacement(alpha, 0, 0)
-            return hqml.expval(hqml.NumberOperator(0)), hqml.expval(
-                hqml.NumberOperator(1)
-            )
+            qp.Displacement(alpha, 0, 0)
+            return hl.expval(hl.NumberOperator(0)), hl.expval(hl.NumberOperator(1))
 
         n0, n1 = circuit(alpha)
         assert np.isclose(n0, lam)
@@ -200,13 +198,13 @@ class TestOperations:
         alpha = 1.5
         truncation = FockTruncation.all_fock_space([0], {0: 16})
 
-        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation)
+        dev = qp.device("bosonicqiskit.hybrid", truncation=truncation)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha, phi):
-            qml.Displacement(alpha, 0, 0)
-            qml.Rotation(phi, 0)
-            return hqml.expval(hqml.QuadX(0)), hqml.expval(hqml.QuadP(0))
+            qp.Displacement(alpha, 0, 0)
+            qp.Rotation(phi, 0)
+            return hl.expval(hl.QuadX(0)), hl.expval(hl.QuadP(0))
 
         expval_x, expval_p = circuit(alpha, phi)
         expected_x = np.sqrt(2) * np.cos(phi) * alpha
@@ -217,12 +215,12 @@ class TestOperations:
     @pytest.mark.integration
     def test_coherent_state(self):
         alpha = 1.5
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.CoherentState(alpha, 0, wires=0)
-            return hqml.expval(hqml.N(0))
+            qp.CoherentState(alpha, 0, wires=0)
+            return hl.expval(hl.N(0))
 
         expval = circuit(alpha)
         assert np.isclose(expval, np.abs(alpha) ** 2)
@@ -230,44 +228,44 @@ class TestOperations:
     @pytest.mark.integration
     def test_cat_state(self):
         alpha = 1.5
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.CatState(alpha, 0, p=1, wires=0)
-            qml.change_op_basis(qml.H(1), hqml.CP([1, 0]))
-            return hqml.expval(qml.Z(1))
+            qp.CatState(alpha, 0, p=1, wires=0)
+            qp.change_op_basis(qp.H(1), hl.CP([1, 0]))
+            return hl.expval(qp.Z(1))
 
         expval = circuit(alpha)
         assert np.isclose(expval, -1)
 
     @pytest.mark.integration
     def test_bell_state_prep(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
         state = np.zeros((4,), dtype=complex)
         state[1] = 1 / np.sqrt(2)
         state[2] = 1 / np.sqrt(2)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
             # Prepare a bell state and then measure a vacuum qumode just because
             # bosonic qiskit requires 1 qumode
-            qml.StatePrep(state, wires=[0, 1])
-            return hqml.expval(qml.X(0) @ qml.X(1)), hqml.expval(hqml.N(2))
+            qp.StatePrep(state, wires=[0, 1])
+            return hl.expval(qp.X(0) @ qp.X(1)), hl.expval(hl.N(2))
 
         stabilizer, _ = circuit()
         assert np.isclose(stabilizer, 1)
 
     @pytest.mark.integration
     def test_qubit_basis_state(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.BasisState([1, 0, 0], wires=[0, 1, 2])
-            hqml.D(1, 1, wires=3)  # again dummy qumode
-            return hqml.expval(qml.Z(0))
+            qp.BasisState([1, 0, 0], wires=[0, 1, 2])
+            hl.D(1, 1, wires=3)  # again dummy qumode
+            return hl.expval(qp.Z(0))
 
         expval = circuit()
         assert np.isclose(expval, -1)
@@ -278,11 +276,11 @@ class TestObservableMeasurements:
     @pytest.mark.integration
     def test_vacuum_expval(self):
         # The simplest test you could do, checking the vacuum state |0> has <n> = 0
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            return hqml.expval(hqml.NumberOperator(0))
+            return hl.expval(hl.NumberOperator(0))
 
         result = circuit()
         assert np.ndim(result) == 0
@@ -291,11 +289,11 @@ class TestObservableMeasurements:
     @pytest.mark.integration
     def test_vacuum_var(self):
         # Checking the vacuum state |0> has Var(n) = 0 since it's a definite eigenstate
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            return hqml.var(hqml.NumberOperator(0))
+            return hl.var(hl.NumberOperator(0))
 
         result = circuit()
         assert np.ndim(result) == 0
@@ -303,11 +301,11 @@ class TestObservableMeasurements:
 
     @pytest.mark.integration
     def test_heisenberg_uncertainty(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            return hqml.var(hqml.QuadX(0)), hqml.var(hqml.QuadP(0))
+            return hl.var(hl.QuadX(0)), hl.var(hl.QuadP(0))
 
         dx, dp = circuit()
         assert np.sqrt(dx * dp) >= 1 / 2
@@ -320,13 +318,13 @@ class TestObservableMeasurements:
         n_per_test = 5000
         repetitions = 10
 
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=fock_levels)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=fock_levels)
 
-        @partial(qml.set_shots, shots=repetitions * n_per_test)
-        @qml.qnode(dev)
+        @partial(qp.set_shots, shots=repetitions * n_per_test)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.Displacement(alpha, 0, 0)
-            return hqml.sample(hqml.NumberOperator(0))
+            qp.Displacement(alpha, 0, 0)
+            return hl.sample(hl.NumberOperator(0))
 
         # Rather than repeat the circuit `repetitions` times, which would be slower,
         # we just partition the shots ourselves into that many tests
@@ -354,12 +352,12 @@ class TestObservableMeasurements:
         lam = np.abs(alpha) ** 2
         truncation = FockTruncation.all_fock_space([0], {0: 16})
 
-        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation)
+        dev = qp.device("bosonicqiskit.hybrid", truncation=truncation)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.Displacement(alpha, 0, 0)
-            return hqml.expval(hqml.NumberOperator(0) + hqml.NumberOperator(0) ** 2)
+            qp.Displacement(alpha, 0, 0)
+            return hl.expval(hl.NumberOperator(0) + hl.NumberOperator(0) ** 2)
 
         n = circuit(alpha)
         expval_n = lam
@@ -378,12 +376,12 @@ class TestObservableMeasurements:
         lam = np.abs(alpha) ** 2
         truncation = FockTruncation.all_fock_space([0], {0: 16})
 
-        dev = qml.device("bosonicqiskit.hybrid", truncation=truncation)
+        dev = qp.device("bosonicqiskit.hybrid", truncation=truncation)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.Displacement(alpha, 0, 0)
-            return hqml.expval(hqml.NumberOperator(0) + hqml.QuadX(0))
+            qp.Displacement(alpha, 0, 0)
+            return hl.expval(hl.NumberOperator(0) + hl.QuadX(0))
 
         n = circuit(alpha)
         expval_n = lam
@@ -397,16 +395,16 @@ class TestStateMeasurements:
     @pytest.mark.parametrize(["wires", "state_index"], [([0, 1], 1), ([1, 0], 2)])
     def test_statevector_with_wire_flips(self, wires, state_index):
         fock_levels = 4
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=fock_levels, wires=2)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=fock_levels, wires=2)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.FockState(
+            hl.FockState(
                 1, wires
             )  # set mode to 1 using wire[0] as qubit control and wire[1] as qumode
             return (
-                hqml.state(),
-                hqml.expval(hqml.NumberOperator(wires[1])),
+                hl.state(),
+                hl.expval(hl.NumberOperator(wires[1])),
             )
 
         state, num = circuit()
@@ -429,21 +427,21 @@ class TestStateMeasurements:
     )
     def test_statevector_with_more_wires(self, wires, state_index):
         fock_levels = 4
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=fock_levels, wires=3)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=fock_levels, wires=3)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
             # always assume wire[0] is qubit control and wire[1] and wire[2] is qumode
-            hqml.FockState(  # set mode to 1 using wire[0] as qubit control and wire[1] as qumode
+            hl.FockState(  # set mode to 1 using wire[0] as qubit control and wire[1] as qumode
                 1, [wires[0], wires[1]]
             )
-            hqml.FockState(  # set mode to 1 using wire[0] as qubit control and wire[2] as qumode
+            hl.FockState(  # set mode to 1 using wire[0] as qubit control and wire[2] as qumode
                 2, [wires[0], wires[2]]
             )
             return (
-                hqml.state(),
-                hqml.expval(hqml.NumberOperator(wires[1])),
-                hqml.expval(hqml.NumberOperator(wires[2])),
+                hl.state(),
+                hl.expval(hl.NumberOperator(wires[1])),
+                hl.expval(hl.NumberOperator(wires[2])),
             )
 
         state, num1, num2 = circuit()
@@ -461,42 +459,42 @@ class TestIntegration:
     @pytest.mark.parametrize("n", range(6))
     def test_create_fock_state_analytic(self, n):
         # Creates the state |0,n> through JC gates
-        dev = qml.device("bosonicqiskit.hybrid", wires=[0, "m0"], max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", wires=[0, "m0"], max_fock_level=8)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
             for j in range(n):
-                qml.X(0)
-                hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m0"])
+                qp.X(0)
+                hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, "m0"])
 
-            return hqml.expval(hqml.NumberOperator("m0")), hqml.expval(qml.Z(0))
+            return hl.expval(hl.NumberOperator("m0")), hl.expval(qp.Z(0))
 
         expval_n, expval_z = circuit()
         assert np.isclose(expval_n, n)
         assert np.isclose(expval_z, 1.0)
 
     def test_jc_analytic(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=4)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=4)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
             # Put the first subsystem (qubit 0, qumode 1) in state |0>_Q |1>_B
-            qml.X(0)
-            hqml.JaynesCummings(np.pi / 2, np.pi / 2, [0, 1])
+            qp.X(0)
+            hl.JaynesCummings(np.pi / 2, np.pi / 2, [0, 1])
 
             # Put the second subsystem (qubit 2, qumode 3) in state |0>_Q |2>_B
-            qml.X(2)
-            hqml.JaynesCummings(np.pi / 2, np.pi / 2, [2, 3])
-            qml.X(2)
-            hqml.JaynesCummings(np.pi / (2 * np.sqrt(2)), np.pi / 2, [2, 3])
+            qp.X(2)
+            hl.JaynesCummings(np.pi / 2, np.pi / 2, [2, 3])
+            qp.X(2)
+            hl.JaynesCummings(np.pi / (2 * np.sqrt(2)), np.pi / 2, [2, 3])
 
             # check qumodes in state |1>|2>
             return (
-                qml.expval(
-                    hqml.FockStateProjector([1, 2], [1, 3])
+                qp.expval(
+                    hl.FockStateProjector([1, 2], [1, 3])
                 ),  # check that from_pennylane transform handles it
-                hqml.expval(hqml.NumberOperator(1)),
-                hqml.expval(hqml.NumberOperator(3)),
+                hl.expval(hl.NumberOperator(1)),
+                hl.expval(hl.NumberOperator(3)),
             )
 
         expval, n1, n3 = circuit()
@@ -505,16 +503,14 @@ class TestIntegration:
         assert np.isclose(expval, 1.0)
 
     def test_cv_swap(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
-            qml.Displacement(alpha, 0, 0)
-            hqml.ModeSwap([0, 1])  # will get decomposed to beamsplitters
-            qml.Displacement(-alpha, 0, 1)
-            return hqml.expval(hqml.NumberOperator(0)), hqml.expval(
-                hqml.NumberOperator(1)
-            )
+            qp.Displacement(alpha, 0, 0)
+            hl.ModeSwap([0, 1])  # will get decomposed to beamsplitters
+            qp.Displacement(-alpha, 0, 1)
+            return hl.expval(hl.NumberOperator(0)), hl.expval(hl.NumberOperator(1))
 
         alpha = 1.5
         n1, n2 = circuit(alpha)
@@ -523,22 +519,22 @@ class TestIntegration:
 
     @pytest.mark.parametrize("alpha", (2.0, -2.0))
     def test_cat_state_readout(self, alpha):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=16)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(alpha):
             # Put the qumode into state |α> + |-α>, which acts like |0L> + |1L>
-            qml.H(0)
-            hqml.CD(alpha, 0, wires=[0, 1])
-            qml.H(0)
+            qp.H(0)
+            hl.CD(alpha, 0, wires=[0, 1])
+            qp.H(0)
 
             # Now use ancilliary qubit to read it out with a phase kickback
-            qml.Displacement(alpha, 0, 1)  # |0> + |2α>
-            qml.H(2)
-            hqml.SQR(np.pi, np.pi / 2, 0, wires=[2, 1])  # Ry(pi)|0><0|
-            qml.H(2)
+            qp.Displacement(alpha, 0, 1)  # |0> + |2α>
+            qp.H(2)
+            hl.SQR(np.pi, np.pi / 2, 0, wires=[2, 1])  # Ry(pi)|0><0|
+            qp.H(2)
 
-            return hqml.expval(qml.Z(2))
+            return hl.expval(qp.Z(2))
 
         z = circuit(alpha)
         assert np.isclose(z, 0, atol=1e-7)

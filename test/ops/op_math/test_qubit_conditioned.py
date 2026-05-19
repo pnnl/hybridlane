@@ -2,96 +2,94 @@
 # SPDX-License-Identifier: BSD-2-Clause
 from functools import partial
 
-import pennylane as qml
+import pennylane as qp
 import pytest
 
-import hybridlane as hqml
+import hybridlane as hl
 from hybridlane.ops import QubitConditioned
 
 
 @pytest.mark.unit
 class TestQubitConditioned:
     def test_name(self):
-        op = QubitConditioned(hqml.Rotation(0.5, 0), 1)
+        op = QubitConditioned(hl.Rotation(0.5, 0), 1)
         assert op.name == "QubitConditioned(Rotation)"
 
     def test_overlapping_wires(self):
         with pytest.raises(ValueError):
-            hqml.qcond(qml.RZ(0.5, 0), 0)
+            hl.qcond(qp.RZ(0.5, 0), 0)
 
     def test_known_gates(self):
         # Hybridlane gates
-        assert hqml.qcond(hqml.Rotation(0.5, 0), 1) == hqml.ConditionalRotation(
-            1.0, [1, 0]
+        assert hl.qcond(hl.Rotation(0.5, 0), 1) == hl.ConditionalRotation(1.0, [1, 0])
+        assert hl.qcond(hl.Fourier(0), 1) == hl.ConditionalParity([1, 0])
+        assert hl.qcond(
+            hl.Beamsplitter(0.1, 0.2, [0, 1]), 2
+        ) == hl.ConditionalBeamsplitter(0.1, 0.2, [2, 0, 1])
+        assert hl.qcond(hl.Displacement(0.1, 0.2, 0), 1) == hl.ConditionalDisplacement(
+            0.1, 0.2, [1, 0]
         )
-        assert hqml.qcond(hqml.Fourier(0), 1) == hqml.ConditionalParity([1, 0])
-        assert hqml.qcond(
-            hqml.Beamsplitter(0.1, 0.2, [0, 1]), 2
-        ) == hqml.ConditionalBeamsplitter(0.1, 0.2, [2, 0, 1])
-        assert hqml.qcond(
-            hqml.Displacement(0.1, 0.2, 0), 1
-        ) == hqml.ConditionalDisplacement(0.1, 0.2, [1, 0])
-        assert hqml.qcond(
-            hqml.TwoModeSqueezing(0.1, 0, [0, 1]), 2
-        ) == hqml.ConditionalTwoModeSqueezing(0.1, 0, [2, 0, 1])
+        assert hl.qcond(
+            hl.TwoModeSqueezing(0.1, 0, [0, 1]), 2
+        ) == hl.ConditionalTwoModeSqueezing(0.1, 0, [2, 0, 1])
 
         # Pennylane gates
-        assert hqml.qcond(qml.GlobalPhase(0.5, 0), 1) == qml.RZ(1.0, 1)
-        assert hqml.qcond(qml.GlobalPhase(0.5, 0), [1, 2]) == qml.IsingZZ(1.0, [1, 2])
-        assert hqml.qcond(qml.IsingZZ(0.5, [0, 1]), [2, 3]) == qml.MultiRZ(
+        assert hl.qcond(qp.GlobalPhase(0.5, 0), 1) == qp.RZ(1.0, 1)
+        assert hl.qcond(qp.GlobalPhase(0.5, 0), [1, 2]) == qp.IsingZZ(1.0, [1, 2])
+        assert hl.qcond(qp.IsingZZ(0.5, [0, 1]), [2, 3]) == qp.MultiRZ(
             0.5, [2, 3, 0, 1]
         )
 
     def test_nested_qcond(self):
-        op = hqml.qcond(QubitConditioned(hqml.Displacement(0.5, 0, 0), 1), 2)
-        assert op == QubitConditioned(hqml.Displacement(0.5, 0, 0), [2, 1])
+        op = hl.qcond(QubitConditioned(hl.Displacement(0.5, 0, 0), 1), 2)
+        assert op == QubitConditioned(hl.Displacement(0.5, 0, 0), [2, 1])
         assert op.has_decomposition
         assert op.decomposition() == [
-            qml.CNOT([2, 1]),
-            hqml.ConditionalDisplacement(0.5, 0, [1, 0]),
-            qml.CNOT([2, 1]),
+            qp.CNOT([2, 1]),
+            hl.ConditionalDisplacement(0.5, 0, [1, 0]),
+            qp.CNOT([2, 1]),
         ]
 
 
 @pytest.mark.unit
 class TestDecomposition:
     def test_rz_to_isingzz(self):
-        op = QubitConditioned(qml.RZ(0.5, 0), 1)
+        op = QubitConditioned(qp.RZ(0.5, 0), 1)
         assert op.has_decomposition
-        assert op.decomposition() == [qml.IsingZZ(0.5, [1, 0])]
+        assert op.decomposition() == [qp.IsingZZ(0.5, [1, 0])]
 
     def test_d_to_cd(self):
-        op = QubitConditioned(hqml.Displacement(0.1, 0.2, 0), 1)
+        op = QubitConditioned(hl.Displacement(0.1, 0.2, 0), 1)
         assert op.has_decomposition
-        assert op.decomposition() == [hqml.ConditionalDisplacement(0.1, 0.2, [1, 0])]
+        assert op.decomposition() == [hl.ConditionalDisplacement(0.1, 0.2, [1, 0])]
 
     def test_f_to_cp(self):
-        op = QubitConditioned(hqml.Fourier(0), 1)
+        op = QubitConditioned(hl.Fourier(0), 1)
         assert op.has_decomposition
-        assert op.decomposition() == [hqml.ConditionalParity([1, 0])]
+        assert op.decomposition() == [hl.ConditionalParity([1, 0])]
 
     def test_r_to_cr(self):
-        op = QubitConditioned(hqml.Rotation(0.5, 0), 1)
+        op = QubitConditioned(hl.Rotation(0.5, 0), 1)
         assert op.has_decomposition
-        assert op.decomposition() == [hqml.ConditionalRotation(1.0, [1, 0])]
+        assert op.decomposition() == [hl.ConditionalRotation(1.0, [1, 0])]
 
     def test_multirz(self):
-        op = QubitConditioned(qml.MultiRZ(0.5, [0, 1]), [2, 3])
+        op = QubitConditioned(qp.MultiRZ(0.5, [0, 1]), [2, 3])
         assert op.has_decomposition
-        assert op.decomposition() == [qml.MultiRZ(0.5, [2, 3, 0, 1])]
+        assert op.decomposition() == [qp.MultiRZ(0.5, [2, 3, 0, 1])]
 
     def test_identity(self):
-        op = QubitConditioned(qml.Identity(0), 1)
+        op = QubitConditioned(qp.Identity(0), 1)
         assert op.has_decomposition
-        assert op.decomposition() == [qml.Identity([1, 0])]
+        assert op.decomposition() == [qp.Identity([1, 0])]
 
     def test_cnot_decomposition(self):
-        op = QubitConditioned(hqml.Displacement(0.1, 0.2, 0), [1, 2])
+        op = QubitConditioned(hl.Displacement(0.1, 0.2, 0), [1, 2])
         assert op.has_decomposition
         assert op.decomposition() == [
-            qml.CNOT([1, 2]),
-            hqml.qcond(hqml.Displacement(0.1, 0.2, 0), 2),
-            qml.CNOT([1, 2]),
+            qp.CNOT([1, 2]),
+            hl.qcond(hl.Displacement(0.1, 0.2, 0), 2),
+            qp.CNOT([1, 2]),
         ]
 
 
@@ -101,167 +99,167 @@ class TestDecomposition:
 @pytest.mark.integration
 class TestGraphDecomposition:
     def test_qcondf_to_cr(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalRotation},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalRotation},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.qcond(hqml.Fourier(0), 1)
+            hl.qcond(hl.Fourier(0), 1)
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert len(tape.operations) == 1  # 1 cr
 
     def test_multi_qcondf_to_cr(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalRotation, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalRotation, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.qcond(hqml.Fourier(0), [1, 2])
+            hl.qcond(hl.Fourier(0), [1, 2])
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert len(tape.operations) == 3  # 1 cr, 2 cnot
 
     def test_ctrlf_to_cr(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalRotation, hqml.Rotation, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalRotation, hl.Rotation, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.ctrl(hqml.Fourier(0), 1)
+            qp.ctrl(hl.Fourier(0), 1)
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert len(tape.operations) == 2  # 1 r, 1 cr
 
     def test_multicondf_to_cr(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalParity, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalParity, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.qcond(hqml.Fourier(0), [1, 2])
+            hl.qcond(hl.Fourier(0), [1, 2])
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert tape.operations == [
-            qml.CNOT([1, 2]),
-            hqml.ConditionalParity([2, 0]),
-            qml.CNOT([1, 2]),
+            qp.CNOT([1, 2]),
+            hl.ConditionalParity([2, 0]),
+            qp.CNOT([1, 2]),
         ]
 
     def test_condbs_to_cbs(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalBeamsplitter, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalBeamsplitter, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.ops.QubitConditioned(hqml.Beamsplitter(0.5, 0, [0, 1]), 2)
+            hl.ops.QubitConditioned(hl.Beamsplitter(0.5, 0, [0, 1]), 2)
 
-        tape = qml.workflow.construct_tape(circuit)()
-        assert tape.operations == [hqml.ConditionalBeamsplitter(0.5, 0, [2, 0, 1])]
+        tape = qp.workflow.construct_tape(circuit)()
+        assert tape.operations == [hl.ConditionalBeamsplitter(0.5, 0, [2, 0, 1])]
 
     def test_multicondbs_to_cbs(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalBeamsplitter, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalBeamsplitter, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.ops.QubitConditioned(hqml.Beamsplitter(0.5, 0, [0, 1]), [2, 3])
+            hl.ops.QubitConditioned(hl.Beamsplitter(0.5, 0, [0, 1]), [2, 3])
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert tape.operations == [
-            qml.CNOT([2, 3]),
-            hqml.ConditionalBeamsplitter(0.5, 0, [3, 0, 1]),
-            qml.CNOT([2, 3]),
+            qp.CNOT([2, 3]),
+            hl.ConditionalBeamsplitter(0.5, 0, [3, 0, 1]),
+            qp.CNOT([2, 3]),
         ]
 
     def test_cond_cd(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalDisplacement, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalDisplacement, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.qcond(hqml.ConditionalDisplacement(0.5, 0, [0, 1]), [2, 3])
+            hl.qcond(hl.ConditionalDisplacement(0.5, 0, [0, 1]), [2, 3])
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert tape.operations == [
-            qml.CNOT([2, 3]),
-            qml.CNOT([3, 0]),
-            hqml.ConditionalDisplacement(0.5, 0, [0, 1]),
-            qml.CNOT([3, 0]),
-            qml.CNOT([2, 3]),
+            qp.CNOT([2, 3]),
+            qp.CNOT([3, 0]),
+            hl.ConditionalDisplacement(0.5, 0, [0, 1]),
+            qp.CNOT([3, 0]),
+            qp.CNOT([2, 3]),
         ]
 
     def test_cond_pow_cr(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalRotation, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalRotation, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            hqml.qcond(qml.pow(hqml.ConditionalRotation(0.5, [0, 1]), 5), [2, 3])
+            hl.qcond(qp.pow(hl.ConditionalRotation(0.5, [0, 1]), 5), [2, 3])
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert tape.operations == [
-            qml.CNOT([2, 3]),
-            qml.CNOT([3, 0]),
-            hqml.ConditionalRotation(2.5, [0, 1]),
-            qml.CNOT([3, 0]),
-            qml.CNOT([2, 3]),
+            qp.CNOT([2, 3]),
+            qp.CNOT([3, 0]),
+            hl.ConditionalRotation(2.5, [0, 1]),
+            qp.CNOT([3, 0]),
+            qp.CNOT([2, 3]),
         ]
 
     def test_pow_adj_cr(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalRotation},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalRotation},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.pow(qml.adjoint(hqml.ConditionalRotation(0.5, [0, 1])), 5)
+            qp.pow(qp.adjoint(hl.ConditionalRotation(0.5, [0, 1])), 5)
 
-        tape = qml.workflow.construct_tape(circuit)()
-        assert tape.operations == [hqml.ConditionalRotation(-2.5, [0, 1])]
+        tape = qp.workflow.construct_tape(circuit)()
+        assert tape.operations == [hl.ConditionalRotation(-2.5, [0, 1])]
 
     def test_pow_cond_cr(self):
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
         @partial(
-            qml.transforms.decompose,
-            gate_set={hqml.ConditionalRotation, qml.CNOT},
+            qp.transforms.decompose,
+            gate_set={hl.ConditionalRotation, qp.CNOT},
         )
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.pow(hqml.qcond(hqml.ConditionalRotation(0.5, [0, 1]), [2, 3]), 5)
+            qp.pow(hl.qcond(hl.ConditionalRotation(0.5, [0, 1]), [2, 3]), 5)
 
-        tape = qml.workflow.construct_tape(circuit)()
+        tape = qp.workflow.construct_tape(circuit)()
         assert tape.operations == [
-            qml.CNOT([2, 3]),
-            qml.CNOT([3, 0]),
-            hqml.ConditionalRotation(2.5, [0, 1]),
-            qml.CNOT([3, 0]),
-            qml.CNOT([2, 3]),
+            qp.CNOT([2, 3]),
+            qp.CNOT([3, 0]),
+            hl.ConditionalRotation(2.5, [0, 1]),
+            qp.CNOT([3, 0]),
+            qp.CNOT([2, 3]),
         ]

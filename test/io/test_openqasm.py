@@ -3,10 +3,10 @@
 import re
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 import pytest
 
-import hybridlane as hqml
+import hybridlane as hl
 
 
 def evaluate_openqasm_compliance(s: str):
@@ -20,20 +20,20 @@ def evaluate_openqasm_compliance(s: str):
 class TestCircuits:
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_nondiagonal_measurement(self, strict):
-        dev = qml.device("bosonicqiskit.hybrid")
+        dev = qp.device("bosonicqiskit.hybrid")
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(n):
             for j in range(n):
-                qml.X(0)
-                hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+                qp.X(0)
+                hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
 
             return (
-                hqml.var(hqml.QuadP(1)),
-                hqml.expval(qml.PauliZ(0)),
+                hl.var(hl.QuadP(1)),
+                hl.expval(qp.PauliZ(0)),
             )
 
-        qasm = hqml.to_openqasm(circuit, precision=5, strict=strict)(5)
+        qasm = hl.to_openqasm(circuit, precision=5, strict=strict)(5)
 
         p = re.compile(r"cv_jc")
         assert len(p.findall(qasm)) == 5
@@ -54,22 +54,22 @@ class TestCircuits:
 
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_noncommuting_measurements(self, strict):
-        dev = qml.device("bosonicqiskit.hybrid")
+        dev = qp.device("bosonicqiskit.hybrid")
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(n):
             for j in range(n):
-                qml.X(0)
-                hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
-                hqml.SelectiveNumberArbitraryPhase(0.5, j, 1)
+                qp.X(0)
+                hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+                hl.SelectiveNumberArbitraryPhase(0.5, j, 1)
 
             return (
-                hqml.expval(hqml.NumberOperator(1)),
-                hqml.expval(qml.PauliZ(0)),
-                hqml.expval(hqml.QuadP(1)),  # should be diagonalized
+                hl.expval(hl.NumberOperator(1)),
+                hl.expval(qp.PauliZ(0)),
+                hl.expval(hl.QuadP(1)),  # should be diagonalized
             )
 
-        qasm = hqml.to_openqasm(circuit, precision=5, strict=strict)(5)
+        qasm = hl.to_openqasm(circuit, precision=5, strict=strict)(5)
 
         p = re.compile(r"cv_snap")
         assert len(p.findall(qasm)) == 5
@@ -94,20 +94,20 @@ class TestCircuits:
 
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_pennylane_gate(self, strict):
-        dev = qml.device("bosonicqiskit.hybrid")
+        dev = qp.device("bosonicqiskit.hybrid")
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit():
-            qml.X(0)
-            qml.Beamsplitter(np.pi / 2, 0, [1, 2])
-            qml.Kerr(5.0, 1)
+            qp.X(0)
+            qp.Beamsplitter(np.pi / 2, 0, [1, 2])
+            qp.Kerr(5.0, 1)
 
             return (
-                qml.var(hqml.QuadP(1)),
-                qml.expval(qml.PauliZ(0)),
+                qp.var(hl.QuadP(1)),
+                qp.expval(qp.PauliZ(0)),
             )
 
-        qasm = hqml.to_openqasm(circuit, precision=5, strict=strict)()
+        qasm = hl.to_openqasm(circuit, precision=5, strict=strict)()
 
         # Beamsplitter gets converted
         assert "cv_bs(3.14159, -1.57080) m[0], m[1];" in qasm

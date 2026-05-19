@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 from collections.abc import Sequence
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.operation import Operator
 from pennylane.ops.mid_measure import MeasurementValue
 from pennylane.typing import TensorLike
@@ -24,8 +24,8 @@ def expval(op: Operator | MeasurementValue) -> "ExpectationMP":
     if isinstance(op, MeasurementValue):
         raise NotImplementedError("Mid-circuit measurement is not currently supported")
 
-    with qml.QueuingManager.stop_recording():
-        mp = qml.expval(op)
+    with qp.QueuingManager.stop_recording():
+        mp = qp.expval(op)
 
     return ExpectationMP(obs=mp.obs)
 
@@ -48,7 +48,7 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
         bin_size: int | None = None,
     ) -> TensorLike | list[TensorLike]:
         if samples.is_basis_states:
-            with qml.QueuingManager.stop_recording():
+            with qp.QueuingManager.stop_recording():
                 eigvals = SampleMP(
                     self.obs, schema=None, eigvals=self._eigvals
                 ).process_samples(
@@ -61,13 +61,13 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
             eigvals = samples.eigvals
 
         if isinstance(eigvals, list):
-            return [qml.math.mean(t) for t in eigvals]
+            return [qp.math.mean(t) for t in eigvals]
 
-        return qml.math.mean(eigvals)
+        return qp.math.mean(eigvals)
 
     def process_counts(self, counts: CountsResult) -> TensorLike:
         if counts.is_basis_states:
-            with qml.QueuingManager.stop_recording():
+            with qp.QueuingManager.stop_recording():
                 counts = SampleMP(
                     self.obs,
                     schema=None,
@@ -75,11 +75,11 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
                 ).process_counts(counts)
 
         eigvals, occurences = list(zip(*counts.counts.items()))
-        eigvals = qml.math.array(eigvals)
-        occurences = qml.math.array(occurences)
+        eigvals = qp.math.array(eigvals)
+        occurences = qp.math.array(occurences)
         p = occurences / counts.shots
 
-        return qml.math.dot(eigvals, p)
+        return qp.math.dot(eigvals, p)
 
     def process_state(
         self, state: Sequence[complex], wire_order: Wires, truncation: Truncation

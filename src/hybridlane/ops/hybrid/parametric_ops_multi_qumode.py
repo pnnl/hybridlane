@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import math
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
     pow_rotation,
@@ -10,7 +10,7 @@ from pennylane.decomposition.symbolic_decomposition import (
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..mixins import FockRepresentation, HybridOperation
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
@@ -44,7 +44,7 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
 
     This is the qubit-conditioned version of the :class:`~hybridlane.ops.Beamsplitter` gate.
 
-    >>> hqml.qcond(hqml.BS(0.5, 0.25, wires=[1, 2]), control_wires=0)
+    >>> hl.qcond(hl.BS(0.5, 0.25, wires=[1, 2]), control_wires=0)
     ConditionalBeamsplitter(0.5, 0.25, wires=[0, 1, 2])
 
     There exists a decomposition in terms of :class:`.ConditionalParity` and
@@ -92,7 +92,7 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
         phi = self.data[1] % math.pi
 
         if _can_replace(theta, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalBeamsplitter(theta, phi, self.wires)
 
@@ -103,27 +103,27 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
-        bs = hqml.BS.compute_fock_matrix(wire_dims[1:], theta, phi)
-        bsd = hqml.math.conj(hqml.math.transpose(bs))
-        return hqml.math.block_diag([bs, bsd])
+        bs = hl.BS.compute_fock_matrix(wire_dims[1:], theta, phi)
+        bsd = hl.math.conj(hl.math.transpose(bs))
+        return hl.math.block_diag([bs, bsd])
 
 
-@qml.register_resources({Beamsplitter: 1, ConditionalParity: 2})
+@qp.register_resources({Beamsplitter: 1, ConditionalParity: 2})
 def _cbs_parity_decomp(theta, phi, wires, **_):
-    qml.adjoint(ConditionalParity)(wires[:2])
+    qp.adjoint(ConditionalParity)(wires[:2])
     Beamsplitter(theta, phi + math.pi / 2, wires[1:])
     ConditionalParity(wires[:2])
 
 
-@qml.register_resources({ConditionalBeamsplitter: 1})
+@qp.register_resources({ConditionalBeamsplitter: 1})
 def _pow_cbs(theta, phi, wires, z, **_):
     ConditionalBeamsplitter(theta * z, phi, wires)
 
 
-qml.add_decomps(ConditionalBeamsplitter, _cbs_parity_decomp)
-qml.add_decomps("Adjoint(ConditionalBeamsplitter)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalBeamsplitter)", _pow_cbs)
-qml.add_decomps("qCond(ConditionalBeamsplitter)", decompose_multiqcond_native)
+qp.add_decomps(ConditionalBeamsplitter, _cbs_parity_decomp)
+qp.add_decomps("Adjoint(ConditionalBeamsplitter)", adjoint_rotation)
+qp.add_decomps("Pow(ConditionalBeamsplitter)", _pow_cbs)
+qp.add_decomps("qCond(ConditionalBeamsplitter)", decompose_multiqcond_native)
 
 CBS = ConditionalBeamsplitter
 r"""Qubit-conditioned beamsplitter :math:`CBS(\theta, \varphi)`
@@ -162,7 +162,7 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
 
     This is the qubit-conditioned version of the :class:`~hybridlane.ops.TwoModeSqueezing` gate.
 
-    >>> hqml.qcond(hqml.TMS(0.5, 0.25, wires=[1, 2]), control_wires=0)
+    >>> hl.qcond(hl.TMS(0.5, 0.25, wires=[1, 2]), control_wires=0)
     ConditionalTwoModeSqueezing(0.5, 0.25, wires=[0, 1, 2])
 
     There exists a decomposition in terms of :class:`.ConditionalParity` and
@@ -209,7 +209,7 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
         r, phi = self.data[0], self.data[1] % (2 * math.pi)
 
         if _can_replace(r, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalTwoModeSqueezing(r, phi, self.wires)
 
@@ -220,27 +220,27 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
-        tms = hqml.TMS.compute_fock_matrix(wire_dims[1:], r, phi)
-        tmsd = hqml.math.conj(hqml.math.transpose(tms))
-        return hqml.math.block_diag([tms, tmsd])
+        tms = hl.TMS.compute_fock_matrix(wire_dims[1:], r, phi)
+        tmsd = hl.math.conj(hl.math.transpose(tms))
+        return hl.math.block_diag([tms, tmsd])
 
 
-@qml.register_resources({TwoModeSqueezing: 1, ConditionalParity: 2})
+@qp.register_resources({TwoModeSqueezing: 1, ConditionalParity: 2})
 def _ctms_parity_decomp(r, phi, wires, **_):
-    qml.adjoint(ConditionalParity)(wires[:2])
+    qp.adjoint(ConditionalParity)(wires[:2])
     TwoModeSqueezing(r, phi + math.pi / 2, wires[1:])
     ConditionalParity(wires[:2])
 
 
-@qml.register_resources({ConditionalTwoModeSqueezing: 1})
+@qp.register_resources({ConditionalTwoModeSqueezing: 1})
 def _pow_ctms(theta, phi, wires, z, **_):
     ConditionalTwoModeSqueezing(theta * z, phi, wires)
 
 
-qml.add_decomps(ConditionalTwoModeSqueezing, _ctms_parity_decomp)
-qml.add_decomps("Adjoint(ConditionalTwoModeSqueezing)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalTwoModeSqueezing)", _pow_ctms)
-qml.add_decomps("qCond(ConditionalTwoModeSqueezing)", decompose_multiqcond_native)
+qp.add_decomps(ConditionalTwoModeSqueezing, _ctms_parity_decomp)
+qp.add_decomps("Adjoint(ConditionalTwoModeSqueezing)", adjoint_rotation)
+qp.add_decomps("Pow(ConditionalTwoModeSqueezing)", _pow_ctms)
+qp.add_decomps("qCond(ConditionalTwoModeSqueezing)", decompose_multiqcond_native)
 
 CTMS = ConditionalTwoModeSqueezing
 r"""Qubit-conditioned two-mode squeezing :math:`CTMS(\xi)`
@@ -277,7 +277,7 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
 
     This is the qubit-conditioned version of the :class:`~hybridlane.ops.TwoModeSum` gate.
 
-    >>> hqml.qcond(hqml.SUM(0.5, wires=[1, 2]), control_wires=0)
+    >>> hl.qcond(hl.SUM(0.5, wires=[1, 2]), control_wires=0)
     ConditionalTwoModeSum(0.5, wires=[0, 1, 2])
 
     .. seealso::
@@ -310,7 +310,7 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
     def simplify(self):
         lambda_ = self.data[0]
         if _can_replace(lambda_, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalTwoModeSum(lambda_, self.wires)
 
@@ -321,14 +321,14 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], lam) -> TensorLike:
-        tms = hqml.SUM.compute_fock_matrix(wire_dims[1:], lam)
-        tmsd = hqml.math.conj(hqml.math.transpose(tms))
-        return hqml.math.block_diag([tms, tmsd])
+        tms = hl.SUM.compute_fock_matrix(wire_dims[1:], lam)
+        tmsd = hl.math.conj(hl.math.transpose(tms))
+        return hl.math.block_diag([tms, tmsd])
 
 
-qml.add_decomps("Adjoint(ConditionalTwoModeSum)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalTwoModeSum)", pow_rotation)
-qml.add_decomps("qCond(ConditionalTwoModeSum)", decompose_multiqcond_native)
+qp.add_decomps("Adjoint(ConditionalTwoModeSum)", adjoint_rotation)
+qp.add_decomps("Pow(ConditionalTwoModeSum)", pow_rotation)
+qp.add_decomps("qCond(ConditionalTwoModeSum)", decompose_multiqcond_native)
 
 CSUM = ConditionalTwoModeSum
 r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
@@ -345,7 +345,7 @@ r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
 
 def _can_replace(x, y):
     return (
-        not qml.math.is_abstract(x)
-        and not qml.math.requires_grad(x)
-        and qml.math.allclose(x, y)
+        not qp.math.is_abstract(x)
+        and not qp.math.requires_grad(x)
+        and qp.math.allclose(x, y)
     )

@@ -17,7 +17,7 @@ _mode_colors = {
 
 
 def get_default_style():
-    r"""Gives some defaults for drawing circuits using ``hqml.draw_mpl``
+    r"""Gives some defaults for drawing circuits using ``hl.draw_mpl``
 
     This adds the following styles to a quantum circuit:
 

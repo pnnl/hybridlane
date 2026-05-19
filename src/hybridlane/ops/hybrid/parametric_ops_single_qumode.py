@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import math
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition.resources import adjoint_resource_rep
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
@@ -11,7 +11,7 @@ from pennylane.decomposition.symbolic_decomposition import (
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..mixins import FockRepresentation, HybridOperation
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
@@ -43,7 +43,7 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
 
     This is the qubit-conditioned version of the :py:class:`~hybridlane.Rotation` gate.
 
-    >>> hqml.qcond(hqml.R(0.5, wires=1), control_wires=0)
+    >>> hl.qcond(hl.R(0.5, wires=1), control_wires=0)
     ConditionalRotation(1.0, wires=[0, 1])
 
     Its representation in the Fock basis can be obtained with:
@@ -81,7 +81,7 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
         theta = self.data[0] % (4 * math.pi)
 
         if _can_replace(theta, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalRotation(theta, self.wires)
 
@@ -92,14 +92,14 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta) -> TensorLike:
-        r = hqml.R.compute_fock_matrix(wire_dims[1:], theta / 2)
-        rd = hqml.math.conj(hqml.math.transpose(r))
-        return hqml.math.block_diag([r, rd])
+        r = hl.R.compute_fock_matrix(wire_dims[1:], theta / 2)
+        rd = hl.math.conj(hl.math.transpose(r))
+        return hl.math.block_diag([r, rd])
 
 
-qml.add_decomps("Adjoint(ConditionalRotation)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalRotation)", pow_rotation)
-qml.add_decomps("qCond(ConditionalRotation)", decompose_multiqcond_native)
+qp.add_decomps("Adjoint(ConditionalRotation)", adjoint_rotation)
+qp.add_decomps("Pow(ConditionalRotation)", pow_rotation)
+qp.add_decomps("qCond(ConditionalRotation)", decompose_multiqcond_native)
 
 CR = ConditionalRotation
 r"""Conditional rotation (CR) gate
@@ -131,7 +131,7 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
 
     This is the qubit-conditioned version of the :py:class:`~hybridlane.Displacement` gate.
 
-    >>> hqml.qcond(hqml.D(0.5, 0.0, wires=1), control_wires=0)
+    >>> hl.qcond(hl.D(0.5, 0.0, wires=1), control_wires=0)
     ConditionalDisplacement(0.5, 0.0, wires=[0, 1])
 
     Its representation in the Fock basis can be obtained with:
@@ -186,7 +186,7 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
         a, phi = self.data[0], self.data[1] % (2 * math.pi)
 
         if _can_replace(a, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalDisplacement(a, phi, self.wires)
 
@@ -197,54 +197,54 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
-        d = hqml.D.compute_fock_matrix(wire_dims[1:], a, phi)
-        dd = hqml.math.conj(hqml.math.transpose(d))
-        return hqml.math.block_diag([d, dd])
+        d = hl.D.compute_fock_matrix(wire_dims[1:], a, phi)
+        dd = hl.math.conj(hl.math.transpose(d))
+        return hl.math.block_diag([d, dd])
 
 
-@qml.register_resources({Displacement: 1, ConditionalParity: 2})
+@qp.register_resources({Displacement: 1, ConditionalParity: 2})
 def _cd_parity_decomp(a, phi, wires, **_):
-    qml.adjoint(ConditionalParity)(wires)
+    qp.adjoint(ConditionalParity)(wires)
     Displacement(a, phi + math.pi / 2, wires[1])
     ConditionalParity(wires)
 
 
 def _cd_to_ecd_resources():
     # Put in function because ECD isn't defined yet
-    return {qml.X: 1, EchoedConditionalDisplacement: 1}
+    return {qp.X: 1, EchoedConditionalDisplacement: 1}
 
 
-@qml.register_resources(_cd_to_ecd_resources)
+@qp.register_resources(_cd_to_ecd_resources)
 def _cd_to_ecd(a, phi, wires, **_):
     EchoedConditionalDisplacement(2 * a, phi, wires)
-    qml.X(wires[0])
+    qp.X(wires[0])
 
 
-@qml.register_resources({ConditionalDisplacement: 1})
+@qp.register_resources({ConditionalDisplacement: 1})
 def _pow_cd(a, phi, wires, z, **_):
     ConditionalDisplacement(z * a, phi, wires=wires)
 
 
-@qml.register_resources({ConditionalDisplacement: 1})
+@qp.register_resources({ConditionalDisplacement: 1})
 def _adjoint_cd(a, phi, wires, **_):
     ConditionalDisplacement(a, phi + math.pi, wires=wires)
 
 
 def _cd_to_xcd_resources():
-    return {ConditionalXDisplacement: 1, qml.H: 2}
+    return {ConditionalXDisplacement: 1, qp.H: 2}
 
 
-@qml.register_resources(_cd_to_xcd_resources)
+@qp.register_resources(_cd_to_xcd_resources)
 def _cd_to_xcd(a, phi, wires, **_):
-    qml.H(wires[0])
+    qp.H(wires[0])
     ConditionalXDisplacement(a, phi, wires)
-    qml.H(wires[0])
+    qp.H(wires[0])
 
 
-qml.add_decomps(ConditionalDisplacement, _cd_parity_decomp, _cd_to_ecd, _cd_to_xcd)
-qml.add_decomps("Adjoint(ConditionalDisplacement)", _adjoint_cd)
-qml.add_decomps("Pow(ConditionalDisplacement)", _pow_cd)
-qml.add_decomps("qCond(ConditionalDisplacement)", decompose_multiqcond_native)
+qp.add_decomps(ConditionalDisplacement, _cd_parity_decomp, _cd_to_ecd, _cd_to_xcd)
+qp.add_decomps("Adjoint(ConditionalDisplacement)", _adjoint_cd)
+qp.add_decomps("Pow(ConditionalDisplacement)", _pow_cd)
+qp.add_decomps("qCond(ConditionalDisplacement)", decompose_multiqcond_native)
 
 CD = ConditionalDisplacement
 r"""Conditional displacement (CD) gate
@@ -314,7 +314,7 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
         a, phi = self.data[0], self.data[1] % (2 * math.pi)
 
         if _can_replace(a, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalXDisplacement(a, phi, self.wires)
 
@@ -327,32 +327,32 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
         cd = CD.compute_fock_matrix(wire_dims, a, phi)
         dims = {i: dim for i, dim in enumerate(wire_dims)}
-        h = hqml.math.expand_matrix(
-            qml.H.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
+        h = hl.math.expand_matrix(
+            qp.H.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
         )
         return h @ cd @ h
 
 
-@qml.register_resources({ConditionalDisplacement: 1, qml.H: 2})
+@qp.register_resources({ConditionalDisplacement: 1, qp.H: 2})
 def _xcd_decomp(a, phi, wires, **_):
-    qml.H(wires[0])
+    qp.H(wires[0])
     ConditionalDisplacement(a, phi, wires)
-    qml.H(wires[0])
+    qp.H(wires[0])
 
 
-@qml.register_resources({ConditionalXDisplacement: 1})
+@qp.register_resources({ConditionalXDisplacement: 1})
 def _adjoint_xcd(a, phi, wires, **_):
     ConditionalXDisplacement(a, phi + math.pi, wires=wires)
 
 
-@qml.register_resources({ConditionalXDisplacement: 1})
+@qp.register_resources({ConditionalXDisplacement: 1})
 def _pow_xcd(a, phi, wires, z, **_):
     ConditionalXDisplacement(z * a, phi, wires=wires)
 
 
-qml.add_decomps(ConditionalXDisplacement, _xcd_decomp)
-qml.add_decomps("Adjoint(ConditionalXDisplacement)", _adjoint_xcd)
-qml.add_decomps("Pow(ConditionalXDisplacement)", _pow_xcd)
+qp.add_decomps(ConditionalXDisplacement, _xcd_decomp)
+qp.add_decomps("Adjoint(ConditionalXDisplacement)", _adjoint_xcd)
+qp.add_decomps("Pow(ConditionalXDisplacement)", _pow_xcd)
 
 XCD = ConditionalXDisplacement
 r"""X-Conditional displacement (xCD) gate
@@ -422,7 +422,7 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
         a, phi = self.data[0], self.data[1] % (2 * math.pi)
 
         if _can_replace(a, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalYDisplacement(a, phi, self.wires)
 
@@ -435,36 +435,36 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
         xcd = XCD.compute_fock_matrix(wire_dims, a, phi)
         dims = {i: dim for i, dim in enumerate(wire_dims)}
-        s = hqml.math.expand_matrix(
-            qml.S.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
+        s = hl.math.expand_matrix(
+            qp.S.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
         )
-        return s @ xcd @ hqml.math.conj(hqml.math.transpose(s))
+        return s @ xcd @ hl.math.conj(hl.math.transpose(s))
 
 
 def _ycd_resources():
-    return {ConditionalXDisplacement: 1, qml.S: 1, adjoint_resource_rep(qml.S): 1}
+    return {ConditionalXDisplacement: 1, qp.S: 1, adjoint_resource_rep(qp.S): 1}
 
 
-@qml.register_resources(_ycd_resources)
+@qp.register_resources(_ycd_resources)
 def _ycd_decomp(a, phi, wires, **_):
-    qml.adjoint(qml.S)(wires[0])
+    qp.adjoint(qp.S)(wires[0])
     ConditionalXDisplacement(a, phi, wires)
-    qml.S(wires[0])
+    qp.S(wires[0])
 
 
-@qml.register_resources({ConditionalYDisplacement: 1})
+@qp.register_resources({ConditionalYDisplacement: 1})
 def _adjoint_ycd(a, phi, wires, **_):
     ConditionalYDisplacement(a, phi + math.pi, wires=wires)
 
 
-@qml.register_resources({ConditionalYDisplacement: 1})
+@qp.register_resources({ConditionalYDisplacement: 1})
 def _pow_ycd(a, phi, wires, z, **_):
     ConditionalYDisplacement(z * a, phi, wires=wires)
 
 
-qml.add_decomps(ConditionalYDisplacement, _ycd_decomp)
-qml.add_decomps("Adjoint(ConditionalYDisplacement)", _adjoint_ycd)
-qml.add_decomps("Pow(ConditionalYDisplacement)", _pow_ycd)
+qp.add_decomps(ConditionalYDisplacement, _ycd_decomp)
+qp.add_decomps("Adjoint(ConditionalYDisplacement)", _adjoint_ycd)
+qp.add_decomps("Pow(ConditionalYDisplacement)", _pow_ycd)
 
 YCD = ConditionalYDisplacement
 r"""Y-Conditional displacement (yCD) gate
@@ -499,7 +499,7 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
 
     This is the qubit-conditioned version of the :py:class:`~hybridlane.Squeezing` gate.
 
-    >>> hqml.qcond(hqml.S(0.5, 0.0, wires=1), control_wires=0)
+    >>> hl.qcond(hl.S(0.5, 0.0, wires=1), control_wires=0)
     ConditionalSqueezing(0.5, 0.0, wires=[0, 1])
 
     Its representation in the Fock basis can be obtained with:
@@ -558,7 +558,7 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
         z, phi = self.data[0], self.data[1] % (2 * math.pi)
 
         if _can_replace(z, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return ConditionalSqueezing(z, phi, self.wires)
 
@@ -569,31 +569,31 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], z, phi) -> TensorLike:
-        s = hqml.S.compute_fock_matrix(wire_dims[1:], z, phi)
-        sd = hqml.math.conj(hqml.math.transpose(s))
-        return hqml.math.block_diag([s, sd])
+        s = hl.S.compute_fock_matrix(wire_dims[1:], z, phi)
+        sd = hl.math.conj(hl.math.transpose(s))
+        return hl.math.block_diag([s, sd])
 
 
 def _cs_decomp_resources():
     return {Squeezing: 1, CR: 1, adjoint_resource_rep(CR): 1}
 
 
-@qml.register_resources(_cs_decomp_resources)
+@qp.register_resources(_cs_decomp_resources)
 def _cs_decomp(r, phi, wires, **_):
-    qml.adjoint(CR)(math.pi / 2, wires)
+    qp.adjoint(CR)(math.pi / 2, wires)
     Squeezing(r, phi + math.pi / 2, wires[1])
     CR(math.pi / 2, wires)
 
 
-@qml.register_resources({ConditionalSqueezing: 1})
+@qp.register_resources({ConditionalSqueezing: 1})
 def _pow_cs(r, phi, wires, z, **_):
     ConditionalSqueezing(z * r, phi, wires=wires)
 
 
-qml.add_decomps(ConditionalSqueezing, _cs_decomp)
-qml.add_decomps("Adjoint(ConditionalSqueezing)", adjoint_rotation)
-qml.add_decomps("Pow(ConditionalSqueezing)", _pow_cs)
-qml.add_decomps("qCond(ConditionalSqueezing)", decompose_multiqcond_native)
+qp.add_decomps(ConditionalSqueezing, _cs_decomp)
+qp.add_decomps("Adjoint(ConditionalSqueezing)", adjoint_rotation)
+qp.add_decomps("Pow(ConditionalSqueezing)", _pow_cs)
+qp.add_decomps("qCond(ConditionalSqueezing)", decompose_multiqcond_native)
 
 CS = ConditionalSqueezing
 r"""Conditional squeezing (CS) gate
@@ -678,7 +678,7 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
         n = self.hyperparameters["n"]
 
         if _can_replace(theta, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return SelectiveQubitRotation(theta, phi, n, self.wires)
 
@@ -705,15 +705,15 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi, n) -> TensorLike:
         def r(theta, phi):
             sigma = (
-                hqml.math.cos(phi) * qml.X.compute_matrix()
-                + hqml.math.sin(phi) * qml.Y.compute_matrix()
+                hl.math.cos(phi) * qp.X.compute_matrix()
+                + hl.math.sin(phi) * qp.Y.compute_matrix()
             )
-            return hqml.math.expm(-1j * theta / 2 * sigma)
+            return hl.math.expm(-1j * theta / 2 * sigma)
 
-        blocks = [hqml.math.eye(2)] * wire_dims[1]
+        blocks = [hl.math.eye(2)] * wire_dims[1]
         blocks[n] = r(theta, phi)
-        mat = hqml.math.block_diag(blocks)
-        mat = hqml.math.expand_matrix(
+        mat = hl.math.block_diag(blocks)
+        mat = hl.math.expand_matrix(
             mat, (1, 0), wire_dims={0: wire_dims[0], 1: wire_dims[1]}, wire_order=(0, 1)
         )
         return mat
@@ -732,13 +732,13 @@ r"""number-Selective Qubit Rotation (SQR) gate`
 """
 
 
-@qml.register_resources({SQR: 1})
+@qp.register_resources({SQR: 1})
 def _pow_sqr(theta, phi, wires, z, n, **_):
     SQR((theta * z) % (4 * math.pi), phi, n, wires)
 
 
-qml.add_decomps("Adjoint(SelectiveQubitRotation)", adjoint_rotation)
-qml.add_decomps("Pow(SelectiveQubitRotation)", _pow_sqr)
+qp.add_decomps("Adjoint(SelectiveQubitRotation)", adjoint_rotation)
+qp.add_decomps("Pow(SelectiveQubitRotation)", _pow_sqr)
 
 
 class JaynesCummings(HybridOperation, FockRepresentation):
@@ -804,7 +804,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
         phi = self.data[1] % (2 * math.pi)
 
         if _can_replace(theta, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return JaynesCummings(theta, phi, self.wires)
 
@@ -821,11 +821,11 @@ class JaynesCummings(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
-        ad = hqml.Ad.compute_fock_matrix(wire_dims[1:])
-        ad = hqml.math.asarray(ad, like=theta)
-        sigma_minus = hqml.math.asarray([[0, 1], [0, 0]], like=theta)
-        term = hqml.math.exp(1j * phi) * hqml.math.kron(sigma_minus, ad)
-        return hqml.math.expm(-1j * theta * (term + hqml.math.dag(term)))
+        ad = hl.Ad.compute_fock_matrix(wire_dims[1:])
+        ad = hl.math.asarray(ad, like=theta)
+        sigma_minus = hl.math.asarray([[0, 1], [0, 0]], like=theta)
+        term = hl.math.exp(1j * phi) * hl.math.kron(sigma_minus, ad)
+        return hl.math.expm(-1j * theta * (term + hl.math.dag(term)))
 
 
 Red = JaynesCummings
@@ -854,13 +854,13 @@ r"""Jaynes-Cummings gate
 """
 
 
-@qml.register_resources({Red: 1})
+@qp.register_resources({Red: 1})
 def _pow_jc(theta, phi, wires, z, **_):
     Red(theta * z, phi, wires)
 
 
-qml.add_decomps("Adjoint(JaynesCummings)", adjoint_rotation)
-qml.add_decomps("Pow(JaynesCummings)", _pow_jc)
+qp.add_decomps("Adjoint(JaynesCummings)", adjoint_rotation)
+qp.add_decomps("Pow(JaynesCummings)", _pow_jc)
 
 
 class AntiJaynesCummings(HybridOperation, FockRepresentation):
@@ -926,7 +926,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
         phi = self.data[1] % (2 * math.pi)
 
         if _can_replace(theta, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return AntiJaynesCummings(theta, phi, self.wires)
 
@@ -943,11 +943,11 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
-        ad = hqml.Ad.compute_fock_matrix(wire_dims[1:])
-        ad = hqml.math.asarray(ad, like=theta)
-        sigma_plus = hqml.math.asarray([[0, 0], [1, 0]], like=theta)
-        term = hqml.math.exp(1j * phi) * hqml.math.kron(sigma_plus, ad)
-        return hqml.math.expm(-1j * theta * (term + hqml.math.dag(term)))
+        ad = hl.Ad.compute_fock_matrix(wire_dims[1:])
+        ad = hl.math.asarray(ad, like=theta)
+        sigma_plus = hl.math.asarray([[0, 0], [1, 0]], like=theta)
+        term = hl.math.exp(1j * phi) * hl.math.kron(sigma_plus, ad)
+        return hl.math.expm(-1j * theta * (term + hl.math.dag(term)))
 
 
 Blue = AntiJaynesCummings
@@ -976,13 +976,13 @@ r"""Anti-Jaynes-Cummings gate
 """
 
 
-@qml.register_resources({Blue: 1})
+@qp.register_resources({Blue: 1})
 def _pow_ajc(theta, phi, wires, z, **_):
     Blue(theta * z, phi, wires)
 
 
-qml.add_decomps("Adjoint(AntiJaynesCummings)", adjoint_rotation)
-qml.add_decomps("Pow(AntiJaynesCummings)", _pow_ajc)
+qp.add_decomps("Adjoint(AntiJaynesCummings)", adjoint_rotation)
+qp.add_decomps("Pow(AntiJaynesCummings)", _pow_ajc)
 
 
 class Rabi(HybridOperation, FockRepresentation):
@@ -1033,7 +1033,7 @@ class Rabi(HybridOperation, FockRepresentation):
         phi = self.data[1] % (2 * math.pi)
 
         if _can_replace(r, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return Rabi(r, phi, self.wires)
 
@@ -1050,37 +1050,37 @@ class Rabi(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
-        ad = hqml.Ad.compute_fock_matrix(wire_dims[1:])
-        ad = hqml.math.asarray(ad, like=r)
-        x = qml.X.compute_matrix()
-        x = hqml.math.asarray(x, like=r)
-        term = hqml.math.exp(1j * phi) * hqml.math.kron(x, ad)
-        return hqml.math.expm(-1j * r * (term + hqml.math.dag(term)))
+        ad = hl.Ad.compute_fock_matrix(wire_dims[1:])
+        ad = hl.math.asarray(ad, like=r)
+        x = qp.X.compute_matrix()
+        x = hl.math.asarray(x, like=r)
+        term = hl.math.exp(1j * phi) * hl.math.kron(x, ad)
+        return hl.math.expm(-1j * r * (term + hl.math.dag(term)))
 
 
-@qml.register_resources({ConditionalDisplacement: 1, qml.H: 2})
+@qp.register_resources({ConditionalDisplacement: 1, qp.H: 2})
 def _rb_to_cd(r, phi, wires, **_):
-    qml.H(wires[0])
+    qp.H(wires[0])
     ConditionalDisplacement(r, phi - math.pi / 2, wires)
-    qml.H(wires[0])
+    qp.H(wires[0])
 
 
-@qml.register_resources({Rabi: 1, qml.H: 2})
+@qp.register_resources({Rabi: 1, qp.H: 2})
 def _cd_to_rb(r, phi, wires, **_):
-    qml.H(wires[0])
+    qp.H(wires[0])
     Rabi(r, phi + math.pi / 2, wires)
-    qml.H(wires[0])
+    qp.H(wires[0])
 
 
-@qml.register_resources({Rabi: 1})
+@qp.register_resources({Rabi: 1})
 def _pow_rb(r, phi, wires, z, **_):
     Rabi(r * z, phi, wires)
 
 
-qml.add_decomps(Rabi, _rb_to_cd)
-qml.add_decomps(ConditionalDisplacement, _cd_to_rb)
-qml.add_decomps("Adjoint(Rabi)", adjoint_rotation)
-qml.add_decomps("Pow(Rabi)", _pow_rb)
+qp.add_decomps(Rabi, _rb_to_cd)
+qp.add_decomps(ConditionalDisplacement, _cd_to_rb)
+qp.add_decomps("Adjoint(Rabi)", adjoint_rotation)
+qp.add_decomps("Pow(Rabi)", _pow_rb)
 
 
 class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
@@ -1141,7 +1141,7 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
         a, phi = self.data[0], self.data[1] % (2 * math.pi)
 
         if _can_replace(a, 0):
-            return qml.Identity(self.wires)
+            return qp.Identity(self.wires)
 
         return EchoedConditionalDisplacement(a, phi, self.wires)
 
@@ -1154,26 +1154,26 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
         dims = {i: d for i, d in enumerate(wire_dims)}
         cd = CD.compute_fock_matrix(wire_dims, a / 2, phi)
-        x = qml.X.compute_matrix()
-        x = hqml.math.asarray(x, like=a)
-        x = hqml.math.expand_matrix(x, (0,), wire_dims=dims, wire_order=(0, 1))
+        x = qp.X.compute_matrix()
+        x = hl.math.asarray(x, like=a)
+        x = hl.math.expand_matrix(x, (0,), wire_dims=dims, wire_order=(0, 1))
         return x @ cd
 
 
-@qml.register_resources({ConditionalDisplacement: 1, qml.X: 1})
+@qp.register_resources({ConditionalDisplacement: 1, qp.X: 1})
 def _ecd_decomp(a, phi, wires, **_):
     ConditionalDisplacement(a / 2, phi, wires=wires)
-    qml.X(wires[0])
+    qp.X(wires[0])
 
 
-@qml.register_resources({EchoedConditionalDisplacement: 1})
+@qp.register_resources({EchoedConditionalDisplacement: 1})
 def _pow_ecd(a, phi, wires, z, **_):
     EchoedConditionalDisplacement(z * a, phi, wires=wires)
 
 
-qml.add_decomps(EchoedConditionalDisplacement, _ecd_decomp)
-qml.add_decomps("Adjoint(EchoedConditionalDisplacement)", adjoint_rotation)
-qml.add_decomps("Pow(EchoedConditionalDisplacement)", _pow_ecd)
+qp.add_decomps(EchoedConditionalDisplacement, _ecd_decomp)
+qp.add_decomps("Adjoint(EchoedConditionalDisplacement)", adjoint_rotation)
+qp.add_decomps("Pow(EchoedConditionalDisplacement)", _pow_ecd)
 
 ECD = EchoedConditionalDisplacement
 r"""Echoed-conditional displacement (ECD) gate
@@ -1188,7 +1188,7 @@ This is an alias for :class:`~hybridlane.EchoedConditionalDisplacement`
 
 def _can_replace(x, y):
     return (
-        not qml.math.is_abstract(x)
-        and not qml.math.requires_grad(x)
-        and qml.math.allclose(x, y)
+        not qp.math.is_abstract(x)
+        and not qp.math.requires_grad(x)
+        and qp.math.allclose(x, y)
     )

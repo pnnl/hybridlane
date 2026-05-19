@@ -3,14 +3,14 @@
 import math
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition.symbolic_decomposition import (
     make_pow_decomp_with_period,
 )
 from pennylane.operation import Operation
 from pennylane.wires import WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..mixins import FockRepresentation, HybridOperation
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
@@ -46,7 +46,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
     This gate can also be viewed as the "conditioned" version of the
     :class:`~hybridlane.Fourier` gate.
 
-    >>> hqml.qcond(hqml.F(1), control_wires=0)
+    >>> hl.qcond(hl.F(1), control_wires=0)
     ConditionalParity(wires=[0, 1])
 
     .. seealso::
@@ -64,7 +64,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
         super().__init__(wires=wires, id=id)
 
     def adjoint(self):
-        return hqml.ConditionalRotation(-math.pi, self.wires)
+        return hl.ConditionalRotation(-math.pi, self.wires)
 
     def pow(self, z: int | float) -> list[Operation]:
         z_mod4 = z % 4
@@ -72,7 +72,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
         if np.allclose(z_mod4, 0):
             return []
 
-        return [hqml.ConditionalRotation(math.pi * z_mod4, self.wires)]
+        return [hl.ConditionalRotation(math.pi * z_mod4, self.wires)]
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -81,35 +81,35 @@ class ConditionalParity(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
-        f = hqml.Fourier.compute_fock_matrix(wire_dims[1:])
-        fd = hqml.math.conj(hqml.math.transpose(f))
-        return hqml.math.block_diag([f, fd])
+        f = hl.Fourier.compute_fock_matrix(wire_dims[1:])
+        fd = hl.math.conj(hl.math.transpose(f))
+        return hl.math.block_diag([f, fd])
 
 
 def _cp_resources(**_):
-    return {hqml.ConditionalRotation: 1}
+    return {hl.ConditionalRotation: 1}
 
 
-@qml.register_resources(_cp_resources)
+@qp.register_resources(_cp_resources)
 def _cp_to_cr(wires, **_):
-    hqml.ConditionalRotation(math.pi, wires)
+    hl.ConditionalRotation(math.pi, wires)
 
 
-@qml.register_resources(_cp_resources)
+@qp.register_resources(_cp_resources)
 def _adjoint_cp_to_cr(wires, **_):
-    hqml.ConditionalRotation(-math.pi, wires)
+    hl.ConditionalRotation(-math.pi, wires)
 
 
-@qml.register_resources(_cp_resources)
+@qp.register_resources(_cp_resources)
 def _pow_cp_to_cr(wires, z, **_):
     z_mod4 = z % 4
-    hqml.ConditionalRotation(math.pi * z_mod4, wires=wires)
+    hl.ConditionalRotation(math.pi * z_mod4, wires=wires)
 
 
-qml.add_decomps(ConditionalParity, _cp_to_cr)
-qml.add_decomps("Adjoint(ConditionalParity)", _adjoint_cp_to_cr)
-qml.add_decomps("Pow(ConditionalParity)", make_pow_decomp_with_period(4), _pow_cp_to_cr)
-qml.add_decomps("qCond(ConditionalParity)", decompose_multiqcond_native)
+qp.add_decomps(ConditionalParity, _cp_to_cr)
+qp.add_decomps("Adjoint(ConditionalParity)", _adjoint_cp_to_cr)
+qp.add_decomps("Pow(ConditionalParity)", make_pow_decomp_with_period(4), _pow_cp_to_cr)
+qp.add_decomps("qCond(ConditionalParity)", decompose_multiqcond_native)
 
 CP = ConditionalParity
 r"""Conditional parity (CP) gate

@@ -14,12 +14,12 @@ from functools import singledispatch, wraps
 from typing import TYPE_CHECKING, Literal, LiteralString, cast
 from unittest.mock import patch
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.exceptions import DeviceError
 from pennylane.operation import Operation
 from pennylane.tape import QuantumScript
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ... import sa
 from . import ops as native_ops
@@ -209,7 +209,7 @@ def get_boson_gate_defs():
 def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
     @wraps(qnode)
     def wrapper(*args, **kwargs) -> str:
-        batch, fn = qml.workflow.construct_batch(qnode, level=level)(*args, **kwargs)
+        batch, fn = qp.workflow.construct_batch(qnode, level=level)(*args, **kwargs)
         return batch_to_jaqal(
             batch,
             precision=precision,
@@ -285,12 +285,12 @@ def _(op: native_ops.R, Q, q):
 
 
 @gate_to_ir.register
-def _(_op: qml.GlobalPhase | qml.Identity, Q, q):
+def _(_op: qp.GlobalPhase | qp.Identity, Q, q):
     return
 
 
 @gate_to_ir.register
-def _(op: hqml.Red | hqml.Blue, Q, q):
+def _(op: hl.Red | hl.Blue, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
@@ -299,7 +299,7 @@ def _(op: hqml.Red | hqml.Blue, Q, q):
 
 
 @gate_to_ir.register
-def _(op: hqml.FockState, Q, q):
+def _(op: hl.FockState, Q, q):
     gate_id = BOSON_GATES[op.name]
     fock_state = int(op.hyperparameters["n"])
     qubit, mode = op.wires
@@ -319,7 +319,7 @@ def _(op: native_ops.SidebandProbe, Q, q):
 
 
 @gate_to_ir.register
-def _(op: hqml.XCD | hqml.YCD | hqml.CD, Q, q):
+def _(op: hl.XCD | hl.YCD | hl.CD, Q, q):
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)

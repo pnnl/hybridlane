@@ -8,7 +8,7 @@ from functools import wraps
 from typing import TYPE_CHECKING, Callable, Literal
 from unittest.mock import patch
 
-import pennylane as qml
+import pennylane as qp
 
 from .tape_mpl import tape_mpl
 
@@ -46,16 +46,16 @@ def draw_mpl(
         decimals: The number of decimals to print circuit parameters with. If not provided,
             parameters won't be shown.
 
-        style: The drawing style to use. See :py:func:`qml.draw_mpl <pennylane.draw_mpl>`.
+        style: The drawing style to use. See :py:func:`qp.draw_mpl <pennylane.draw_mpl>`.
 
     Keyword Args:
         wire_icon_colors (dict): A dictionary mapping wires to optional matplotlib-compatible colors.
             All wires that aren't provided will use default qubit or qumode colors.
 
-    For other arguments, see :py:func:`qml.draw_mpl <pennylane.draw_mpl>`.
+    For other arguments, see :py:func:`qp.draw_mpl <pennylane.draw_mpl>`.
 
     Returns:
-        A function that when called, produces the same output as :py:func:`qml.draw_mpl <pennylane.draw_mpl>`
+        A function that when called, produces the same output as :py:func:`qp.draw_mpl <pennylane.draw_mpl>`
 
     **Examples**
 
@@ -63,18 +63,18 @@ def draw_mpl(
 
     .. code-block:: python
 
-        dev = qml.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(n):
             for j in range(n):
-                qml.X(0)
-                hqml.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+                qp.X(0)
+                hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
 
-            return hqml.expval(hqml.NumberOperator(1))
+            return hl.expval(hl.NumberOperator(1))
 
         n = 5
-        hqml.draw_mpl(circuit, style="sketch")(n)
+        hl.draw_mpl(circuit, style="sketch")(n)
 
     .. figure:: ../../_static/draw_mpl/ex_jc_circuit.png
 
@@ -83,15 +83,15 @@ def draw_mpl(
 
     .. code-block:: python
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(n):
-            qml.H(0)
-            hqml.Rotation(0.5, 1)
+            qp.H(0)
+            hl.Rotation(0.5, 1)
 
             for i in range(n):
-                hqml.ConditionalDisplacement(0.5, 0, [0, 2 + i])
+                hl.ConditionalDisplacement(0.5, 0, [0, 2 + i])
 
-            return hqml.expval(hqml.NumberOperator(n))
+            return hl.expval(hl.NumberOperator(n))
 
         icon_colors = {
             2: "tomato",
@@ -101,7 +101,7 @@ def draw_mpl(
             6: "turquoise",
         }
 
-        hqml.draw_mpl(circuit, wire_icon_colors=icon_colors, style="sketch")(5)
+        hl.draw_mpl(circuit, wire_icon_colors=icon_colors, style="sketch")(5)
 
     .. figure:: ../../_static/draw_mpl/colored_circuit.png
 
@@ -109,17 +109,17 @@ def draw_mpl(
 
     .. code:: python
 
-        @qml.qnode(dev)
+        @qp.qnode(dev)
         def circuit(n):
-            qml.H(0)
-            hqml.Rotation(0.5, 1)
+            qp.H(0)
+            hl.Rotation(0.5, 1)
 
             for i in range(n):
-                hqml.ConditionalDisplacement(0.5, 0, [0, 2 + i])
+                hl.ConditionalDisplacement(0.5, 0, [0, 2 + i])
 
-            return hqml.expval(hqml.NumberOperator(n))
+            return hl.expval(hl.NumberOperator(n))
 
-        hqml.draw_mpl(circuit, show_wire_types=False, style="sketch")(5)
+        hl.draw_mpl(circuit, show_wire_types=False, style="sketch")(5)
 
     .. figure:: ../../_static/draw_mpl/no_icons.png
     """
@@ -127,7 +127,7 @@ def draw_mpl(
     @wraps(qnode)
     def wrapper(*args, **kwargs_qnode):
         with patch("pennylane.drawer.draw.tape_mpl", tape_mpl):
-            orig_wrapper = qml.draw_mpl(
+            orig_wrapper = qp.draw_mpl(
                 qnode,
                 wire_order=wire_order,
                 show_all_wires=show_all_wires,

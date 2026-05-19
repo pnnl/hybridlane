@@ -5,18 +5,18 @@ from collections.abc import Iterable, Sequence
 from typing import Any, Hashable
 
 import numpy as np
-import pennylane as qml
+import pennylane as qp
 from pennylane.operation import Operator
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
-import hybridlane as hqml
+import hybridlane as hl
 
 from ..mixins import FockRepresentation, Spectral
 from .parametric_ops_single_qumode import Rotation
 
 
-class QuadX(qml.QuadX, Spectral, FockRepresentation):
+class QuadX(qp.QuadX, Spectral, FockRepresentation):
     r"""Position operator :math:`\hat{x}`
 
     The continuous-variable position operator is defined by its action on position
@@ -45,7 +45,7 @@ class QuadX(qml.QuadX, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hqml.sa.ComputationalBasis.Position
+        return hl.sa.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -62,8 +62,8 @@ class QuadX(qml.QuadX, Spectral, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         # Standard units
         lam = 1 / math.sqrt(2)
-        a = hqml.CreationOp.compute_fock_matrix(wire_dims)
-        ad = hqml.AnnihilationOp.compute_fock_matrix(wire_dims)
+        a = hl.CreationOp.compute_fock_matrix(wire_dims)
+        ad = hl.AnnihilationOp.compute_fock_matrix(wire_dims)
         return lam * (a + ad)
 
 
@@ -76,7 +76,7 @@ r"""Position operator :math:`\hat{x}`
 """
 
 
-class QuadP(qml.QuadP, Spectral, FockRepresentation):
+class QuadP(qp.QuadP, Spectral, FockRepresentation):
     r"""Momentum operator :math:`\hat{p}`
 
     The continuous-variable momentum operator is defined by its action on momentum
@@ -105,7 +105,7 @@ class QuadP(qml.QuadP, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hqml.sa.ComputationalBasis.Position
+        return hl.sa.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -127,8 +127,8 @@ class QuadP(qml.QuadP, Spectral, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
         # Standard units
         lam = 1 / math.sqrt(2)
-        a = hqml.CreationOp.compute_fock_matrix(wire_dims)
-        ad = hqml.AnnihilationOp.compute_fock_matrix(wire_dims)
+        a = hl.CreationOp.compute_fock_matrix(wire_dims)
+        ad = hl.AnnihilationOp.compute_fock_matrix(wire_dims)
         return lam * -1j * (a - ad)
 
 
@@ -141,7 +141,7 @@ r"""Momentum operator :math:`\hat{p}`
 """
 
 
-class QuadOperator(qml.QuadOperator, Spectral, FockRepresentation):
+class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
     r"""The generalized quadrature observable :math:`\hat{x}_\phi = \hat{x} \cos\phi + \hat{p} \sin\phi`
 
     When used with the :func:`~hybridlane.expval` function, the expectation
@@ -165,7 +165,7 @@ class QuadOperator(qml.QuadOperator, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hqml.sa.ComputationalBasis.Position
+        return hl.sa.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(
@@ -190,13 +190,13 @@ class QuadOperator(qml.QuadOperator, Spectral, FockRepresentation):
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], phi) -> TensorLike:
         x = QuadX.compute_fock_matrix(wire_dims)
-        x = hqml.math.asarray(x, like=phi)
+        x = hl.math.asarray(x, like=phi)
         p = QuadP.compute_fock_matrix(wire_dims)
-        p = hqml.math.asarray(p, like=phi)
-        return x * hqml.math.cos(phi) + p * hqml.math.sin(phi)
+        p = hl.math.asarray(p, like=phi)
+        return x * hl.math.cos(phi) + p * hl.math.sin(phi)
 
 
-class NumberOperator(qml.NumberOperator, Spectral, FockRepresentation):
+class NumberOperator(qp.NumberOperator, Spectral, FockRepresentation):
     r"""Number operator :math:`\hat{n}`
 
     The number operator is defined by its action on Fock states :math:`\ket{n}` as
@@ -228,7 +228,7 @@ class NumberOperator(qml.NumberOperator, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hqml.sa.ComputationalBasis.Discrete
+        return hl.sa.ComputationalBasis.Discrete
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -243,7 +243,7 @@ class NumberOperator(qml.NumberOperator, Spectral, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
-        return hqml.math.diag(hqml.math.arange(wire_dims[0]))
+        return hl.math.diag(hl.math.arange(wire_dims[0]))
 
 
 N = NumberOperator
@@ -255,7 +255,7 @@ r"""Number operator :math:`\hat{n}`
 """
 
 
-class FockStateProjector(qml.FockStateProjector, Spectral, FockRepresentation):
+class FockStateProjector(qp.FockStateProjector, Spectral, FockRepresentation):
     r"""The projector onto a multi-mode Fock state :math:`\ket{n_1, n_2, \ldots, n_m}\bra{n_1, n_2, \ldots, n_m}`
 
     When used with the :func:`~hybridlane.expval` function, the expectation value
@@ -304,7 +304,7 @@ class FockStateProjector(qml.FockStateProjector, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hqml.sa.ComputationalBasis.Discrete
+        return hl.sa.ComputationalBasis.Discrete
 
     @property
     def num_wires(self):
@@ -317,27 +317,27 @@ class FockStateProjector(qml.FockStateProjector, Spectral, FockRepresentation):
         return []
 
     def fock_spectrum(self, *basis_states) -> Sequence[float]:
-        n = hqml.math.reshape(self.data[0], (1, -1))
-        basis_states = hqml.math.asarray(basis_states, like=n)
-        basis_states = hqml.math.reshape(basis_states, (-1, len(self.wires)))
-        row_matches = hqml.math.all(n == basis_states, axis=-1)
+        n = hl.math.reshape(self.data[0], (1, -1))
+        basis_states = hl.math.asarray(basis_states, like=n)
+        basis_states = hl.math.reshape(basis_states, (-1, len(self.wires)))
+        row_matches = hl.math.all(n == basis_states, axis=-1)
         return row_matches + 0
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], n) -> TensorLike:
-        n = hqml.math.asarray(n)
+        n = hl.math.asarray(n)
 
         if n.ndim == 0:
-            n = hqml.math.reshape(n, (1,))
+            n = hl.math.reshape(n, (1,))
 
-        wire_dims = hqml.math.asarray(wire_dims, like=n)
-        if hqml.math.any(n >= wire_dims):
+        wire_dims = hl.math.asarray(wire_dims, like=n)
+        if hl.math.any(n >= wire_dims):
             raise ValueError(
                 f"Fock state projector cannot be constructed for n={n} with dimension {wire_dims}"
             )
 
-        dim = int(hqml.math.prod(wire_dims))
-        proj = hqml.math.zeros((dim, dim))
-        idx = hqml.math.ravel_multi_index(n, wire_dims)
+        dim = int(hl.math.prod(wire_dims))
+        proj = hl.math.zeros((dim, dim))
+        idx = hl.math.ravel_multi_index(n, wire_dims)
         proj[idx, idx] = 1
-        return hqml.math.asarray(proj, like=n)
+        return hl.math.asarray(proj, like=n)

@@ -3,23 +3,23 @@
 from typing import Any
 from unittest.mock import patch
 
-import pennylane as qml
+import pennylane as qp
 from pennylane.decomposition import CompressedResourceOp
 from pennylane.operation import Operator
 
-import hybridlane as hqml
+import hybridlane as hl
 
 # Patch to handle things like qCond(Pow(...))
-_qml_resource_rep = qml.resource_rep
+_qp_resource_rep = qp.resource_rep
 
 
 def resource_rep(op_type: type[Operator], **params) -> CompressedResourceOp:
-    if issubclass(op_type, hqml.ops.QubitConditioned):
+    if issubclass(op_type, hl.ops.QubitConditioned):
         base_rep = resource_rep(params["base_class"], **params["base_params"])
         params["base_class"] = base_rep.op_type
         params["base_params"] = base_rep.params
 
-    return _qml_resource_rep(op_type, **params)
+    return _qp_resource_rep(op_type, **params)
 
 
 _ = patch("pennylane.decomposition.resources.resource_rep", resource_rep).start()
@@ -46,7 +46,7 @@ def qubit_conditioned_resource_rep(
     """
 
     # Flatten any nested parity-conditioned operators
-    if base_class is hqml.ops.QubitConditioned:
+    if base_class is hl.ops.QubitConditioned:
         num_control_wires += base_params["num_control_wires"]
         return qubit_conditioned_resource_rep(
             base_params["base_class"], base_params["base_params"], num_control_wires
@@ -54,13 +54,13 @@ def qubit_conditioned_resource_rep(
 
     # Use any known conditioned gate identities. This handles the case that we know
     # that CustomGate = QubitConditioned(BaseGate)
-    known_decomps = hqml.ops.op_math.qubit_conditioned.base_to_custom_conditioned_op()
+    known_decomps = hl.ops.op_math.qubit_conditioned.base_to_custom_conditioned_op()
     if known_decomp := known_decomps.get((base_class, num_control_wires)):
-        return qml.resource_rep(known_decomp)
+        return qp.resource_rep(known_decomp)
 
     # Special instance that's not in base_to_custom_conditioned_op
-    if base_class is hqml.ops.Rotation:
-        return qml.resource_rep(hqml.ops.ConditionalRotation)
+    if base_class is hl.ops.Rotation:
+        return qp.resource_rep(hl.ops.ConditionalRotation)
 
     # Decompose instances of QubitConditioned(gate) where gate itself is equivalent to
     # QubitConditioned(othergate) e.g.
@@ -71,13 +71,13 @@ def qubit_conditioned_resource_rep(
             num_control_wires + base_class.num_wires - known_custom_gate.num_wires
         )
         base_class = known_custom_gate
-    elif base_class is qml.MultiRZ:  # special exception
+    elif base_class is qp.MultiRZ:  # special exception
         num_control_wires = num_control_wires + base_params["num_wires"] - 1
-        base_class = qml.RZ
+        base_class = qp.RZ
         base_params = {}
 
     return CompressedResourceOp(
-        hqml.ops.QubitConditioned,
+        hl.ops.QubitConditioned,
         {
             "base_class": base_class,
             "base_params": base_params,
@@ -88,13 +88,13 @@ def qubit_conditioned_resource_rep(
 
 def custom_qubit_controlled_op_to_base():
     return {
-        hqml.ConditionalDisplacement: hqml.Displacement,
-        hqml.ConditionalSqueezing: hqml.Squeezing,
-        hqml.ConditionalParity: hqml.Fourier,
-        hqml.ConditionalTwoModeSqueezing: hqml.TwoModeSqueezing,
-        hqml.ConditionalTwoModeSum: hqml.TwoModeSum,
-        hqml.ConditionalBeamsplitter: hqml.Beamsplitter,
-        qml.IsingZZ: qml.RZ,
+        hl.ConditionalDisplacement: hl.Displacement,
+        hl.ConditionalSqueezing: hl.Squeezing,
+        hl.ConditionalParity: hl.Fourier,
+        hl.ConditionalTwoModeSqueezing: hl.TwoModeSqueezing,
+        hl.ConditionalTwoModeSum: hl.TwoModeSum,
+        hl.ConditionalBeamsplitter: hl.Beamsplitter,
+        qp.IsingZZ: qp.RZ,
     }
 
 
@@ -104,8 +104,8 @@ _old_fn = CompressedResourceOp.name.fget
 
 
 def _cro_name_fget(self: CompressedResourceOp):
-    if self.op_type in (hqml.ops.QubitConditioned,):
-        base_rep = qml.resource_rep(
+    if self.op_type in (hl.ops.QubitConditioned,):
+        base_rep = qp.resource_rep(
             self.params["base_class"], **self.params["base_params"]
         )
         return f"qCond({base_rep.name})"
