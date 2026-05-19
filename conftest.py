@@ -13,8 +13,10 @@ from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser
 import hybridlane as hqml
 
 try:
+    import jax
     import jax.numpy as jnp
 except ImportError:
+    jax = None
     jnp = None
 
 printoptions = np.get_printoptions()
@@ -23,6 +25,8 @@ printoptions = np.get_printoptions()
 def setup(namespace: dict[str, Any]):
     namespace |= {"qml": qml, "hqml": hqml, "np": np, "jnp": jnp}
     np.set_printoptions(precision=4, suppress=True)
+    if jax:
+        jax.config.update("jax_enable_x64", True)
 
 
 def teardown(namespace: dict[str, Any]):
