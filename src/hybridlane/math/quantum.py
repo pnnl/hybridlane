@@ -1,6 +1,5 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-import itertools
 from collections.abc import Sequence
 from string import ascii_lowercase as alphabet
 
@@ -78,15 +77,8 @@ def reduce_statevector(
     for i in indices:
         indices1 = indices1.replace(indices1[i], alphabet[n_input + i])
 
-    # Interleave the kept indices to get the output
-    out_indices = "".join(
-        itertools.chain(
-            *zip(
-                [indices0[i] for i in indices],
-                [indices1[i] for i in indices],
-            )
-        )
-    )
+    deleted = set(indices0) & set(indices1)
+    out_indices = "".join([c for c in indices0 + indices1 if c not in deleted])
 
     einsum_str = f"...{indices0},...{indices1}->...{out_indices}"
     rho = math.einsum(einsum_str, state, math.conj(state))
@@ -158,15 +150,8 @@ def reduce_dm(
     for i in indices:
         indices1 = indices1.replace(indices1[i], alphabet[n_input + i])
 
-    # Interleave the kept indices to get the output
-    out_indices = "".join(
-        itertools.chain(
-            *zip(
-                [indices0[i] for i in indices],
-                [indices1[i] for i in indices],
-            )
-        )
-    )
+    deleted = set(indices0) & set(indices1)
+    out_indices = "".join([c for c in indices0 + indices1 if c not in deleted])
 
     einsum_str = f"...{indices0}{indices1}->...{out_indices}"
     rho_reduced = math.einsum(einsum_str, rho)
