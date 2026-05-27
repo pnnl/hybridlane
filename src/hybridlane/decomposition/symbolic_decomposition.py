@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 
+from textwrap import dedent
+
 __all__ = [
     "merge_qubit_conditioned",
     "flip_pow_qcond",
@@ -65,8 +67,9 @@ def _ctrl_from_qcond_resources(base_class, base_params, num_control_wires, **_):
 
 
 @qp.register_condition(
-    lambda num_control_wires, num_zero_control_values, **_: num_control_wires == 1
-    and num_zero_control_values == 0
+    lambda num_control_wires, num_zero_control_values, **_: (
+        num_control_wires == 1 and num_zero_control_values == 0
+    )
 )
 @qp.register_resources(_ctrl_from_qcond_resources)
 def ctrl_from_qcond(*params, wires, base, control_wires, **_):
@@ -100,10 +103,19 @@ def make_qcond_decomp(base_decomposition: DecompositionRule) -> DecompositionRul
         return gate_counts
 
     @qp.register_condition(_condition_fn)
-    @qp.register_resources(_resource_fn, exact=base_decomposition.exact_resources)
+    @qp.register_resources(
+        _resource_fn,
+        exact=base_decomposition.exact_resources,
+        name=f"qubitconditioned({base_decomposition.name})",
+    )
     def _impl(*params, wires, control_wires, base, **_):
         hl.qcond(base_decomposition._impl, control_wires=wires[: len(control_wires)])(
             *params, wires=wires[-len(base.wires) :], **base.hyperparameters
         )
 
+    _impl._source = (
+        dedent(_impl._source).strip()
+        + "\n\nwhere base_decomposition is defined as:\n\n"
+        + dedent(base_decomposition._source).strip()
+    )
     return _impl

@@ -8,7 +8,7 @@ from collections import Counter
 
 import pennylane as qp
 import pytest
-from pennylane.exceptions import DeviceError
+from pennylane.exceptions import DecompositionWarning, DeviceError
 from pennylane.wires import Wires
 from pennylane.workflow import construct_tape
 
@@ -279,8 +279,9 @@ class TestDecomposition:
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
         with (
-            pytest.warns(UserWarning),
-            pytest.warns(UserWarning, match="unable to find a decomposition for"),
+            pytest.warns(
+                DecompositionWarning, match="unable to find a decomposition for"
+            ),
             pytest.raises(DeviceError),
         ):
             construct_tape(circuit, level="device")()
@@ -301,8 +302,9 @@ class TestDecomposition:
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
         with (
-            pytest.warns(UserWarning),
-            pytest.warns(UserWarning, match="unable to find a decomposition for"),
+            pytest.warns(
+                DecompositionWarning, match="unable to find a decomposition for"
+            ),
             pytest.raises(DeviceError),
         ):
             construct_tape(circuit, level="device")()

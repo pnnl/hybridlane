@@ -17,19 +17,23 @@ from .symbolic_decomposition import ctrl_from_qcond, flip_pow_qcond, make_qcond_
 
 class DecompositionGraph(PLDG):
     @override
-    def _get_decompositions(self, op: CompressedResourceOp) -> list[DecompositionRule]:
-        decomps = super()._get_decompositions(op)
+    def _get_decompositions(
+        self, op: CompressedResourceOp, use_reconstructor: bool = False
+    ) -> list[DecompositionRule]:
+        decomps = super()._get_decompositions(op, use_reconstructor)
 
         if op.op_type in (hl.ops.QubitConditioned,):
-            decomps.extend(self._get_qubit_conditioned_decompositions(op))
+            decomps.extend(
+                self._get_qubit_conditioned_decompositions(op, use_reconstructor)
+            )
 
         return decomps
 
     @override
     def _get_controlled_decompositions(
-        self, op: CompressedResourceOp
+        self, op: CompressedResourceOp, use_reconstructor: bool = False
     ) -> list[DecompositionRule]:
-        decomps = super()._get_controlled_decompositions(op)
+        decomps = super()._get_controlled_decompositions(op, use_reconstructor)
 
         # Can generally synthesize the controlled version from conditional gates
         decomps.append(ctrl_from_qcond)
@@ -37,7 +41,7 @@ class DecompositionGraph(PLDG):
         return decomps
 
     def _get_qubit_conditioned_decompositions(
-        self, op: CompressedResourceOp
+        self, op: CompressedResourceOp, use_reconstructor: bool = False
     ) -> list[DecompositionRule]:
         base_class, base_params = (
             op.params["base_class"],
@@ -46,7 +50,10 @@ class DecompositionGraph(PLDG):
 
         # General case is to apply qcond to each gate in the decomposition
         base = qp.resource_rep(base_class, **base_params)
-        rules = [make_qcond_decomp(decomp) for decomp in self._get_decompositions(base)]
+        rules = [
+            make_qcond_decomp(decomp)
+            for decomp in self._get_decompositions(base, use_reconstructor)
+        ]
 
         # Can always reduce to 1 condition qubit
         rules.append(decompose_multi_qcond)
@@ -55,7 +62,9 @@ class DecompositionGraph(PLDG):
 
     @override
     @staticmethod
-    def _get_pow_decompositions(op: CompressedResourceOp) -> list[DecompositionRule]:
+    def _get_pow_decompositions(
+        op: CompressedResourceOp, use_reconstructor: bool = False
+    ) -> list[DecompositionRule]:
         decomps = PLDG._get_pow_decompositions(op)
 
         if op.params["base_class"] in (hl.ops.QubitConditioned,):
