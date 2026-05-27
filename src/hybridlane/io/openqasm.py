@@ -110,7 +110,6 @@ from pennylane.operation import Operator
 from pennylane.tape import QuantumScript
 from pennylane.wires import Wires
 
-
 from .. import ops, sa
 from ..transforms import from_pennylane
 
@@ -313,11 +312,7 @@ def tape_to_openqasm(
     if res.qumodes:
         qasm_str += " " * indent + "reset m;\n"
 
-    just_ops = QuantumScript(tape.operations)
-    operations = just_ops.expand(
-        depth=10, stop_at=lambda op: op.name in all_gates
-    ).operations
-    for op in operations:
+    for op in tape.operations:
         qasm_str += (
             " " * indent
             + format_gate_as_qasm(op, wire_to_str, precision=precision)
@@ -353,12 +348,7 @@ def tape_to_openqasm(
         # Apply diagonalizing gates if the user requested it
         if rotations:
             for mp in group:
-                operations = QuantumScript(mp.diagonalizing_gates())
-                operations = operations.expand(
-                    depth=10, stop_at=lambda op: op.name in all_gates
-                ).operations
-
-                for op in operations:
+                for op in mp.diagonalizing_gates():
                     qasm_str += (
                         format_gate_as_qasm(op, wire_to_str, precision=precision) + "\n"
                     )

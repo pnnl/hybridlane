@@ -22,7 +22,7 @@ def to_native_qcond(control_wires: int):
         }
 
     @qp.register_condition(_condition_fn)
-    @qp.register_resources(_resource_fn)
+    @qp.register_resources(_resource_fn, name="to_native_qcond")
     def _impl(*params, wires, base, control_wires, **_):
         base_op = base._unflatten(*base._flatten())
         hl.qcond(base_op, control_wires)
@@ -89,7 +89,11 @@ def make_gate_with_ancilla_qubit(base_class: type[Operation]):
             ): 1
         }
 
-    @qp.register_resources(_resource_fn, work_wires={"zeroed": 1})
+    @qp.register_resources(
+        _resource_fn,
+        work_wires={"zeroed": 1},
+        name=f"make_gate_with_ancilla_qubit({base_class.__name__})",
+    )
     def _impl(*params, wires, **hparams):
         with qp.allocate(1, "zero", restored=True) as ancilla:
             hl.qcond(base_class, control_wires=ancilla)(*params, wires=wires, **hparams)

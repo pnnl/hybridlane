@@ -36,6 +36,7 @@ from pennylane.transforms import (
 from pennylane.wires import Wires
 
 import hybridlane as hl
+from hybridlane.ops.hybrid.parametric_ops_single_qumode import _cd_to_xcd
 from hybridlane.ops.op_math.decompositions import make_gate_with_ancilla_qubit
 
 from ... import sa
@@ -330,6 +331,7 @@ def dynamic_gate_decompose(
     # dynamic wires to virtual wires
     pipeline = decompose(
         gate_set=gate_set,
+        fixed_decomps={hl.CD: _cd_to_xcd},
         alt_decomps=DECOMPS,
         num_work_wires=remaining_work_wires,
         minimize_work_wires=True,

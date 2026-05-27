@@ -24,6 +24,7 @@ printoptions = np.get_printoptions()
 
 def setup(namespace: dict[str, Any]):
     namespace |= {"qp": qp, "hl": hl, "np": np, "jnp": jnp}
+    qp.decomposition.enable_graph()
     np.set_printoptions(precision=4, suppress=True)
     if jax:
         jax.config.update("jax_enable_x64", True)

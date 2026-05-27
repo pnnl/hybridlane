@@ -100,37 +100,37 @@ def _(op: Controlled):
 
 @convert_operator.register
 def _(op: SymbolicOp):
-    return op.__class__(convert_operator(op.base), id=op.id)
+    return op.__class__(convert_operator(op.base))
 
 
 @convert_operator.register
 def _(op: qp.Displacement):
     # no change, just convert to our gate
-    return hl.Displacement(*op.data, wires=op.wires, id=op.id)
+    return hl.Displacement(*op.data, wires=op.wires)
 
 
 @convert_operator.register
 def _(op: qp.Rotation):
     # i -> -i
-    return hl.Rotation(-op.data[0], wires=op.wires, id=op.id)
+    return hl.Rotation(-op.data[0], wires=op.wires)
 
 
 @convert_operator.register
 def _(op: qp.Squeezing):
     # no change, convert to our gate
-    return hl.Squeezing(*op.data, wires=op.wires, id=op.id)
+    return hl.Squeezing(*op.data, wires=op.wires)
 
 
 @convert_operator.register
 def _(op: qp.Kerr):
     # i -> -i
-    return hl.Kerr(-op.data[0], wires=op.wires, id=op.id)
+    return hl.Kerr(-op.data[0], wires=op.wires)
 
 
 @convert_operator.register
 def _(op: qp.CubicPhase):
     # ir(x^3)/3 -> -irx^3
-    return hl.CubicPhase(-op.data[0] / 3, wires=op.wires, id=op.id)
+    return hl.CubicPhase(-op.data[0] / 3, wires=op.wires)
 
 
 @convert_operator.register
@@ -139,14 +139,14 @@ def _(op: qp.Beamsplitter):
     # θ' = 2θ
     # ϕ' = -(ϕ + π/2)
     theta, phi = op.data
-    return hl.Beamsplitter(2 * theta, -(phi + math.pi / 2), wires=op.wires, id=op.id)
+    return hl.Beamsplitter(2 * theta, -(phi + math.pi / 2), wires=op.wires)
 
 
 @convert_operator.register
 def _(op: qp.TwoModeSqueezing):
     # r -> -r
     r, phi = op.data
-    return hl.TwoModeSqueezing(-r, phi, wires=op.wires, id=op.id)
+    return hl.TwoModeSqueezing(-r, phi, wires=op.wires)
 
 
 @singledispatch
@@ -156,23 +156,23 @@ def convert_observable(obs: Operator) -> Operator:
 
 @convert_observable.register
 def _(obs: SProd) -> SProd:
-    return obs.__class__(obs.scalar, convert_observable(obs.base), id=obs.id)
+    return obs.__class__(obs.scalar, convert_observable(obs.base))
 
 
 @convert_observable.register
 def _(obs: ScalarSymbolicOp) -> ScalarSymbolicOp:
-    return obs.__class__(convert_observable(obs.base), obs.scalar, id=obs.id)
+    return obs.__class__(convert_observable(obs.base), obs.scalar)
 
 
 @convert_observable.register
 def _(obs: SymbolicOp) -> SymbolicOp:
-    return obs.__class__(convert_observable(obs.base), id=obs.id)
+    return obs.__class__(convert_observable(obs.base))
 
 
 @convert_observable.register
 def _(obs: CompositeOp) -> CompositeOp:
     operands = [convert_observable(op) for op in obs.operands]
-    return obs.__class__(*operands, id=obs.id)
+    return obs.__class__(*operands)
 
 
 @convert_observable.register
@@ -215,7 +215,7 @@ def _(
     cache: dict[str, Any] | None = None,
 ) -> hl_mp.ExpectationMP:
     if mp.obs:
-        return hl_mp.ExpectationMP(obs=convert_observable(mp.obs), id=mp.id)
+        return hl_mp.ExpectationMP(obs=convert_observable(mp.obs))
     raise NotImplementedError("An observable is required with hl.expval")
 
 
@@ -228,7 +228,7 @@ def _(
     cache: dict[str, Any] | None = None,
 ):
     if mp.obs:
-        return hl_mp.VarianceMP(obs=convert_observable(mp.obs), id=mp.id)
+        return hl_mp.VarianceMP(obs=convert_observable(mp.obs))
     raise NotImplementedError("An observable is required with hl.var")
 
 
@@ -240,7 +240,7 @@ def _(
     cache: dict[str, Any] | None = None,
 ):
     if mp.obs:
-        return hl_mp.SampleMP(obs=convert_observable(mp.obs), id=mp.id)
+        return hl_mp.SampleMP(obs=convert_observable(mp.obs))
     return mp
 
 
@@ -252,7 +252,7 @@ def _(
     cache: dict[str, Any] | None = None,
 ):
     if mp.obs:
-        return hl_mp.SampleMP(obs=convert_observable(mp.obs), id=mp.id)
+        return hl_mp.SampleMP(obs=convert_observable(mp.obs))
 
     sa_res: sa.StaticAnalysisResult = cache["sa_res"]
     schema = sa.BasisSchema(
@@ -270,4 +270,4 @@ def _(
         )
         schema |= qumode_schema
 
-    return hl_mp.SampleMP(schema=schema, id=mp.id)
+    return hl_mp.SampleMP(schema=schema)
