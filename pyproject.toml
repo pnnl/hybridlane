@@ -59,6 +59,7 @@ dev = [
     "pytest-cov>=6.2.1",
     "ruff>=0.12.0",
     "sybil[pytest]>=9.3.0",
+    "ty>=0.0.39",
 ]
 docs = [
     "furo>=2024.8.6",
