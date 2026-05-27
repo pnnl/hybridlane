@@ -57,6 +57,15 @@ class TestReduceStatevector:
         assert str(actual.dtype) == "complex128"
         assert actual == pytest.approx(expected)
 
+        state0 = math.array([0, 1, 0], like=like)
+        state1 = math.array([1, 1], like=like) / math.sqrt(2)
+        state = math.kron(state0, state1)
+
+        expected = math.outer(state, state)
+        actual = f(state, indices=(0, 1), dims=(3, 2))
+        assert str(actual.dtype) == "complex128"
+        assert actual == pytest.approx(expected)
+
 
 class TestReduceDensityMatrix:
     @pytest.mark.parametrize("dtype", ["complex64", "complex128"])
@@ -105,7 +114,7 @@ class TestReduceDensityMatrix:
             f = jax.jit(f, static_argnums=(1, 2))
 
         state0 = math.array([0, 1, 0], like=like)
-        state1 = math.array([1, 0], like=like)
+        state1 = math.array([1, 1], like=like) / math.sqrt(2)
         state = math.kron(state0, state1)
         rho = math.outer(state, state)
 
@@ -118,3 +127,7 @@ class TestReduceDensityMatrix:
         actual = f(rho, indices=(1,), dims=(3, 2))
         assert str(actual.dtype) == "complex128"
         assert actual == pytest.approx(expected)
+
+        actual = f(rho, indices=(0, 1), dims=(3, 2))
+        assert str(actual.dtype) == "complex128"
+        assert actual == pytest.approx(rho)
