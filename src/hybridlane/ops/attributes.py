@@ -8,10 +8,11 @@ diagonal_in_fock_basis = Attribute(
         "FockStateProjector",
         "NumberOperator",
         "TensorN",
-        "Displacement",
         "Rotation",
+        "ConditionalRotation",
         "Fourier",
         "SelectiveNumberArbitraryPhase",
+        "Kerr",
         "Identity",
     ]
 )
