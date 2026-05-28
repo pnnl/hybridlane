@@ -23,16 +23,16 @@ def cat_state_probs(alpha, ns, odd: bool):
     return np.exp(log_Pn)
 
 
-@pytest.mark.slow
-@pytest.mark.bq
+# @pytest.mark.slow
+# @pytest.mark.bq
 class TestSqueezedCatState:
     @pytest.mark.integration
     @pytest.mark.parametrize(
         "alpha,parity", itertools.product([3, 4, 5, 6], ("even", "odd"))
     )
     def test_parity(self, alpha, parity):
-        fock_level = 256
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=fock_level)
+        fock_level = 128
+        dev = qp.device("default.hybrid", fock_level=fock_level)
 
         @qp.qnode(dev)
         def circuit(alpha):
@@ -52,7 +52,7 @@ class TestSqueezedCatState:
     @pytest.mark.integration
     @pytest.mark.parametrize("alpha,parity", [(3, "even"), (6, "odd")])
     def test_qubit_fidelity_and_mean_photon_count(self, alpha, parity):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=256)
+        dev = qp.device("default.hybrid", fock_level=128)
 
         @qp.qnode(dev)
         def circuit(alpha):
@@ -70,7 +70,6 @@ class TestSqueezedCatState:
         assert np.allclose(expval_n, expected_mean, rtol=1e-2)
 
 
-@pytest.mark.bq
 class TestGKPState:
     @pytest.mark.parametrize(
         "delta,expected_repetitions", [(0.4, 1), (0.3, 3), (0.2, 7), (0.1, 31)]
@@ -81,11 +80,10 @@ class TestGKPState:
         assert op.hyperparameters["repetitions"] == expected_repetitions
 
     @pytest.mark.integration
-    @pytest.mark.slow
     @pytest.mark.parametrize("codeword", (0, 1))
     def test_stabilizer(self, codeword):
-        fock_level = 256
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=fock_level)
+        fock_level = 128
+        dev = qp.device("default.hybrid", fock_level=fock_level)
 
         @qp.qnode(dev)
         def circuit(codeword, delta=1):
@@ -106,7 +104,7 @@ class TestGKPState:
     @pytest.mark.parametrize("codeword", (0, 1))
     def test_error(self, codeword):
         fock_level = 256
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=fock_level)
+        dev = qp.device("default.hybrid", fock_level=fock_level)
 
         @qp.qnode(dev)
         def circuit(codeword, delta=1):

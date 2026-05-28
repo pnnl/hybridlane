@@ -318,8 +318,8 @@ def expand_vector(
     # `wires`. This might have extra wires, so then we need to pad it with zero and then
     # permute it to match that subset order.
     indices = wire_order.indices(wires)
-    min_idx = min(indices)
-    max_idx = max(indices)
+    min_idx = min(indices) if indices else 0
+    max_idx = max(indices) if indices else len(wire_order) - 1
     before_wire_order = wire_order[:min_idx]
     mid_wire_order = wire_order[min_idx : max_idx + 1]
     after_wire_order = wire_order[max_idx + 1 :]
@@ -387,8 +387,11 @@ def permute_dense_vector(
     perm = wires.indices(wire_order)
     perm = tuple(i + bool(batch_dim) for i in perm)
 
+    if batch_dim:
+        perm = (0,) + perm
+
     source_dims = tuple(wire_dims[wire] for wire in wires)
-    expanded_shape = (batch_dim,) if batch_dim else () + source_dims
+    expanded_shape = ((batch_dim,) if batch_dim else ()) + source_dims
     vec = math.reshape(vec, expanded_shape)
     vec = math.transpose(vec, perm)
     vec = math.reshape(vec, shape)

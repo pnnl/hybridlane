@@ -27,8 +27,8 @@ test-core:
 
 codecov-core:
     @uv sync --all-groups
-    @uv run pytest -m "not (bq or slow or docs or jax or torch)" --cov=hybridlane --cov-report=html
+    @uv run pytest -m "not (bq or slow or docs or jax or torch)" --cov=hybridlane --cov-report=html --cov-report=term-missing
 
 codecov:
     @uv sync --all-groups --all-extras && uv pip install torch --torch-backend=cpu
-    @uv run pytest --cov=hybridlane --cov-report=html
+    @uv run pytest --cov=hybridlane --cov-report=html --cov-report=term-missing
