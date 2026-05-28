@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-from collections.abc import Sequence
+from collections.abc import Mapping
+from typing import Hashable
 
 import pennylane as qp
 from pennylane.operation import Operator
@@ -8,13 +9,17 @@ from pennylane.ops.mid_measure import MeasurementValue
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
+from hybridlane.measurements import ComputationalBasis
+
+from .. import math
+from ..sa import BasisSchema
 from .base import (
     CountsResult,
     SampleMeasurement,
     SampleResult,
     StateMeasurement,
-    Truncation,
 )
+from .probability import ProbabilityMP
 from .sample import SampleMP
 
 
@@ -61,9 +66,9 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
             eigvals = samples.eigvals
 
         if isinstance(eigvals, list):
-            return [qp.math.mean(t) for t in eigvals]
+            return [math.mean(t) for t in eigvals]
 
-        return qp.math.mean(eigvals)
+        return math.mean(eigvals)
 
     def process_counts(self, counts: CountsResult) -> TensorLike:
         if counts.is_basis_states:
@@ -75,16 +80,52 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
                 ).process_counts(counts)
 
         eigvals, occurences = list(zip(*counts.counts.items()))
-        eigvals = qp.math.array(eigvals)
-        occurences = qp.math.array(occurences)
+        eigvals = math.array(eigvals)
+        occurences = math.array(occurences)
         p = occurences / counts.shots
 
-        return qp.math.dot(eigvals, p)
+        return math.dot(eigvals, p)
 
     def process_state(
-        self, state: Sequence[complex], wire_order: Wires, truncation: Truncation
-    ):
-        # todo:
-        raise NotImplementedError(
-            "Currently, computing the analytic expval should be handled by the device"
-        )
+        self,
+        state: TensorLike,
+        wire_order: Wires,
+        wire_dims: Mapping[Hashable, int],
+        eigvals: TensorLike | None = None,
+    ) -> TensorLike:
+        if eigvals is None:
+            raise ValueError(
+                "Eigenvalues must be provided to compute the expectation value from the state"
+            )
+
+        eigvals = math.cast(eigvals, "float64")
+        with qp.QueuingManager.stop_recording():
+            # The schema here doesn't matter, we just need it to take up the full
+            # state space so that the probabilities are computed correctly.
+            schema = BasisSchema({wire_order: ComputationalBasis.Discrete})
+            probs = ProbabilityMP(schema=schema).process_state(
+                state, wire_order, wire_dims
+            )
+        return math.dot(eigvals, probs)
+
+    def process_density_matrix(
+        self,
+        dm: TensorLike,
+        wire_order: Wires,
+        wire_dims: Mapping[Hashable, int],
+        eigvals: TensorLike | None = None,
+    ) -> TensorLike:
+        if eigvals is None:
+            raise ValueError(
+                "Eigenvalues must be provided to compute the expectation value from the state"
+            )
+
+        eigvals = math.cast(eigvals, "float64")
+        with qp.QueuingManager.stop_recording():
+            # The schema here doesn't matter, we just need it to take up the full
+            # state space so that the probabilities are computed correctly.
+            schema = BasisSchema({wire_order: ComputationalBasis.Discrete})
+            probs = ProbabilityMP(schema=schema).process_density_matrix(
+                dm, wire_order, wire_dims
+            )
+        return math.dot(eigvals, probs)

@@ -1,8 +1,15 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+from collections.abc import Mapping
+from typing import Hashable
+
 import pennylane as qp
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
+
+from hybridlane.measurements.base import ShapeRequiresWireDims
+from hybridlane.sa import Qubit, Qumode
+from hybridlane.sa.base import Qudit
 
 from .. import sa
 
@@ -45,3 +52,34 @@ def static_analyze_tape(
 
 def null_postprocessing(results):
     return results[0]
+
+
+@qp.transform
+def fill_wire_dims(
+    tape: QuantumScript,
+    wire_dims: Mapping[Hashable, int] | None = None,
+    default_qumode_dim: int | None = None,
+) -> tuple[QuantumScriptBatch, PostprocessingFn]:
+    wire_dims = wire_dims or {}
+    wire_dims = dict(wire_dims)
+
+    # First type check the circuit and fill any missing qumode dimensions
+    res = sa.analyze(tape)
+    for wire, type_ in res.wire_types.items():
+        match type_:
+            case Qubit():
+                wire_dims.setdefault(wire, 2)
+            case Qumode():
+                wire_dims.setdefault(wire, default_qumode_dim)
+            case Qudit(d):
+                wire_dims.setdefault(wire, d)
+
+    new_measurements = []
+    for mp in tape.measurements:
+        if isinstance(mp, ShapeRequiresWireDims):
+            new_measurements.append(mp.copy_with_wire_dims(wire_dims))
+        else:
+            new_measurements.append(mp)
+
+    new_tape = tape.copy(measurements=new_measurements)
+    return (new_tape,), null_postprocessing

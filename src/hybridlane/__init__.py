@@ -4,7 +4,14 @@
 from hybridlane import decomposition, math, ops, sa, transforms  # noqa: F401
 from hybridlane.drawer import draw_mpl  # noqa: F401
 from hybridlane.io import to_openqasm  # noqa: F401
-from hybridlane.measurements import expval, sample, state, var  # noqa: F401
+from hybridlane.measurements import (  # noqa: F401
+    density_matrix,
+    expval,
+    probs,
+    sample,
+    state,
+    var,
+)
 from hybridlane.ops import *  # noqa: F403
 from hybridlane.templates import FockState, GKPState, SqueezedCatState  # noqa: F401
 from hybridlane.transforms import from_pennylane  # noqa: F401

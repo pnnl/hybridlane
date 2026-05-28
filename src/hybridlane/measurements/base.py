@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Hashable
+from typing import Hashable, Self
 
 import pennylane as qp
 from pennylane.measurements import (
@@ -437,17 +438,66 @@ class StateMeasurement(MeasurementProcess):
 
     _shortname = "state"
 
-    # My notes: Redo state measurement to hold statevectors with arbitrary shape `(..., d1, ..., dn)`
-    # if necessary. Truncation can probably be passed into our version because state measurements are explicitly
-    # classical simulation. For fock state wavefunctions, this is pretty obvious, but I'm not sure how we say that
-    # certain qumodes' states are represented in phase space. Gaussian wavefunctions are symplectic and can be
-    # stored with the appropriate group theory representation like in StrawberryFields. For more general wavefunctions,
-    # this is likely where the x/p truncation Yuan was talking about will live. Maybe mark it as `NotImplementedError` for now.
-
     @abstractmethod
-    def process_state(self, state: StateResult):
+    def process_state(
+        self,
+        state: TensorLike,
+        wire_order: Wires,
+        wire_dims: Mapping[Hashable, int],
+        eigvals: TensorLike | None = None,
+    ) -> TensorLike:
         r"""Calculate the measurement result using the state
 
         Args:
-            state: The statevector with associated truncation and wire order
+            state: The statevector flattened with an optional batch dimension, of shape
+                ``(..., d)``, where ``d`` is the product of the dimensions of each wire.
+
+            wire_order: The order of the wires in the statevector
+
+            wire_dims: A mapping from each wire to its associated dimension
+
+            eigvals: Optional eigenvalue vector of shape ``(d,)`` built by the device.
         """
+
+    @abstractmethod
+    def process_density_matrix(
+        self,
+        dm: TensorLike,
+        wire_order: Wires,
+        wire_dims: Mapping[Hashable, int],
+        eigvals: TensorLike | None = None,
+    ) -> TensorLike:
+        r"""Calculate the measurement result using the density matrix
+
+        Args:
+            dm: The density matrix with an optional batch dimension, of shape
+                ``(..., d, d)``, where ``d`` is the product of the dimensions of each wire.
+
+            wire_order: The order of the wires in the statevector
+
+            wire_dims: A mapping from each wire to its associated dimension
+
+            eigvals: Optional eigenvalue vector of shape ``(d,)`` built by the device.
+        """
+
+
+class ShapeRequiresWireDims(MeasurementProcess):
+    wire_dims: Mapping[Hashable, int] | None = None
+
+    def copy_with_wire_dims(self, wire_dims: Mapping[Hashable, int]) -> Self:
+        """Returns a copy of this measurement with the provided wire dimensions added"""
+        if self.wire_dims is not None:
+            raise ValueError("This measurement already has wire dimensions")
+
+        new = copy.copy(self)
+        new.wire_dims = wire_dims
+        return new
+
+    def map_wires(self, wire_map: dict[Hashable, Hashable]) -> Self:
+        new = super().map_wires(wire_map)
+        if self.wire_dims is not None:
+            new_wire_dims = {
+                wire_map.get(wire, wire): dim for wire, dim in self.wire_dims.items()
+            }
+            new.wire_dims = new_wire_dims
+        return new
