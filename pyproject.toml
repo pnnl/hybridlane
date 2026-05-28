@@ -54,6 +54,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "jax>=0.10.1",
     "openqasm3[parser]>=1.0.1",
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
