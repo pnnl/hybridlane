@@ -72,6 +72,14 @@ class TestSqueezedCatState:
 
 @pytest.mark.bq
 class TestGKPState:
+    @pytest.mark.parametrize(
+        "delta,expected_repetitions", [(0.4, 1), (0.3, 3), (0.2, 7), (0.1, 31)]
+    )
+    @pytest.mark.unit
+    def test_repetitions(self, delta, expected_repetitions):
+        op = hl.GKPState(delta, logical_state=0, wires=["q", "m"])
+        assert op.hyperparameters["repetitions"] == expected_repetitions
+
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("codeword", (0, 1))
