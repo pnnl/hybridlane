@@ -51,11 +51,17 @@ bq.operators.SPLUS[:] = bq.operators.SPLUS.T
 
 
 def simulate(
-    tape: QuantumScript, truncation: FockTruncation, *, hbar: float
+    tape: QuantumScript,
+    truncation: FockTruncation,
+    *,
+    hbar: float,
+    fast_transpilation: bool = True,
 ) -> tuple[np.ndarray]:
     warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
 
-    qc, regmapper = make_cv_circuit(tape, truncation)
+    qc, regmapper = make_cv_circuit(
+        tape, truncation, fast_transpilation=fast_transpilation
+    )
 
     if tape.shots and not len(tape.shots.shot_vector) == 1:
         raise NotImplementedError("Complex shot batching is not yet supported")

@@ -6,7 +6,6 @@
 # load this file to register the device from the entrypoints in `pyproject.toml`. Therefore,
 # this file needs to be importable *even if* bosonic qiskit is not installed.
 
-
 import importlib.util
 from collections.abc import Sequence
 from dataclasses import replace
@@ -115,7 +114,7 @@ class BosonicQiskitDevice(Device):
     pennylane_requires = ">=0.45.0"
     author = "PNNL"
 
-    _device_options = ("truncation", "hbar", "units")
+    _device_options = ("truncation", "hbar", "units", "fast_transpilation")
 
     def __init__(
         self,
@@ -125,6 +124,7 @@ class BosonicQiskitDevice(Device):
         truncation: FockTruncation | None = None,
         hbar: float = 1,
         units: Literal["standard", "wigner"] = "standard",
+        fast_transpilation: bool = True,
     ):
         r"""Initializes the device
 
@@ -153,6 +153,7 @@ class BosonicQiskitDevice(Device):
         self._max_fock_level = max_fock_level
         self._hbar = hbar
         self._units = units
+        self._fast_transpilation = fast_transpilation
 
         super().__init__(wires=wires, shots=shots)
 
@@ -188,8 +189,12 @@ class BosonicQiskitDevice(Device):
         if units == "wigner":
             hbar /= 2
 
+        fast_transpilation = execution_config.device_options.get(
+            "fast_transpilation", self._fast_transpilation
+        )
+
         return tuple(
-            simulate(tape, truncation, hbar=hbar)
+            simulate(tape, truncation, hbar=hbar, fast_transpilation=fast_transpilation)
             for tape, truncation in zip(circuits, truncations)
         )
 
