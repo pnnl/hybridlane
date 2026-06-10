@@ -103,7 +103,7 @@ class TestAnalyticCircuits:
             qp.CatState(alpha, 0, 0, wires=0)
 
             # Now use ancilliary qubit to read it out with a phase kickback
-            qp.Displacement(alpha, 0, 0)  # |0> + |2α>
+            hl.D(alpha, 0, 0)  # |0> + |2α>
             qp.H(1)
             hl.SQR(np.pi, np.pi / 2, 0, wires=[1, 0])  # Ry(pi)|0><0|
             qp.H(1)
@@ -123,10 +123,10 @@ class TestAnalyticCircuits:
 
         @qp.qnode(dev, interface=like)
         def circuit(alpha):
-            qp.Displacement(alpha, 0, 0)
+            hl.D(alpha, 0, 0)
             hl.ModeSwap([0, 1])
-            qp.Displacement(-alpha, 0, 1)
-            return hl.expval(hl.NumberOperator(0)), hl.expval(hl.NumberOperator(1))
+            hl.D(-alpha, 0, 1)
+            return hl.expval(hl.N(0)), hl.expval(hl.N(1))
 
         alpha = 1.5
         n1, n2 = circuit(alpha)

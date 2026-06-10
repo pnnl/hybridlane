@@ -57,6 +57,7 @@ build-backend = "uv_build"
 dev = [
     "jax>=0.10.1",
     "openqasm3[parser]>=1.0.1",
+    "optax>=0.2.8",
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
     "ruff>=0.12.0",

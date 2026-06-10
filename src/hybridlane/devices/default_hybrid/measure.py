@@ -225,14 +225,14 @@ def einsum(mp: StateMeasurement, state: TensorLike, is_state_batched: bool):
         case ExpectationMP(obs=obs):
             mat = build_fock_matrix(obs, wire_order, wire_dims)
             state = flatten_state(state, is_state_batched)
-            return math.expectation_value(mat, state)
+            return math.real(math.expectation_value(mat, state))
         case VarianceMP(obs=obs):
             # fixme: there's a more efficient way to do this reusing intermediate
             # products of O|psi>
             mat = build_fock_matrix(obs, wire_order, wire_dims)
             mat2 = math.linalg.matrix_power(mat, 2)
             state = flatten_state(state, is_state_batched)
-            return (
+            return math.real(
                 math.expectation_value(mat2, state)
                 - math.expectation_value(mat, state) ** 2
             )

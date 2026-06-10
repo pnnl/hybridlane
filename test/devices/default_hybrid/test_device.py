@@ -3,7 +3,7 @@
 import numpy as np
 import pennylane as qp
 import pytest
-from pennylane.exceptions import DecompositionWarning, DeviceError
+from pennylane.exceptions import DeviceError
 
 import hybridlane as hl
 from hybridlane.devices import DefaultHybrid

@@ -26,6 +26,8 @@ from pennylane.devices.preprocess import (
 )
 from pennylane.devices.qubit.sampling import jax_random_split
 from pennylane.exceptions import DeviceError
+from pennylane.gradients.parameter_shift import param_shift
+from pennylane.gradients.parameter_shift_cv import param_shift_cv
 from pennylane.logging import debug_logger, debug_logger_init
 from pennylane.math import Interface
 from pennylane.measurements.measurements import MeasurementProcess
@@ -268,7 +270,13 @@ class DefaultHybrid(Device):
             )
 
         gradient_method = config.gradient_method
-        if gradient_method not in {"backprop", "best", None}:
+        if gradient_method not in {
+            "backprop",
+            "best",
+            param_shift,
+            param_shift_cv,
+            None,
+        }:
             raise DeviceError(
                 f"Gradient method '{gradient_method}' is not supported by {self.name}."
             )
