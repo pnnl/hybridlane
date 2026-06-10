@@ -122,10 +122,10 @@ class QscoutIonTrap(Device):
     .. footbibliography::
     """
 
-    name = "Sandia Qscout Ion Trap"  # type: ignore
+    name = "Sandia Qscout Ion Trap"
     shortname = "qscout"
-    version = "0.2.0"
-    pennylane_requires = ">=0.44.0"
+    version = hl.__version__
+    pennylane_requires = ">=0.45.0"
     author = "PNNL"
 
     _max_qubits = 6
