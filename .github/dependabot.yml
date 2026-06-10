@@ -6,3 +6,12 @@ updates:
   directory: "/"
   schedule:
     interval: "weekly"
+  groups:
+      minor-and-patch:
+        patterns: 
+          - "*"
+        exclude-patterns:
+          - "pennylane*" # Always update pennylane separately
+        update-types:
+          - "minor"
+          - "patch"
