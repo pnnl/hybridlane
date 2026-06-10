@@ -10,6 +10,8 @@ from pennylane.math import Interface
 from pennylane.tape import QuantumScript
 from pennylane.typing import Result, TensorLike
 
+from hybridlane.devices.default_hybrid.sampled import measure_with_shots
+
 from ... import math
 from .apply_operation import apply_operation
 from .measure import measure
@@ -81,6 +83,7 @@ def measure_final_state(
     tape: QuantumScript,
     wire_dims: dict[Any, int],
     debugger=None,
+    rng: Any | None = None,
     prng_key: "Array | None" = None,
     **execution_kwargs,
 ) -> Result:
@@ -94,7 +97,19 @@ def measure_final_state(
 
         return results
 
-    raise NotImplementedError("Shot-based execution is not yet implemented.")
+    results = measure_with_shots(
+        tape.measurements,
+        state,
+        tape.shots,
+        is_state_batched,
+        rng=rng,
+        prng_key=prng_key,
+    )
+
+    if len(tape.measurements) == 1:
+        return results[0]
+
+    return results
 
 
 @debug_logger

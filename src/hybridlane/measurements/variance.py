@@ -50,18 +50,15 @@ class VarianceMP(SampleMeasurement, StateMeasurement):
         shot_range: tuple[int, ...] | None = None,
         bin_size: int | None = None,
     ) -> TensorLike | list[TensorLike]:
-        if samples.is_basis_states:
-            with qp.QueuingManager.stop_recording():
-                eigvals = SampleMP(
-                    self.obs, schema=None, eigvals=self._eigvals
-                ).process_samples(
-                    samples,
-                    wire_order=self.obs.wires,
-                    shot_range=shot_range,
-                    bin_size=bin_size,
-                )
-        else:
-            eigvals = samples.eigvals
+        with qp.QueuingManager.stop_recording():
+            eigvals = SampleMP(
+                self.obs, schema=None, eigvals=self._eigvals
+            ).process_samples(
+                samples,
+                wire_order=self.obs.wires,
+                shot_range=shot_range,
+                bin_size=bin_size,
+            )
 
         if isinstance(eigvals, list):
             return [qp.math.var(t) for t in eigvals]
@@ -70,19 +67,6 @@ class VarianceMP(SampleMeasurement, StateMeasurement):
 
     def process_counts(self, counts: CountsResult) -> TensorLike:
         raise NotImplementedError()
-
-        if counts.is_basis_states:
-            with qp.QueuingManager.stop_recording():
-                counts = SampleMP(
-                    self.obs, schema=None, eigvals=self._eigvals
-                ).process_counts(counts)
-
-        eigvals, occurences = list(zip(*counts.counts.items()))
-        eigvals = qp.math.array(eigvals)
-        occurences = qp.math.array(occurences)
-        p = occurences / counts.shots
-
-        return qp.math.dot(eigvals, p)
 
     def process_state(
         self,

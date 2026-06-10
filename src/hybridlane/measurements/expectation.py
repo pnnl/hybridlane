@@ -52,18 +52,15 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
         shot_range: tuple[int, ...] | None = None,
         bin_size: int | None = None,
     ) -> TensorLike | list[TensorLike]:
-        if samples.is_basis_states:
-            with qp.QueuingManager.stop_recording():
-                eigvals = SampleMP(
-                    self.obs, schema=None, eigvals=self._eigvals
-                ).process_samples(
-                    samples,
-                    wire_order=self.obs.wires,
-                    shot_range=shot_range,
-                    bin_size=bin_size,
-                )
-        else:
-            eigvals = samples.eigvals
+        with qp.QueuingManager.stop_recording():
+            eigvals = SampleMP(
+                self.obs, schema=None, eigvals=self._eigvals
+            ).process_samples(
+                samples,
+                wire_order=self.obs.wires,
+                shot_range=shot_range,
+                bin_size=bin_size,
+            )
 
         if isinstance(eigvals, list):
             return [math.mean(t) for t in eigvals]

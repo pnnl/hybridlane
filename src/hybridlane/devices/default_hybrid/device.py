@@ -9,12 +9,11 @@ from typing import Any, cast
 import numpy as np
 import pennylane as qp
 from pennylane import CompilePipeline
-from pennylane.concurrency.executors import RemoteExec
+from pennylane.concurrency.executors import RemoteExec, get_executor
 from pennylane.decomposition import GateSet
 from pennylane.devices.default_qubit import (
     _BASE_DQ_GATE_SET,
     ALL_DQ_GATES,
-    no_counts,
 )
 from pennylane.devices.device_api import Device, ExecutionConfig
 from pennylane.devices.modifiers import simulator_tracking, single_tape_support
@@ -34,6 +33,8 @@ from pennylane.measurements.measurements import MeasurementProcess
 from pennylane.operation import Operation, Operator
 from pennylane.ops.mid_measure.measurement_value import MeasurementValue
 from pennylane.ops.op_math.composite import CompositeOp
+from pennylane.ops.op_math.linear_combination import LinearCombination
+from pennylane.ops.op_math.sum import Sum
 from pennylane.ops.op_math.symbolicop import SymbolicOp
 from pennylane.tape import QuantumScript
 from pennylane.tape.qscript import QuantumScriptOrBatch
@@ -45,18 +46,19 @@ from pennylane.typing import PostprocessingFn, Result, ResultBatch
 from pennylane.wires import WiresLike
 
 import hybridlane as hl
-from hybridlane.decomposition.graph_decomposition import _
+from hybridlane.devices.default_hybrid.measure import is_diagonalizable
 from hybridlane.devices.preprocess import fill_wire_dims
 from hybridlane.measurements import (
     ComputationalBasis,
+    ExpectationMP,
     SampleMeasurement,
+    SampleMP,
     StateMeasurement,
 )
 from hybridlane.ops.mixins import FockRepresentation
 from hybridlane.transforms import from_pennylane
 
 from ... import math, sa
-from ...ops import attributes
 from .simulate import simulate
 
 _base_qubit_gates = _BASE_DQ_GATE_SET
@@ -160,32 +162,29 @@ def is_sampled_mp_supported(mp: MeasurementProcess) -> bool:
         return False
 
     if mp.obs is not None:
-        return is_sampled_observable_supported(mp.obs)
+        return is_sampled_observable_supported(
+            mp.obs, is_expval=isinstance(mp, ExpectationMP)
+        )
 
-    return True
+    # hl.sample() called with a schema
+    return all(mp.schema.get_basis(w) == ComputationalBasis.Discrete for w in mp.wires)
 
 
-def is_sampled_observable_supported(obs: Operator | MeasurementValue) -> bool:
+def is_sampled_observable_supported(
+    obs: Operator | MeasurementValue, is_expval: bool
+) -> bool:
     match obs:
-        case SymbolicOp(base=base_op):
-            return is_sampled_observable_supported(base_op)
-        case CompositeOp(operands=operands):
-            return all(map(is_sampled_observable_supported, operands))
         case MeasurementValue():
             return True
-        case _:
-            # We can only sample computational basis, so if the observable
-            # prefers the position basis, we can't do that. The schema class
-            # should be able to handle finite eigenvalues vs spectra, etc.
-            schema = sa.infer_schema_from_observable(obs)
-            for wire in schema.wires:
-                if schema.get_basis(wire) != ComputationalBasis.Discrete:
-                    return False
 
-            # We must also be able to diagonalize the observable
-            return (
-                obs.has_diagonalizing_gates or obs in attributes.diagonal_in_fock_basis
-            )
+        case Sum(operands=ops) | LinearCombination(operands=ops):
+            if is_expval:
+                return all(is_diagonalizable(op) for op in ops)
+
+            return len(ops) == 1 and is_diagonalizable(ops[0], is_expval)
+
+        case _:
+            return is_diagonalizable(obs)
 
 
 @simulator_tracking
@@ -245,7 +244,7 @@ class DefaultHybrid(Device):
             return not circuit.shots  # backprop incompatible with sampling
 
         # no adjoint support
-        return False
+        return execution_config.gradient_method in {param_shift, param_shift_cv, None}
 
     @debug_logger
     def setup_execution_config(
@@ -326,7 +325,7 @@ class DefaultHybrid(Device):
         target_gate_set = ALL_DH_GATES
 
         if config.interface == Interface.JAX_JIT:
-            pipeline.add_transform(no_counts)
+            pipeline.add_transform(no_sample)
 
         match config.mcm_config.mcm_method:  # ty:ignore[unresolved-attribute]
             case "deferred":
@@ -415,7 +414,9 @@ class DefaultHybrid(Device):
             )
             return tuple(starmap(_simulator, zip(remapped_circuits, wire_dims, kwargs)))
 
-        remapped_circuits = convert_to_numpy_parameters(remapped_circuits)[0]
+        remapped_circuits = tuple(
+            map(lambda tape: convert_to_numpy_parameters(tape)[0][0], remapped_circuits)
+        )
         rngs = self._rng.integers(2**31 - 1, size=len(circuits))
         kwargs = (
             {
@@ -428,7 +429,8 @@ class DefaultHybrid(Device):
         )
 
         assert execution_config.executor_backend is not None
-        with execution_config.executor_backend(max_workers=max_workers) as executor:  # ty:ignore[missing-argument]
+        backend = get_executor(execution_config.executor_backend)  # ty:ignore[invalid-argument-type]
+        with backend(max_workers=max_workers) as executor:
             executor = cast(RemoteExec, executor)
             results = tuple(
                 executor.map(_simulator, remapped_circuits, wire_dims, kwargs)
@@ -487,5 +489,14 @@ def _batching_is_unsupported(
                 "Operator batching is not supported, but operation"
                 f" {op} has batch size {op.batch_size}. Consider using `jax.vmap`"
             )
+
+    return (tape,), lambda x: x[0]
+
+
+@qp.transform
+def no_sample(tape: QuantumScript) -> tuple[QuantumScriptOrBatch, PostprocessingFn]:
+    for mp in tape.measurements:
+        if isinstance(mp, SampleMP):
+            raise DeviceError(f"`jax.jit` does not support {mp}")
 
     return (tape,), lambda x: x[0]

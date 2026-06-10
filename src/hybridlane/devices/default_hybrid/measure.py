@@ -95,26 +95,43 @@ def _(obs: ScalarSymbolicOp) -> bool:
 
 @singledispatch
 def diagonalize(
-    obs: Operator, wire_order: Wires, wire_dims: Mapping[Hashable, int]
-) -> tuple[TensorLike, Sequence[Operator]]:
+    obs: Operator,
+    wire_order: Wires | None = None,
+    wire_dims: Mapping[Hashable, int] | None = None,
+    return_evs: bool = True,
+) -> Sequence[Operator] | tuple[TensorLike, Sequence[Operator]]:
     """Computes the eigenvalues and diagonalizing gates for an observable
 
     This method fails if called on an observable that is not diagonalizable, so check
     with `is_diagonalizable` first.
     """
 
-    ev = math.cast(obs.eigvals(), dtype="float64")
     gates = obs.diagonalizing_gates()
+
+    if not return_evs:
+        return gates
+
+    assert wire_order is not None
+    assert wire_dims is not None
+    ev = math.cast(obs.eigvals(), dtype="float64")
     ev = _expand_eigvals(ev, obs.wires, wire_order, wire_dims)
     return ev, gates
 
 
 @diagonalize.register
 def diagonalize_spectral(
-    obs: Spectral, wire_order: Wires, wire_dims: Mapping[Hashable, int]
-) -> tuple[TensorLike, Sequence[Operator]]:
+    obs: Spectral,
+    wire_order: Wires | None = None,
+    wire_dims: Mapping[Hashable, int] | None = None,
+    return_evs: bool = True,
+):
+    if not return_evs:
+        return []
+
     assert isinstance(obs, CV)
     assert isinstance(obs, Operator)
+    assert wire_order is not None
+    assert wire_dims is not None
 
     obs_dims = tuple(wire_dims[w] for w in obs.wires)
     if len(obs.wires) == 1:
@@ -131,31 +148,50 @@ def diagonalize_spectral(
 
 @diagonalize.register
 def diagonalize_tensor_prod(
-    obs: Prod, wire_order: Wires, wire_dims: Mapping[Hashable, int]
-) -> tuple[TensorLike, Sequence[Operator]]:
+    obs: Prod,
+    wire_order: Wires | None = None,
+    wire_dims: Mapping[Hashable, int] | None = None,
+    return_evs: bool = True,
+):
+    if not return_evs:
+        gates = [diagonalize(op, return_evs=return_evs) for op in obs.operands]
+        return list(itertools.chain.from_iterable(gates))
+
+    assert wire_order is not None
+    assert wire_dims is not None
     evs_and_gates = [diagonalize(op, op.wires, wire_dims) for op in obs.operands]
     evs, gates = zip(*evs_and_gates)
+    gates = list(itertools.chain.from_iterable(gates))
     ev = reduce(math.kron, evs)
     wires = Wires.all_wires([op.wires for op in obs.operands])
     ev = _expand_eigvals(ev, wires, wire_order, wire_dims)
-
-    # Because it's a tensor product, this ordering doesn't matter
-    gates = list(itertools.chain.from_iterable(gates))
     return ev, gates
 
 
 @diagonalize.register
 def diagonalize_sprod(
-    obs: SProd, wire_order: Wires, wire_dims: Mapping[Hashable, int]
-) -> tuple[TensorLike, Sequence[Operator]]:
+    obs: SProd,
+    wire_order: Wires | None = None,
+    wire_dims: Mapping[Hashable, int] | None = None,
+    return_evs: bool = True,
+):
+    if not return_evs:
+        return diagonalize(obs.base, return_evs=return_evs)
+
     ev, gates = diagonalize(obs.base, wire_order, wire_dims)
     return math.asarray(obs.scalar, like=ev) * ev, gates
 
 
 @diagonalize.register
 def diagonalize_pow(
-    obs: Pow, wire_order: Wires, wire_dims: Mapping[Hashable, int]
-) -> tuple[TensorLike, Sequence[Operator]]:
+    obs: Pow,
+    wire_order: Wires | None = None,
+    wire_dims: Mapping[Hashable, int] | None = None,
+    return_evs: bool = True,
+):
+    if not return_evs:
+        return diagonalize(obs.base, return_evs=return_evs)
+
     ev, gates = diagonalize(obs.base, wire_order, wire_dims)
     return ev**obs.z, gates
 
@@ -201,7 +237,7 @@ def diagonalizing_gates(
 
     eigvals = None
     if mp.obs is not None:
-        eigvals, gates = diagonalize(mp.obs, wire_order, wire_dims)
+        eigvals, gates = diagonalize(mp.obs, wire_order, wire_dims, return_evs=True)
 
         for op in gates:
             state = apply_operation(op, state, is_state_batched)

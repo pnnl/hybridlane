@@ -532,9 +532,7 @@ def sampled_measurement(
             # The use of order "little" here means the bits are in order (1, 2, 4, ...)
             data = bitstrings.to_bool_array(order="little")
             fock_values = np.sum(data * factor, axis=-1).reshape(shots)
-            basis_states[wire] = fock_values.astype(
-                np.uint32
-            )  # this should be sufficient width
+            basis_states[wire] = fock_values.astype(int)
 
         # Qubit, just grab the relevant values
         else:
@@ -546,9 +544,9 @@ def sampled_measurement(
                 )
 
             bitstrings = qiskit_samples.slice_bits(index)
-            basis_states[wire] = bitstrings.array.reshape(shots)
+            basis_states[wire] = bitstrings.array.reshape(shots).astype(int)
 
-    sample_result = SampleResult(basis_states)
+    sample_result = SampleResult.from_basis_states(basis_states)
     return sample_result
 
 
