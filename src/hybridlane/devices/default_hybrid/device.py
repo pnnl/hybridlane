@@ -190,7 +190,112 @@ def is_sampled_observable_supported(
 @simulator_tracking
 @single_tape_support
 class DefaultHybrid(Device):
-    """A hybridlane device written in Python capable of backpropagation"""
+    """A hybridlane device written in Python capable of backpropagation
+
+
+    Args:
+        fock_level: The default truncation level for all qumodes.
+
+        wire_dims: A mapping from wires to their dimensions. Use this to provide non-uniform
+            truncation levels across qumodes. Note that only one of `fock_level` or
+            `wire_dims` may be specified.
+
+        max_workers: The maximum number of worker processes to use when executing multiple
+            circuits in parallel. If None, execution will be performed serially in the main
+            process.
+
+        seed: The seed for the random number generator. This can be an integer or a
+            ``jax.Array``. If "global", the seed will be drawn from the global random state
+            of numpy.
+
+    **Example**
+
+    .. code-block:: python
+
+        import pennylane as qp
+        import hybridlane as hl
+
+        def circuit(alpha):
+            qp.CatState(alpha, 0, 0, wires=0)
+
+            hl.D(alpha, 0, 0)  # |0> + |2α>
+            qp.H(1)
+            hl.SQR(np.pi, np.pi / 2, 0, wires=[1, 0])  # Ry(pi)|0><0|
+            qp.H(1)
+
+            return hl.expval(qp.Z(1))
+
+    >>> tape = qp.tape.make_qscript(circuit)(0.123)
+    >>> dev = DefaultHybrid(fock_level=8)
+    >>> program, execution_config = dev.preprocess()
+    >>> new_batch, postprocessing_fn = program([tape])
+    >>> results = dev.execute(new_batch, execution_config=execution_config)
+    >>> postprocessing_fn(results)
+    (np.float64(-0.970195190896443),)
+
+    This device supports backpropagation:
+
+    >>> from pennylane.devices import ExecutionConfig
+    >>> dev.supports_derivatives(ExecutionConfig(gradient_method="backprop"))
+    True
+
+    It is mostly compatible with Jax and can be used to take gradients
+
+    .. code-block:: python
+
+        import jax
+
+        def circuit(alpha):
+            hl.D(alpha, 0, wires=0)
+            return hl.expval(hl.X(0))
+
+        @jax.jit
+        def f(x):
+            tape = qp.tape.make_qscript(circuit)(x)
+            program, execution_config = dev.preprocess()
+            new_batch, postprocessing_fn = program([tape])
+            results = dev.execute(new_batch, execution_config=execution_config)
+            return postprocessing_fn(results)[0]
+
+    >>> f(jnp.array(0.123))
+    Array(0.1739, dtype=float64)
+    >>> jax.grad(f)(jnp.array(0.123))
+    Array(1.4142, dtype=float64, weak_type=True)
+
+    **Details**
+
+    This device performs dense statevector simulation in Fock space, and is therefore
+    unlikely to be scalable. However, it serves as a useful reference implementation for
+    testing and debugging, and also provides a template for how to implement a hybrid device
+    using the PennyLane device API.
+
+    **Supported measurements**
+
+    +-------------------+-------+---------+
+    | Measurement       | numpy | jax.jit |
+    +===================+=======+=========+
+    | expval (analytic) | ✅    | ✅      |
+    +-------------------+-------+---------+
+    | expval (finite)   | ✅    | ✅      |
+    +-------------------+-------+---------+
+    | var (analytic)    | ✅    | ✅      |
+    +-------------------+-------+---------+
+    | var (finite)      | ✅    | ✅      |
+    +-------------------+-------+---------+
+    | state             | ✅    | ✅      |
+    +-------------------+-------+---------+
+    | density_matrix    | ✅    | ✅      |
+    +-------------------+-------+---------+
+    | sample            | ✅    | ❌      |
+    +-------------------+-------+---------+
+
+    Currently the device does not support shot partitioning.
+
+    **Other limitations**
+
+    * Mid-circuit measurements aren't supported yet. `#51 <https://github.com/pnnl/hybridlane/issues/51>`_
+    * Operator batching isn't supported. If you want to batch operations, consider using ``jax.vmap``. `#52 <https://github.com/pnnl/hybridlane/issues/52>`_
+    """
 
     name = "default.hybrid"
     author = "PNNL"

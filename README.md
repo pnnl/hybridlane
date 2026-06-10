@@ -39,7 +39,7 @@ As quantum computing explores beyond traditional qubit-only models, `hybridlane`
 
 *   **🤝 PennyLane Compatibility:** A familiar interface for PennyLane users. Utilize existing PennyLane gates, build custom hybrid devices, write compilation passes, and perform resource estimation across mixed-variable systems.
 
-*   **💻 Classical Simulation:** A built-in device that dispatches to [Bosonic Qiskit](https://github.com/C2QA/bosonic-qiskit) for simulating small hybrid circuits.
+*   **💻 Classical Simulation:** Dispatch to our Jax-compatible simulator and take gradients using automatic differentiation, or use [Bosonic Qiskit](https://github.com/C2QA/bosonic-qiskit).
 
 *   **💾 OpenQASM-based IR:** An intermediate representation based on an extended OpenQASM, promoting interoperability and enabling advanced circuit manipulations.
 
@@ -70,8 +70,8 @@ import numpy as np
 import pennylane as qp
 import hybridlane as hl
 
-# Create a bosonic qiskit simulator with a custom Fock truncation
-dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+# Create a simulator with a custom Fock truncation
+dev = qp.device("default.hybrid", fock_level=8)
 
 # Define a hybrid circuit with familiar PennyLane syntax
 @qp.qnode(dev)
