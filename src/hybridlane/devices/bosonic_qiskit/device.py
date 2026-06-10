@@ -27,6 +27,8 @@ from pennylane.ops import CompositeOp, Prod, SymbolicOp
 from pennylane.tape import QuantumScript
 from pennylane.transforms.core import TransformProgram
 
+import hybridlane as hl
+
 from ... import sa, util
 from ...measurements import (
     CountsMP,
@@ -107,9 +109,10 @@ def is_sampled_observable_supported(o: Operator) -> bool:
 class BosonicQiskitDevice(Device):
     r"""Backend for Pennylane that executes hybrid CV-DV circuits in Bosonic Qiskit"""
 
-    name = "Bosonic Qiskit"  # type: ignore
+    name = "Bosonic Qiskit"
     shortname = "bosonic-qiskit"
-    version = "0.2.1"
+    version = hl.__version__
+    pennylane_requires = ">=0.45.0"
     author = "PNNL"
 
     _device_options = ("truncation", "hbar", "units")
