@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
+version: 2
+updates:
+- package-ecosystem: "uv"
+  directory: "/"
+  schedule:
+    interval: "weekly"
