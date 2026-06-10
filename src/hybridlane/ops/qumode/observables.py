@@ -317,10 +317,12 @@ class FockStateProjector(qp.FockStateProjector, Spectral, FockRepresentation):
         return []
 
     def fock_spectrum(self, *basis_states) -> Sequence[float]:
-        n = hl.math.reshape(self.data[0], (1, -1))
-        basis_states = hl.math.asarray(basis_states, like=n)
-        basis_states = hl.math.reshape(basis_states, (-1, len(self.wires)))
-        row_matches = hl.math.all(n == basis_states, axis=-1)
+        n = hl.math.reshape(self.data[0], (len(self.wires), -1))
+        basis_states = hl.math.asarray(basis_states, like=n)  # (w, n?)
+        basis_states = hl.math.reshape(
+            basis_states, (len(self.wires), -1)
+        )  # add n if necessary -> (w, n)
+        row_matches = hl.math.all(n == basis_states, axis=0)  # -> (n,)
         return row_matches + 0
 
     @staticmethod

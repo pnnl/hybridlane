@@ -248,9 +248,14 @@ class TestFockStateProjector:
         assert result == pytest.approx(expected)
 
         op = hl.FockStateProjector([1, 2], wires=[0, 1])
-        basis_states = hl.math.asarray([[0, 1], [1, 2], [3, 2]])
+        basis_states = hl.math.asarray(
+            [
+                [0, 0, 0, 1, 1, 1, 2, 2, 2],
+                [0, 1, 2, 0, 1, 2, 0, 1, 2],
+            ]
+        )
         result = op.fock_spectrum(basis_states)
-        expected = hl.math.asarray([0, 1, 0])
+        expected = [0, 0, 0, 0, 0, 1, 0, 0, 0]
         assert result == pytest.approx(expected)
 
     def test_fock_matrix(self):
