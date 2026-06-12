@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: Please cite our paper when using this software.
+preferred-citation:
+  authors:
+    - family-names: Furches
+      given-names: Jim
+    - family-names: Stavenger
+      given-names: Timothy J.
+    - family-names: Marrero
+      given-names: Carlos Ortiz
+  identifiers:
+    - type: url
+      value: https://arxiv.org/abs/2603.10919
+  title: >-
+    Hybridlane: A Software Development Kit for Hybrid Continuous-Discrete
+    Variable Quantum Computing
+  url: https://arxiv.org/abs/2603.10919
+  date-published: 2026-01-01
+  year: 2026
+  type: generic
