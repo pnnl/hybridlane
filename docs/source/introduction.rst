@@ -27,13 +27,13 @@ Defining a quantum circuit in Hybridlane follows the same format as Pennylane, a
     import pennylane as qp
     import hybridlane as hl
 
-    dev = qp.device('bosonicqiskit.hybrid', max_fock_level=8)
+    dev = qp.device('default.hybrid', fock_level=8)
 
     @qp.qnode(dev)
     def circuit(n):
         for j in range(n):
             qp.X(0)
-            hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+            hl.JC(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
 
         return hl.expval(hl.N(1))
 
@@ -62,9 +62,9 @@ This code imports both Pennylane (``qp``) to get access to its decorators and th
 
 .. code-block:: python
 
-    dev = qp.device('bosonicqiskit.hybrid', max_fock_level=8)
+    dev = qp.device('default.hybrid', fock_level=8)
 
-When simulating circuits in Pennylane, circuits are usually bound to devices. You must choose a device that supports the operations in your circuit, or you'll obtain an error (for example, using ``qp.Displacement`` gates with the ``default.qubit`` device). This line initializes the device registered with name ``bosonicqiskit.hybrid``, which calls the Bosonic Qiskit simulator.
+When simulating circuits in Pennylane, circuits are usually bound to devices. You must choose a device that supports the operations in your circuit, or you'll obtain an error (for example, using ``qp.Displacement`` gates with the ``default.qubit`` device). This line initializes the device registered with name ``default.hybrid``, the default hybridlane simulator.
 
 .. code-block:: python
 
@@ -72,7 +72,7 @@ When simulating circuits in Pennylane, circuits are usually bound to devices. Yo
     def circuit(n):
         for j in range(n):
             qp.X(0)
-            hl.JaynesCummings(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
+            hl.JC(np.pi / (2 * np.sqrt(j + 1)), np.pi / 2, [0, 1])
 
         return hl.expval(hl.N(1))
 
@@ -88,11 +88,11 @@ Within a circuit definition, you are free to use Python control flow, like loops
 
 - The hybrid qubit-qumode gate :math:`JC(\theta, \phi)` (``hl.JaynesCummings``) accepts two parameters and then acts on two wires (qumode ``1`` and qubit ``0``).
 
-In Hybridlane we use the convention that all qubits are listed before qumodes (more on that later).
+In hybridlane we use the convention that all qubits are listed before qumodes (more on that later).
 
 .. tip::
 
-    You can find the list of gates provided by Pennylane at :py:mod:`pennylane`. The extra hybrid gates implemented by Hybridlane are at :py:mod:`hybridlane`. Again, if a class or function is provided under both ``qp`` and ``hl`` (e.g. ``NumberOperator``, ``QuadX``, ``expval``), use the ``hl`` version.
+    You can find the list of gates provided by PennyLane at :py:mod:`pennylane`. The extra hybrid gates implemented by Hybridlane are at :py:mod:`hybridlane`. Again, if a class or function is provided under both ``qp`` and ``hl`` (e.g. ``NumberOperator``, ``QuadX``, ``expval``), use the ``hl`` version.
 
 
 Finally, the return statement determines what measurements our circuit will make. In this case, we obtain the expectation value of the photon number operator on the qumode, :math:`\braket{\hat{n}_1}`. Here, we use the Hybridlane functions ``hl.expval`` and ``hl.N``. Pennylane has its own versions, but we had to redefine them for additional functionality, so use our versions.
@@ -104,16 +104,16 @@ Phew that was a lot. But, up until this point (the last two lines), nothing has 
     n = 5
     result = circuit(n)
 
-These lines pass the parameter :math:`n = 5` to our circuit, meaning we will prepare the state :math:`\ket{0, 5}` and measure its photon number :math:`\braket{\hat{n}_1} = 5`. Behind the scenes, Pennylane records the operations in our circuit definition, constructs a ``QuantumTape`` object, sends it to the device ``hybrid.device``, and returns the result (that's all the "magic" hidden behind the ``@qp.qnode`` decorator).
+These lines pass the parameter :math:`n = 5` to our circuit, meaning we will prepare the state :math:`\ket{0, 5}` and measure its photon number :math:`\braket{\hat{n}_1} = 5`. Behind the scenes, Pennylane records the operations in our circuit definition, constructs a ``QuantumTape`` object, sends it to the device ``default.hybrid``, and returns the result (that's all the "magic" hidden behind the ``@qp.qnode`` decorator).
 
 .. tip::
 
-    At this point you might be wondering how Hybridlane determines which wires are qumodes and qubits in a circuit. The short answer is by inspecting the circuit structure and gate definitions, e.g. the wires of a qumode gate are inferred to be qumodes. This is why all our gates enforce the convention that qubits come before qumodes. Inference of the circuit structure is covered more in-depth in the :doc:`static-analysis` section.
+    At this point you might be wondering how hybridlane determines which wires are qumodes and qubits in a circuit. The short answer is by inspecting the circuit structure and gate definitions, e.g. the wires of a qumode gate are inferred to be qumodes. This is why all our gates enforce the convention that qubits come before qumodes. Inference of the circuit structure is covered more in-depth in the :doc:`static-analysis` section.
 
 Drawing the circuit
 -------------------
 
-Pennylane provides some utility methods for visualizing circuits, :py:func:`pennylane.draw` and :py:func:`pennylane.draw_mpl`, which (mostly) work on Hybridlane circuits.
+PennyLane provides some utility methods for visualizing circuits, :py:func:`pennylane.draw` and :py:func:`pennylane.draw_mpl`, which (mostly) work on Hybridlane circuits.
 
 .. code-block:: python
 

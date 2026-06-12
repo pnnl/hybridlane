@@ -18,6 +18,7 @@ from pennylane.ops.op_math import (
     SProd,
     SymbolicOp,
 )
+from pennylane.ops.op_math.condition import Conditional
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
 
@@ -101,6 +102,11 @@ def _(op: Controlled):
 @convert_operator.register
 def _(op: SymbolicOp):
     return op.__class__(convert_operator(op.base))
+
+
+@convert_operator.register
+def _(op: Conditional):
+    return op.__class__(op.hyperparameters["meas_val"], convert_operator(op.base))  # ty:ignore[invalid-argument-type]
 
 
 @convert_operator.register

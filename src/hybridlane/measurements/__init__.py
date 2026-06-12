@@ -12,9 +12,9 @@ from .base import (
 )
 from .counts import CountsMP
 from .expectation import ExpectationMP, expval
-from .probability import ProbabilityMP
+from .probability import ProbabilityMP, probs
 from .sample import SampleMP, sample
-from .state import state
+from .state import DensityMatrixMP, StateMP, density_matrix, state
 from .variance import VarianceMP, var
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "ComputationalBasis",
     "CountsMP",
     "CountsResult",
+    "DensityMatrixMP",
     "ExpectationMP",
     "FockTruncation",
     "ProbabilityMP",
@@ -30,10 +31,13 @@ __all__ = [
     "SampleResult",
     "StateMeasurement",
     "StateResult",
+    "StateMP",
     "Truncation",
     "VarianceMP",
+    "density_matrix",
     "expval",
     "var",
     "sample",
     "state",
+    "probs",
 ]

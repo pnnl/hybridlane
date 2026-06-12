@@ -49,12 +49,12 @@ class TestReduceStatevector:
 
         expected = math.outer(state0, state0)
         actual = f(state, indices=(0,), dims=(3, 2))
-        assert str(actual.dtype) == "complex128"
+        assert math.get_dtype_name(actual) == "complex128"
         assert actual == pytest.approx(expected)
 
         expected = math.outer(state1, state1)
         actual = f(state, indices=(1,), dims=(3, 2))
-        assert str(actual.dtype) == "complex128"
+        assert math.get_dtype_name(actual) == "complex128"
         assert actual == pytest.approx(expected)
 
         state0 = math.array([0, 1, 0], like=like)
@@ -63,7 +63,7 @@ class TestReduceStatevector:
 
         expected = math.outer(state, state)
         actual = f(state, indices=(0, 1), dims=(3, 2))
-        assert str(actual.dtype) == "complex128"
+        assert math.get_dtype_name(actual) == "complex128"
         assert actual == pytest.approx(expected)
 
 
@@ -120,14 +120,14 @@ class TestReduceDensityMatrix:
 
         expected = math.outer(state0, state0)
         actual = f(rho, indices=(0,), dims=(3, 2))
-        assert str(actual.dtype) == "complex128"
+        assert math.get_dtype_name(actual) == "complex128"
         assert actual == pytest.approx(expected)
 
         expected = math.outer(state1, state1)
         actual = f(rho, indices=(1,), dims=(3, 2))
-        assert str(actual.dtype) == "complex128"
+        assert math.get_dtype_name(actual) == "complex128"
         assert actual == pytest.approx(expected)
 
         actual = f(rho, indices=(0, 1), dims=(3, 2))
-        assert str(actual.dtype) == "complex128"
+        assert math.get_dtype_name(actual) == "complex128"
         assert actual == pytest.approx(rho)

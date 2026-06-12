@@ -10,17 +10,25 @@ build-docs: test-docs
     @cd docs && uv run make html
 
 test-all:
-    @uv sync --all-extras --all-groups && uv pip install jax torch --torch-backend=cpu
+    @uv sync --all-extras --all-groups && uv pip install torch --torch-backend=cpu
     @uv run pytest
 
 test-docs:
-    @uv sync --all-extras --all-groups && uv pip install jax torch --torch-backend=cpu
+    @uv sync --all-extras --all-groups && uv pip install torch --torch-backend=cpu
     @uv run pytest -m "docs"
 
 test-core-tensorlibs:
-    @uv sync --all-groups && uv pip install jax torch --torch-backend=cpu
+    @uv sync --all-groups && uv pip install torch --torch-backend=cpu
     @uv run pytest -m "not (bq or slow or docs)"
 
 test-core:
     @uv sync --all-groups
-    @uv run pytest -m "not (bq or slow or docs or jax)"
+    @uv run pytest -m "not (bq or slow or docs or jax or torch)"
+
+codecov-core:
+    @uv sync --all-groups
+    @uv run pytest -m "not (bq or slow or docs or jax or torch)" --cov=hybridlane --cov-report=html --cov-report=term-missing
+
+codecov:
+    @uv sync --all-groups --all-extras && uv pip install torch --torch-backend=cpu
+    @uv run pytest --cov=hybridlane --cov-report=html --cov-report=term-missing

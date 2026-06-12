@@ -5,7 +5,6 @@ from __future__ import annotations
 import functools
 import math
 import warnings
-from typing import Callable
 
 import bosonic_qiskit as bq
 import numpy as np
@@ -19,7 +18,6 @@ from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 from qiskit.primitives import BitArray
 from qiskit.quantum_info import Statevector
-from qiskit.result import Result as QiskitResult
 from scipy import sparse as sp
 from scipy.linalg import expm, fractional_matrix_power
 from scipy.sparse import SparseEfficiencyWarning, csc_array
@@ -29,12 +27,14 @@ import hybridlane as hl
 
 from ... import sa, util
 from ...measurements import (
+    DensityMatrixMP,
     ExpectationMP,
     FockTruncation,
     ProbabilityMP,
     SampleMeasurement,
     SampleResult,
     StateMeasurement,
+    StateMP,
     VarianceMP,
 )
 from ...ops.mixins import Hybrid
@@ -51,11 +51,17 @@ bq.operators.SPLUS[:] = bq.operators.SPLUS.T
 
 
 def simulate(
-    tape: QuantumScript, truncation: FockTruncation, *, hbar: float
+    tape: QuantumScript,
+    truncation: FockTruncation,
+    *,
+    hbar: float,
+    fast_transpilation: bool = True,
 ) -> tuple[np.ndarray]:
     warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
 
-    qc, regmapper = make_cv_circuit(tape, truncation)
+    qc, regmapper = make_cv_circuit(
+        tape, truncation, fast_transpilation=fast_transpilation
+    )
 
     if tape.shots and not len(tape.shots.shot_vector) == 1:
         raise NotImplementedError("Complex shot batching is not yet supported")
@@ -75,10 +81,10 @@ def simulate(
     # Analytic measurements
     else:
         # Compute state once and reuse across measurements to reduce simulation time
-        state, result, _ = bq.util.simulate(qc, shots=None, return_fockcounts=False)
+        state, *_ = bq.util.simulate(qc, shots=None, return_fockcounts=False)
         for m in tape.measurements:
             assert isinstance(m, StateMeasurement)
-            results.append(analytic_measurement(m, state, result, regmapper, hbar=hbar))
+            results.append(analytic_measurement(m, state, regmapper, hbar=hbar))
 
     if len(tape.measurements) == 1:
         return results[0]
@@ -86,56 +92,79 @@ def simulate(
     return tuple(results)
 
 
-def analytic_expval(
-    state: Statevector, result: QiskitResult, obs: np.ndarray
+@functools.singledispatch
+def analytic_measurement(
+    mp: StateMeasurement,
+    state: Statevector,
+    regmapper: RegisterMapping,
+    *,
+    hbar: float,
 ) -> np.ndarray:
+    raise NotImplementedError(
+        f"Unsupported measurement type {type(mp)}. This likely means we forgot to add it to the analytic_measurement_map."
+    )
+
+
+@analytic_measurement.register
+def analytic_expval(
+    mp: ExpectationMP,
+    state: Statevector,
+    regmapper: RegisterMapping,
+    *,
+    hbar: float,
+) -> np.ndarray:
+    obs = get_observable_matrix(mp.obs, regmapper, hbar=hbar)
     return hl.math.expectation_value(obs, state.data)
 
 
+@analytic_measurement.register
 def analytic_var(
-    state: Statevector, result: QiskitResult, obs: np.ndarray
+    mp: VarianceMP,
+    state: Statevector,
+    regmapper: RegisterMapping,
+    *,
+    hbar: float,
 ) -> np.ndarray:
+    obs = get_observable_matrix(mp.obs, regmapper, hbar=hbar)
     exp = hl.math.expectation_value(obs, state.data)
     exp2 = hl.math.expectation_value(obs @ obs, state.data)
     var = exp2 - exp**2
     return var
 
 
+@analytic_measurement.register
 def analytic_probs(
-    state: Statevector, result: QiskitResult, obs: np.ndarray | None = None
-) -> np.ndarray:
-    # todo: somehow we need to take the statevector of 2^{num_qubits} and reshape/process it to
-    # have shape (d1, ..., dn) with di being the dimension of system i. Then we'll also need to
-    # move the wires around to match the original quantumtape/basis schema wire ordering
-
-    # probs = state.probabilities()
-
-    raise NotImplementedError()
-
-
-def analytic_state(
-    state: Statevector,
-    result: QiskitResult,
-    obs: np.ndarray,
-    regmapper: RegisterMapping,
+    mp: ProbabilityMP, state: Statevector, regmapper: RegisterMapping, **_
 ) -> np.ndarray:
     bq_wires = regmapper.wire_order[::-1]  # inverted for qiskit ordering
     wire_order = tuple(range(len(bq_wires)))
-    wire_dims = {w: regmapper.truncation.dim(w) for w in regmapper.wire_order}
-    out_vector = hl.math.expand_vector(
-        state.data, bq_wires, wire_order=wire_order, wire_dims=wire_dims
-    )
-    return out_vector
+    wire_dims = {w: regmapper.truncation.dim(w) for w in bq_wires}
+    with qp.QueuingManager.stop_recording():
+        return ProbabilityMP(wire_order).process_state(
+            state.data, wire_order=bq_wires, wire_dims=wire_dims
+        )
 
 
-analytic_measurement_map: dict[
-    type[SampleMeasurement],
-    Callable[[Statevector, QiskitResult, np.ndarray], np.ndarray],
-] = {
-    ExpectationMP: analytic_expval,
-    VarianceMP: analytic_var,
-    ProbabilityMP: analytic_probs,
-}
+@analytic_measurement.register
+def analytic_state(
+    mp: StateMP, state: Statevector, regmapper: RegisterMapping, **_
+) -> np.ndarray:
+    bq_wires = regmapper.wire_order[::-1]  # inverted for qiskit ordering
+    wire_order = Wires(range(len(bq_wires)))
+    wire_dims = {w: regmapper.truncation.dim(w) for w in bq_wires}
+    with qp.QueuingManager.stop_recording():
+        return StateMP(wire_order).process_state(
+            state.data, wire_order=bq_wires, wire_dims=wire_dims
+        )
+
+
+@analytic_measurement.register
+def analytic_dm(
+    mp: DensityMatrixMP, state: Statevector, regmapper: RegisterMapping, **_
+) -> np.ndarray:
+    bq_wires = regmapper.wire_order[::-1]  # inverted for qiskit ordering
+    wire_dims = {w: regmapper.truncation.dim(w) for w in bq_wires}
+    return mp.process_state(state.data, wire_order=bq_wires, wire_dims=wire_dims)
 
 
 def get_sparse_observable_matrix(
@@ -238,7 +267,7 @@ def get_observable_matrix(
 
 
 def make_cv_circuit(
-    tape: QuantumScript, truncation: FockTruncation
+    tape: QuantumScript, truncation: FockTruncation, fast_transpilation: bool = True
 ) -> tuple[bq.CVCircuit, RegisterMapping]:
     res = sa.analyze(tape)
 
@@ -255,7 +284,9 @@ def make_cv_circuit(
                 f"Only Fock powers of 2 are currently supported on this device, got {dim} on wire {wire} (log2: {qubits})"
             )
 
-    qc = bq.CVCircuit(*regmapper.regs)
+    qc = bq.CVCircuit(
+        *regmapper.regs, force_parameterized_unitary_gate=not fast_transpilation
+    )
     for op in tape.operations:
         # Validate that we have actual values in the parameters
         for p in op.parameters:
@@ -461,26 +492,6 @@ def pad_statevector_to_truncation(
     return state
 
 
-def analytic_measurement(
-    m: StateMeasurement,
-    state: Statevector,
-    result: QiskitResult,
-    regmapper: RegisterMapping,
-    *,
-    hbar: float,
-):
-    obs = (
-        get_observable_matrix(m.obs, regmapper, hbar=hbar)
-        if m.obs is not None
-        else None
-    )
-    return (
-        analytic_measurement_map.get(type(m))(state, result, obs)
-        if type(m) in analytic_measurement_map
-        else analytic_state(state, result, obs, regmapper)
-    )
-
-
 def sampled_measurement(
     m: SampleMeasurement,
     qc: bq.CVCircuit,
@@ -521,9 +532,7 @@ def sampled_measurement(
             # The use of order "little" here means the bits are in order (1, 2, 4, ...)
             data = bitstrings.to_bool_array(order="little")
             fock_values = np.sum(data * factor, axis=-1).reshape(shots)
-            basis_states[wire] = fock_values.astype(
-                np.uint32
-            )  # this should be sufficient width
+            basis_states[wire] = fock_values.astype(int)
 
         # Qubit, just grab the relevant values
         else:
@@ -535,9 +544,9 @@ def sampled_measurement(
                 )
 
             bitstrings = qiskit_samples.slice_bits(index)
-            basis_states[wire] = bitstrings.array.reshape(shots)
+            basis_states[wire] = bitstrings.array.reshape(shots).astype(int)
 
-    sample_result = SampleResult(basis_states)
+    sample_result = SampleResult.from_basis_states(basis_states)
     return sample_result
 
 

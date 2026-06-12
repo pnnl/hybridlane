@@ -8,6 +8,7 @@ import pytest
 from pennylane.measurements import SampleMP as OldSampleMP
 from pennylane.wires import Wires
 
+import hybridlane as hl
 from hybridlane.measurements.base import (
     SampleResult,
 )
@@ -39,96 +40,56 @@ class TestSampleMP:
         samples = Mock()
         assert mp.process_samples(samples, wire_order=Wires([0, 1])) is samples
 
-    def test_process_samples_value_error(self):
-        """Test that process_samples raises ValueError if eigenvalues are provided."""
-        mp = SampleMP(obs=qp.PauliX(0))
-        samples = Mock(is_basis_states=False)
-        with pytest.raises(ValueError, match="Already provided eigenvalues"):
-            mp.process_samples(samples, wire_order=Wires(0))
-
-    @pytest.mark.parametrize(
-        "obs, expected",
-        [
-            (qp.PauliX(0), False),
-            (QuadX(0), True),
-            (qp.prod(QuadX(0), qp.PauliZ(1)), True),
-            (qp.prod(qp.PauliX(0), qp.PauliZ(1)), False),
-            (NumberOperator(0), True),
-        ],
-    )
-    def test_has_spectral_part(self, obs, expected):
-        """Test the _has_spectral_part method."""
-        mp = SampleMP(obs)
-        assert mp._has_spectral_part(obs) == expected
-
-    def test_sample_observable_prod(self):
+    @pytest.mark.all_interfaces
+    def test_sample_observable_prod(self, like):
         """Test _sample_observable with a qp.Prod."""
 
         prod_obs = qp.prod(qp.PauliZ(0), QuadX(1))
         mp = SampleMP(obs=prod_obs)
 
-        z = np.array([0, 1, 1, 0])
-        x = np.array([0, 1.7, -3.14, -0.0005])
-        result = SampleResult(
-            {0: z, 1: x},  # type: ignore
-            schema=BasisSchema(
-                {
-                    Wires(0): ComputationalBasis.Discrete,
-                    Wires(1): ComputationalBasis.Position,
-                }
-            ),
-        )
+        z = hl.math.array([0, 1, 1, 0], like=like)
+        x = hl.math.array([0, 1.7, -3.14, -0.0005], like=like)
+        result = SampleResult.from_basis_states({0: z, 1: x})
 
         eigvals = mp._sample_observable(prod_obs, result)
         expected_eigvals = (1 - 2 * z) * x
-        assert np.array_equal(eigvals, expected_eigvals)
+        assert hl.math.get_interface(eigvals) == like
+        assert hl.math.array_equal(eigvals, expected_eigvals)
 
-    def test_sample_observable_sprod(self):
+    @pytest.mark.all_interfaces
+    def test_sample_observable_sprod(self, like):
         """Test _sample_observable with a qp.SProd."""
         coeff = 2.5
         prod_obs = qp.prod(qp.PauliZ(0), QuadX(1))
         sprod_obs = qp.s_prod(coeff, prod_obs)
         mp = SampleMP(obs=sprod_obs)
 
-        z = np.array([0, 1, 1, 0])
-        x = np.array([0, 1.7, -3.14, -0.0005])
-        result = SampleResult(
-            {0: z, 1: x},  # type: ignore
-            schema=BasisSchema(
-                {
-                    Wires(0): ComputationalBasis.Discrete,
-                    Wires(1): ComputationalBasis.Position,
-                }
-            ),
-        )
+        z = hl.math.array([0, 1, 1, 0], like=like)
+        x = hl.math.array([0, 1.7, -3.14, -0.0005], like=like)
+        result = SampleResult.from_basis_states({0: z, 1: x})
 
         eigvals = mp._sample_observable(sprod_obs, result)
         expected_eigvals = coeff * (1 - 2 * z) * x
-        assert np.array_equal(eigvals, expected_eigvals)
+        assert hl.math.get_interface(eigvals) == like
+        assert hl.math.array_equal(eigvals, expected_eigvals)
 
-    def test_sample_observable_pow(self):
+    @pytest.mark.all_interfaces
+    def test_sample_observable_pow(self, like):
         """Test _sample_observable with a qp.Pow."""
         power = 2
         prod_obs = qp.prod(qp.PauliZ(0), QuadX(1))
         pow_obs = qp.pow(prod_obs, power)
         mp = SampleMP(obs=pow_obs)
 
-        z = np.array([0, 1, 1, 0])
-        x = np.array([0, 1.7, -3.14, -0.0005])
-        result = SampleResult(
-            {0: z, 1: x},  # type: ignore
-            schema=BasisSchema(
-                {
-                    Wires(0): ComputationalBasis.Discrete,
-                    Wires(1): ComputationalBasis.Position,
-                }
-            ),
-        )
+        z = hl.math.array([0, 1, 1, 0], like=like)
+        x = hl.math.array([0, 1.7, -3.14, -0.0005], like=like)
+        result = SampleResult.from_basis_states({0: z, 1: x})
 
         eigvals = mp._sample_observable(pow_obs, result)
         base_eigvals = (1 - 2 * z) * x
         expected_eigvals = base_eigvals**power
-        assert np.array_equal(eigvals, expected_eigvals)
+        assert hl.math.get_interface(eigvals) == like
+        assert hl.math.array_equal(eigvals, expected_eigvals)
 
     def test_sample_observable_has_spectrum_value_error_not_diagonal(self):
         """Test _sample_observable with HasSpectrum raises ValueError if not diagonal."""
@@ -144,15 +105,21 @@ class TestSampleMP:
         with pytest.raises(ValueError, match="This observable is not diagonal"):
             mp._sample_observable(obs, result)
 
-    def test_sample_observable_regular_operator(self):
+    @pytest.mark.all_interfaces
+    def test_sample_observable_regular_operator(self, like):
         """Test _sample_observable with a regular PennyLane operator."""
         obs = qp.PauliX(0)
         mp = SampleMP(obs=obs)
-        samples = SampleResult({0: np.array([[1], [0]])})
+        samples = SampleResult.from_basis_states(
+            {0: hl.math.array([[1], [0]], like=like)}
+        )
 
         with patch.object(
-            OldSampleMP, "process_samples", return_value=np.array([-1, 1])
+            OldSampleMP,
+            "process_samples",
+            return_value=hl.math.array([-1, 1], like=like),
         ) as mock_process:
             eigvals = mp._sample_observable(obs, samples)
-            assert np.array_equal(eigvals, np.array([-1, 1]))
+            assert hl.math.get_interface(eigvals) == like
+            assert hl.math.array_equal(eigvals, [-1, 1])
             mock_process.assert_called_once()

@@ -11,7 +11,7 @@ readme = "README.md"
 license = "BSD-2-Clause"
 license-files = ["LICENSE.txt", "DISCLAIMER.txt"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 3 - Beta",
 
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -45,6 +45,7 @@ qscout = [
 ]
 
 [project.entry-points."pennylane.plugins"]
+"default.hybrid" = "hybridlane.devices:DefaultHybrid"
 "bosonicqiskit.hybrid" = "hybridlane.devices:BosonicQiskitDevice"
 "sandiaqscout.hybrid" = "hybridlane.devices:QscoutIonTrap"
 
@@ -54,7 +55,9 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "jax>=0.10.1",
     "openqasm3[parser]>=1.0.1",
+    "optax>=0.2.8",
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
     "ruff>=0.12.0",

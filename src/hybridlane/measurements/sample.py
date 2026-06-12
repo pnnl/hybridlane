@@ -12,7 +12,6 @@ from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
 from ..ops import attributes
-from ..ops.mixins import Spectral
 from ..sa import BasisSchema, ComputationalBasis
 from .base import CountsResult, SampleMeasurement, SampleResult
 
@@ -66,10 +65,6 @@ class SampleMP(SampleMeasurement):
         if self.obs is None:
             return samples
 
-        # If we make it here, our observable has a CV (spectral) component
-        if not samples.is_basis_states:
-            raise ValueError("Already provided eigenvalues")
-
         eigvals = self._sample_observable(self.obs, samples)
         return eigvals
 
@@ -77,22 +72,7 @@ class SampleMP(SampleMeasurement):
         # todo:
         raise NotImplementedError("Unclear how to bin potentially real eigenvalues")
 
-    def _has_spectral_part(self, obs: Operator):
-        if obs.pauli_rep is not None:
-            return False
-
-        if isinstance(obs, Spectral):
-            return True
-
-        if isinstance(obs, Prod):
-            if any(isinstance(o, Spectral) for o in obs.operands):
-                return True
-
-        return False
-
-    def _sample_observable(
-        self, obs: Operator | Prod | SProd, result: SampleResult
-    ) -> TensorLike:
+    def _sample_observable(self, obs: Operator, result: SampleResult) -> TensorLike:
         r"""Samples the eigenvalues of an observable
 
         Args:
@@ -124,10 +104,7 @@ class SampleMP(SampleMeasurement):
         # of O.
         elif isinstance(obs, Prod):
             tensors = [self._sample_observable(o, result) for o in obs.operands]
-
-            # Most tensor libraries define * as elementwise multiplication. If this somehow is interpreted
-            # as matmul or dot, that might become an issue
-            return reduce(lambda x, y: x * y, tensors)
+            return reduce(qp.math.multiply, tensors)
 
         # For CV operators where we defined the infinite-spectrum functions in position or fock basis,
         # use those to convert the basis states to eigenvalues

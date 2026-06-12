@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-import numpy as np
 import pytest
+from pennylane.exceptions import MeasurementShapeError
 from pennylane.wires import Wires
 
+import hybridlane as hl
 from hybridlane.measurements import (
     CountsResult,
     FockTruncation,
@@ -49,32 +50,57 @@ class TestBasisSchema:
 
 
 @pytest.mark.unit
+@pytest.mark.all_interfaces
 class TestSampleResult:
-    def test_init_basis_states(self):
-        basis_states = {"a": np.array([1, 0]), "b": np.array([0, 1])}
-        result = SampleResult(basis_states=basis_states)
-        assert result.is_basis_states
-        assert not result.is_eigvals
+    def test_init_basis_states(self, like):
+        basis_states = {
+            "a": hl.math.array([1, 0], like=like),
+            "b": hl.math.array([0, 1], like=like),
+        }
+        result = SampleResult.from_basis_states(basis_states)
         assert result.shots == 2
 
-    def test_init_eigvals(self):
-        eigvals = np.array([1.0, -1.0])
-        result = SampleResult(eigvals=eigvals)
-        assert not result.is_basis_states
-        assert result.is_eigvals
+    def test_batch_dim(self, like):
+        basis_states = {
+            0: hl.math.array([[1, 0]], like=like),
+            1: hl.math.array([[0, 1]], like=like),
+        }
+        result = SampleResult.from_basis_states(basis_states)
         assert result.shots == 2
+        assert result.batch_size == 1
 
-    def test_init_error(self):
-        with pytest.raises(ValueError):
-            SampleResult()
+    def test_batch_dim_mismatch(self, like):
+        basis_states = {
+            0: hl.math.array([[1, 0]], like=like),
+            1: hl.math.array([[0, 1], [1, 0]], like=like),
+        }
 
-    def test_concatenate(self):
-        basis_states1 = {"a": np.array([1]), "b": np.array([0])}
-        result1 = SampleResult(basis_states=basis_states1)
-        basis_states2 = {"a": np.array([0]), "b": np.array([1])}
-        result2 = SampleResult(basis_states=basis_states2)
+        with pytest.raises(MeasurementShapeError):
+            SampleResult.from_basis_states(basis_states)
+
+    def test_shot_mismatch(self, like):
+        basis_states = {
+            0: hl.math.array([1, 0], like=like),
+            1: hl.math.array([0, 1, 1], like=like),
+        }
+
+        with pytest.raises(MeasurementShapeError):
+            SampleResult.from_basis_states(basis_states)
+
+    def test_concatenate(self, like):
+        basis_states1 = {
+            "a": hl.math.array([1], like=like),
+            "b": hl.math.array([0], like=like),
+        }
+        result1 = SampleResult.from_basis_states(basis_states1)
+        basis_states2 = {
+            "a": hl.math.array([0], like=like),
+            "b": hl.math.array([1], like=like),
+        }
+        result2 = SampleResult.from_basis_states(basis_states2)
         result3 = result1.concatenate(result2)
         assert result3.shots == 2
+        assert result3.batch_size is None
 
 
 @pytest.mark.unit
