@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
 from collections.abc import Sequence
-from functools import reduce
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
