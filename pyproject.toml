@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 [project]
 name = "hybridlane"
-version = "0.7.0a1"
+version = "0.8.0"
 authors = [
     {name = "Jim Furches", email = "james.furches@pnnl.gov"}
 ]
@@ -11,7 +11,7 @@ readme = "README.md"
 license = "BSD-2-Clause"
 license-files = ["LICENSE.txt", "DISCLAIMER.txt"]
 classifiers = [
-    "Development Status :: 3 - Beta",
+    "Development Status :: 4 - Beta",
 
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
