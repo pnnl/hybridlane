@@ -85,6 +85,7 @@ def measure_final_state(
     debugger=None,
     rng: Any | None = None,
     prng_key: "Array | None" = None,
+    wire_map: dict[Any, Any] | None = None,
     **execution_kwargs,
 ) -> Result:
     if not tape.shots:
@@ -104,6 +105,7 @@ def measure_final_state(
         is_state_batched,
         rng=rng,
         prng_key=prng_key,
+        wire_map=wire_map,
     )
 
     if len(tape.measurements) == 1:
