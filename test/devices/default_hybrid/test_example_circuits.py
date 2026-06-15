@@ -4,6 +4,7 @@ import jax
 import numpy as np
 import pennylane as qp
 import pytest
+from pennylane.wires import Wires
 
 import hybridlane as hl
 from hybridlane.devices.default_hybrid.state_prep import coherent_state
@@ -343,3 +344,29 @@ class TestFiniteCircuits:
         assert hl.math.get_dtype_name(expval) == "float64"
         assert expval.shape == ()
         expval == pytest.approx(0.1 * lam, abs=0.1)
+
+    def test_sample_preserves_wire_labels(self, like):
+        fock_levels = 32
+
+        dev = qp.device("default.hybrid", fock_level=fock_levels, seed=42)
+
+        @qp.set_shots(10)
+        @qp.qnode(dev, interface=like)
+        def circuit():
+            qp.FockState(4, "b")
+            qp.X("a")
+
+            schema = BasisSchema({Wires(["a", "b"]): ComputationalBasis.Discrete})
+            return hl.sample(schema=schema)
+
+        if like == "jax":
+            pytest.xfail(reason="JAX jit doesn't work with sample yet")
+
+        result = circuit()
+
+        assert isinstance(result, SampleResult)
+        assert hl.math.get_deep_interface(result.data) == like
+        assert set(result.data.keys()) == {"a", "b"}
+
+        assert result.data["a"] == pytest.approx(1)
+        assert result.data["b"] == pytest.approx(4)

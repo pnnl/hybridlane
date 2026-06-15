@@ -504,6 +504,7 @@ class DefaultHybrid(Device):
         self._prng_key, *prng_keys = jax_random_split(self._prng_key, len(circuits) + 1)
 
         # Get the concrete wire_dims by performing type inference
+        wire_maps = list(map(lambda t: t._get_standard_wire_map(), circuits))
         wire_dims = list(map(lambda t: _get_wire_dims(t, execution_config), circuits))
         remapped_circuits = map(QuantumScript.map_to_standard_wires, circuits)
 
@@ -514,8 +515,9 @@ class DefaultHybrid(Device):
                     "prng_key": prng_key,
                     "interface": execution_config.interface,
                     "debugger": self._debugger,
+                    "wire_map": wire_map,
                 }
-                for prng_key in prng_keys
+                for prng_key, wire_map in zip(prng_keys, wire_maps)
             )
             return tuple(starmap(_simulator, zip(remapped_circuits, wire_dims, kwargs)))
 
@@ -529,8 +531,9 @@ class DefaultHybrid(Device):
                 "prng_key": prng_key,
                 "interface": execution_config.interface,
                 "debugger": self._debugger,
+                "wire_map": wire_map,
             }
-            for rng, prng_key in zip(rngs, prng_keys)
+            for rng, prng_key, wire_map in zip(rngs, prng_keys, wire_maps)
         )
 
         assert execution_config.executor_backend is not None

@@ -20,6 +20,7 @@ from hybridlane.measurements import (
     ExpectationMP,
     ProbabilityMP,
     SampleMeasurement,
+    SampleMP,
     SampleResult,
 )
 
@@ -36,6 +37,7 @@ def measure_with_shots(
     is_state_batched: bool,
     rng: Any | None = None,
     prng_key: "Array | None" = None,
+    wire_map: dict | None = None,
     mid_measurements: dict | None = None,
 ) -> list[TensorLike]:
 
@@ -49,7 +51,15 @@ def measure_with_shots(
 
         prng_key, key = jax_random_split(prng_key)
         results.extend(
-            measurement_func(mp, state, shots, is_state_batched, rng=rng, prng_key=key)  # ty:ignore[invalid-argument-type]
+            measurement_func(
+                mp,
+                state,
+                shots,
+                is_state_batched,
+                rng=rng,
+                prng_key=key,
+                wire_map=wire_map,
+            )  # ty:ignore[invalid-argument-type]
         )
 
     return results
@@ -62,6 +72,7 @@ def measure_with_diagonalizing_gates(
     is_state_batched: bool,
     rng: Any | None = None,
     prng_key: "Array | None" = None,
+    wire_map: dict | None = None,
 ) -> list[TensorLike]:
     num_wires = math.ndim(state) - is_state_batched
     wire_order = Wires(range(num_wires))
@@ -77,7 +88,22 @@ def measure_with_diagonalizing_gates(
         for w, arr in zip(mp.wires, math.unstack(basis_states, axis=-1))
     }
     result = SampleResult.from_basis_states(data)
-    return [mp.process_samples(result, wire_order)]
+    result = mp.process_samples(result, wire_order)
+
+    # Sampling wires, remap to original circuit wire labels
+    if isinstance(mp, SampleMP) and mp.obs is None:
+        if wire_map is not None:
+            rev_wire_map = {v: k for k, v in wire_map.items()}
+            new_data = {rev_wire_map.get(w, w): arr for w, arr in result.data.items()}
+            new_schema = BasisSchema(
+                {
+                    rev_wire_map.get(w, w): result.schema.get_basis(w)
+                    for w in result.schema.wires
+                }
+            )
+            result = SampleResult(schema=new_schema, data=new_data)
+
+    return [result]  # ty:ignore[invalid-return-type]
 
 
 def measure_hamiltonian(
@@ -87,6 +113,7 @@ def measure_hamiltonian(
     is_state_batched: bool,
     rng: Any | None = None,
     prng_key: "Array | None" = None,
+    wire_map: dict | None = None,
 ) -> list[TensorLike]:
     obs = mp.obs
     assert isinstance(obs, (Sum, LinearCombination))
