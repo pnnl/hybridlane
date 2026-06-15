@@ -12,6 +12,25 @@ import hybridlane as hl
 
 
 def qcond(op: Operator | Callable, control_wires: WiresLike):
+    r"""Creates a qubit-conditioned operator
+
+    For a unitary gate, this is the symbolic map :math:`e^{-i\theta G} \mapsto
+    e^{-i\theta G \otimes_q Z_q}` where :math:`q` enumerates the qubit control wires. For a
+    general callable, this creates a wrapper that applies the function and then applies the
+    qubit-conditioned version of all operators in the resulting tape.
+
+    **Example**
+
+    >>> hl.qcond(hl.D(0.123, 0, wires="m"), control_wires="q")
+    ConditionalDisplacement(0.123, 0, wires=['q', 'm'])
+
+    This also works with some qubit gates:
+
+    >>> hl.qcond(qp.GlobalPhase(0.123), control_wires=1)
+    RZ(0.246, wires=[1])
+    >>> hl.qcond(qp.RZ(0.123, wires=0), control_wires=1)
+    IsingZZ(0.123, wires=[1, 0])
+    """
     return create_qubit_conditioned_op(op, control_wires)
 
 
