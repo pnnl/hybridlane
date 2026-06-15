@@ -12,7 +12,8 @@ from .base import CountsResult, SampleMeasurement, SampleResult, StateMeasuremen
 
 
 def probs(wires: Wires | None = None, op: Operator | None = None) -> "ProbabilityMP":
-    pass
+    # fixme: figure out how to support probs in the future
+    raise NotImplementedError()
 
 
 class ProbabilityMP(SampleMeasurement, StateMeasurement):

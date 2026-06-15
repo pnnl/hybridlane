@@ -7,7 +7,7 @@ from hybridlane.io import to_openqasm  # noqa: F401
 from hybridlane.measurements import (  # noqa: F401
     density_matrix,
     expval,
-    probs,
+    # probs, # fixme: uncomment when probs is supported
     sample,
     state,
     var,
