@@ -1,9 +1,9 @@
-Static Analysis
+Type checking
 ===============
 
-Hybridlane infers the types of wires and measurements through a process we call static analysis. This is necessary because
-Pennylane does not strongly type the wires (in contrast to other major libraries) - a wire can represent a qubit or a qumode. We
-need types to verify that gates are used correctly, and to properly dispatch circuits to hardware and simulator devices. The process is fairly simple and is contained in the function :py:func:`sa.analyze <hybridlane.sa.analyze>`.
+hybridlane infers the types of wires and measurements through a process we call static analysis. This is necessary because
+PennyLane does not strongly type the wires (in contrast to other major libraries) - a wire can represent a qubit or a qumode. We
+need types to verify that gates are used correctly, and to properly dispatch circuits to hardware and simulator devices. The process is fairly simple and is contained in the function :py:func:`hl.type_check <hybridlane.wires.type_check.type_check>`.
 
 Inferring Wire Types
 --------------------
@@ -55,5 +55,5 @@ There's almost certainly room to improve this inference logic, so ideas and pull
 .. tip::
 
     Up until now, we haven't mentioned what the ``Spectral`` mixin does. Pennylane assumes that all observables have a finite set of eigenvalues that can be written down in a numpy array. Obviously this doesn't work for CV observables that have an infinite eigenspectrum.
-    
+
     The ``Spectral`` mixin replaces the idea of an ``eigvals`` array with a function :math:`f: \mathcal{B} \rightarrow \mathbb{R}` taking computational basis states and returning their eigenvalues. For example, we add the ``Spectral`` mixin to the :py:class:`hl.QuadX <hybridlane.ops.QuadX>` operator with its ``position_spectrum`` function looking like :math:`f(x) = x` since :math:`\hat{x}\ket{x} = x\ket{x}`. This is another reason to use the ``hl`` versions when available.

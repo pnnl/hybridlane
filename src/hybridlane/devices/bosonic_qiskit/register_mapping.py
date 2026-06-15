@@ -10,7 +10,7 @@ import qiskit as qk
 from pennylane.wires import Wires
 from qiskit.circuit import Qubit
 
-from ... import sa
+from ... import wires as sa
 from ...measurements import FockTruncation
 
 QumodeType = list[Qubit]
@@ -25,7 +25,7 @@ class RegisterMapping(Mapping):
 
     def __init__(
         self,
-        sa_result: sa.StaticAnalysisResult,
+        sa_result: sa.TypeCheckResult,
         fock_truncation: FockTruncation,
     ):
         self._truncation = fock_truncation
@@ -33,7 +33,7 @@ class RegisterMapping(Mapping):
         self.mapping = self._prepare(sa_result)
 
     def _prepare(
-        self, sa_result: sa.StaticAnalysisResult
+        self, sa_result: sa.TypeCheckResult
     ) -> OrderedDict[Hashable, Qubit | QumodeType]:
         mapping = OrderedDict()
         self.axes_map = {}

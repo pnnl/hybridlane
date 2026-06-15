@@ -6,7 +6,7 @@ from pennylane.tape import QuantumScript
 
 import hybridlane as hl
 from hybridlane.devices import preprocess
-from hybridlane.sa.exceptions import StaticAnalysisError
+from hybridlane.wires.exceptions import TypeCheckError
 
 
 @pytest.mark.unit
@@ -18,7 +18,7 @@ class TestValidateWireTypes:
 
         tape = QuantumScript.from_queue(q)
 
-        with pytest.raises(StaticAnalysisError):
+        with pytest.raises(TypeCheckError):
             preprocess.static_analyze_tape(tape)
 
     def test_good_circuit(self):

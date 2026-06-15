@@ -85,7 +85,7 @@ class SqueezedCatState(ErrorOperation, Hybrid):
     num_params = 3  # pyright: ignore[reportIncompatibleMethodOverride]
     ndim_params = (0, 0, 0)  # pyright: ignore[reportIncompatibleMethodOverride]
     grad_method = None  # pyright: ignore[reportIncompatibleMethodOverride]
-    type_signature = (hl.sa.Qubit(), hl.sa.Qumode())
+    type_signature = (hl.wires.Qubit(), hl.wires.Qumode())
 
     resource_keys = {"parity", "has_squeezing"}
 
@@ -203,7 +203,7 @@ class GKPState(ErrorOperation, Hybrid):
     num_params = 1  # pyright: ignore[reportIncompatibleMethodOverride]
     ndim_params = (0,)
     grad_method = None  # pyright: ignore[reportIncompatibleMethodOverride]
-    type_signature = (hl.sa.Qubit(), hl.sa.Qumode())
+    type_signature = (hl.wires.Qubit(), hl.wires.Qumode())
 
     resource_keys = {"logical_state", "has_squeezing", "repetitions"}
 
@@ -303,7 +303,7 @@ class GaussianControlledRotation(ErrorOperation, Hybrid):
     """
 
     num_wires = 2
-    type_signature = (hl.sa.Qubit(), hl.sa.Qumode())
+    type_signature = (hl.wires.Qubit(), hl.wires.Qumode())
 
     num_params = 3
     ndim_params = (0, 0, 0)

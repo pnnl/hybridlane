@@ -28,7 +28,8 @@ from pennylane.transforms.core import TransformProgram
 
 import hybridlane as hl
 
-from ... import sa, util
+from ... import util
+from ... import wires as sa
 from ...measurements import (
     CountsMP,
     FockTruncation,
@@ -36,8 +37,8 @@ from ...measurements import (
     StateMeasurement,
 )
 from ...ops import attributes
-from ...sa import ComputationalBasis
 from ...transforms import from_pennylane
+from ...wires import ComputationalBasis
 from ..preprocess import static_analyze_tape
 from . import gates
 
@@ -94,7 +95,7 @@ def is_sampled_observable_supported(o: Operator) -> bool:
             # We can only sample computational basis, so if the observable
             # prefers the position basis, we can't do that. The schema class
             # should be able to handle finite eigenvalues vs spectra, etc.
-            schema = sa.infer_schema_from_observable(o)
+            schema = sa.infer_measurement_bases(o, {})
             for wire in schema.wires:
                 if schema.get_basis(wire) != ComputationalBasis.Discrete:
                     return False
@@ -103,7 +104,6 @@ def is_sampled_observable_supported(o: Operator) -> bool:
             return o.has_diagonalizing_gates or o in attributes.diagonal_in_fock_basis
 
 
-# todo: (roadmap) add @simulator_tracking and enable resource tracking for QRE
 @single_tape_support
 class BosonicQiskitDevice(Device):
     r"""Backend for Pennylane that executes hybrid CV-DV circuits in Bosonic Qiskit"""
@@ -172,7 +172,7 @@ class BosonicQiskitDevice(Device):
 
         # Try to infer truncation based on circuit structure
         if truncation is None:
-            sa_results = map(sa.analyze, circuits)
+            sa_results = map(sa.type_check, circuits)
             truncations = list(
                 map(lambda res: _infer_truncation(res, max_fock_level), sa_results)
             )
@@ -224,7 +224,7 @@ class BosonicQiskitDevice(Device):
             max_fock_level = updated_values["device_options"].get(
                 "max_fock_level", self._max_fock_level
             )
-            res = sa.analyze(circuit)
+            res = sa.type_check(circuit)
             if (truncation := _infer_truncation(res, max_fock_level)) is None:
                 raise DeviceError(
                     "Need to specify truncation of qumodes through `device_options`"
@@ -267,7 +267,7 @@ class BosonicQiskitDevice(Device):
 
 
 def _infer_truncation(
-    sa_result: sa.StaticAnalysisResult, max_fock_level: int | None
+    sa_result: sa.TypeCheckResult, max_fock_level: int | None
 ) -> FockTruncation | None:
     if sa_result.qumodes and max_fock_level is None:
         return None

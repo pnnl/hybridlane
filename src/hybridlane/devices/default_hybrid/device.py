@@ -58,7 +58,8 @@ from hybridlane.measurements import (
 from hybridlane.ops.mixins import FockRepresentation
 from hybridlane.transforms import from_pennylane
 
-from ... import math, sa
+from ... import math
+from ... import wires as sa
 from .simulate import simulate
 
 _base_qubit_gates = _BASE_DQ_GATE_SET
@@ -166,7 +167,7 @@ def is_sampled_mp_supported(mp: MeasurementProcess) -> bool:
             mp.obs, is_expval=isinstance(mp, ExpectationMP)
         )
 
-    # hl.sample() called with a schema
+    # hl.wiresmple() called with a schema
     return all(mp.schema.get_basis(w) == ComputationalBasis.Discrete for w in mp.wires)
 
 
@@ -575,7 +576,7 @@ def _get_wire_dims(tape: QuantumScript, config: ExecutionConfig) -> dict[int, in
     # If the user provided a blanket value for all qumodes, we have to construct the
     # wire_dims by type checking the circuit
     if fock_level is not None:
-        res = sa.analyze(tape)
+        res = sa.type_check(tape)
         wire_dims = {w: 2 for w in res.qubits} | {w: fock_level for w in res.qumodes}
 
     # Guaranteed because we just overrode it above if it was None

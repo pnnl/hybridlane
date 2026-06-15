@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-from ..sa import BasisSchema, ComputationalBasis
+from ..wires import BasisMap, ComputationalBasis
 from .base import (
     CountsResult,
     FockTruncation,
@@ -18,7 +18,7 @@ from .state import DensityMatrixMP, StateMP, density_matrix, state
 from .variance import VarianceMP, var
 
 __all__ = [
-    "BasisSchema",
+    "BasisMap",
     "ComputationalBasis",
     "CountsMP",
     "CountsResult",

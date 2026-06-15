@@ -16,7 +16,8 @@ from pennylane.drawer.utils import (
 )
 from pennylane.tape import QuantumScript
 
-from .. import ops, sa
+from .. import ops
+from .. import wires as sa
 
 has_mpl = True
 try:
@@ -117,7 +118,7 @@ def _draw_icons(
     show_all_wires=False,
     wire_icon_colors: dict[Any, str] | None = None,
 ):
-    sa_res = sa.analyze(tape)
+    sa_res = sa.type_check(tape)
 
     _, wire_map = convert_wire_order(
         tape, wire_order=wire_order, show_all_wires=show_all_wires
@@ -207,13 +208,13 @@ def tape_mpl(
 
 
 def _get_default_colors(
-    wire_map: dict[Any, int], sa_res: sa.StaticAnalysisResult
+    wire_map: dict[Any, int], checked_types: sa.TypeCheckResult
 ) -> dict[Any, str]:
     result = {}
     for wire in wire_map:
-        if wire in sa_res.qubits:
+        if wire in checked_types.qubits:
             result[wire] = default_qubit_color
-        elif wire in sa_res.qumodes:
+        elif wire in checked_types.qumodes:
             result[wire] = default_qumode_color
 
     return result

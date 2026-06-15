@@ -22,7 +22,7 @@ class Spectral:
     """
 
     @property
-    def natural_basis(self) -> hl.sa.ComputationalBasis:
+    def natural_basis(self) -> hl.wires.ComputationalBasis:
         raise NotImplementedError(
             "Observable did not define its best basis to measure in"
         )
@@ -87,10 +87,10 @@ class Hybrid:
     num_qumodes: int | None = None
     """The number of qumodes the gate acts on"""
 
-    type_signature: Sequence[hl.sa.WireType] | None = None
+    type_signature: Sequence[hl.wires.WireType] | None = None
     """The ordered type signature of each wire"""
 
-    def wire_types(self) -> dict[WiresLike, hl.sa.WireType]:
+    def wire_types(self) -> dict[WiresLike, hl.wires.WireType]:
         """Identifies the type of each wire in the gate
 
         Returns:
@@ -108,8 +108,8 @@ class Hybrid:
         type_signature = self.type_signature
         if self.num_qumodes is not None:
             qubits = len(self.wires) - self.num_qumodes
-            type_signature = [hl.sa.Qubit()] * qubits + [
-                hl.sa.Qumode()
+            type_signature = [hl.wires.Qubit()] * qubits + [
+                hl.wires.Qumode()
             ] * self.num_qumodes
 
         return {w: s for w, s in zip(self.wires, type_signature)}

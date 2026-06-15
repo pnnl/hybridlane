@@ -88,11 +88,10 @@ def circuit(n):
 expval = circuit(5)
 # array(5.)
 
-# Analyze its structure
-import hybridlane.sa as sa
-res = sa.analyze(circuit._tape)
-print(res)
-# StaticAnalysisResult(qumodes=Wires(['m']), qubits=Wires([0]), schemas=[...])
+# Perform wire type checking
+res = hl.type_check(circuit)(5)
+print(res.wire_types)
+# OrderedDict({0: Qubit(), 'm': Qumode()})
 ```
 
 For more examples, explore our [Documentation](https://pnnl.github.io/hybridlane/).

@@ -43,7 +43,7 @@ As quantum computing explores beyond traditional qubit-only models, `hybridlane`
 
 *   **🤝 PennyLane Compatibility:** A familiar interface for PennyLane users. Utilize existing PennyLane gates, build custom hybrid devices, write compilation passes, and perform resource estimation across mixed-variable systems.
 
-*   **💻 Classical Simulation:** A built-in device that dispatches to `Bosonic Qiskit <https://github.com/C2QA/bosonic-qiskit>`_ for simulating small hybrid circuits.
+*   **💻 Classical Simulation:** Dispatch to our Jax-compatible simulator and take gradients using automatic differentiation, or use `Bosonic Qiskit <https://github.com/C2QA/bosonic-qiskit>`_.
 
 *   **💾 OpenQASM-based IR:** An intermediate representation based on an extended OpenQASM, promoting interoperability and enabling advanced circuit manipulations.
 
@@ -81,8 +81,8 @@ For detailed instructions, see the `Getting Started Guide <https://pnnl.github.i
     import pennylane as qp
     import hybridlane as hl
 
-    # Create a bosonic qiskit simulator with a custom Fock truncation
-    dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+    # Create a simulator with a custom Fock truncation
+    dev = qp.device("default.hybrid", fock_level=8)
 
     # Define a hybrid circuit with familiar PennyLane syntax
     @qp.qnode(dev)
@@ -99,11 +99,10 @@ For detailed instructions, see the `Getting Started Guide <https://pnnl.github.i
     expval = circuit(5)
     # array(5.)
 
-    # Analyze its structure
-    import hybridlane.sa as sa
-    res = sa.analyze(circuit._tape)
-    print(res)
-    # StaticAnalysisResult(qumodes=Wires(['m']), qubits=Wires([0]), schemas=[...])
+    # Perform wire type checking
+    res = hl.type_check(circuit)(5)
+    print(res.wire_types)
+    # OrderedDict({0: Qubit(), 'm': Qumode()})
 
 For more examples, explore our `Documentation <https://pnnl.github.io/hybridlane/>`_.
 
@@ -176,7 +175,7 @@ This project was supported by the U.S. Department of Energy, Office of Science, 
 
     introduction
     getting-started
-    static-analysis
+    type-checking
     exporting-circuits
 
 .. toctree::

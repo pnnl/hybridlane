@@ -12,7 +12,7 @@ from pennylane.transforms import resolve_dynamic_wires
 
 import hybridlane as hl
 from hybridlane.ops.mixins import Hybrid
-from hybridlane.sa import BasisSchema, ComputationalBasis
+from hybridlane.wires import BasisMap, ComputationalBasis
 
 
 # Necessary to define this class so we can give the pow_rotation decomposition. Otherwise,
@@ -74,7 +74,7 @@ class TestApplications:
             estimation_wires = range(n_bits)
             QuantumPhaseEstimation(U, estimation_wires=estimation_wires)
 
-            schema = BasisSchema({estimation_wires: ComputationalBasis.Discrete})
+            schema = BasisMap({estimation_wires: ComputationalBasis.Discrete})
             return hl.sample(schema=schema)
 
         # Decomposition raises a warning if it can't find a decomposition

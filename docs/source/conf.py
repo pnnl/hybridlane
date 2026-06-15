@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "Hybridlane"
+project = "hybridlane"
 copyright = f"{datetime.now().year}, Battelle Memorial Institute"
 author = "PNNL"
 

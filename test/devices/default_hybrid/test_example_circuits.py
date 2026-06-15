@@ -8,8 +8,8 @@ from pennylane.wires import Wires
 
 import hybridlane as hl
 from hybridlane.devices.default_hybrid.state_prep import coherent_state
-from hybridlane.measurements import BasisSchema, SampleResult
-from hybridlane.sa import ComputationalBasis
+from hybridlane.measurements import BasisMap, SampleResult
+from hybridlane.wires import ComputationalBasis
 from test.util import poisson_test
 
 
@@ -265,7 +265,7 @@ class TestFiniteCircuits:
             estimation_wires = range(n_bits)
             qp.QuantumPhaseEstimation(U, estimation_wires=estimation_wires)
 
-            schema = BasisSchema({estimation_wires: ComputationalBasis.Discrete})
+            schema = BasisMap({estimation_wires: ComputationalBasis.Discrete})
             return hl.sample(schema=schema)
 
         if like == "jax":
@@ -356,7 +356,7 @@ class TestFiniteCircuits:
             qp.FockState(4, "b")
             qp.X("a")
 
-            schema = BasisSchema({Wires(["a", "b"]): ComputationalBasis.Discrete})
+            schema = BasisMap({Wires(["a", "b"]): ComputationalBasis.Discrete})
             return hl.sample(schema=schema)
 
         if like == "jax":
