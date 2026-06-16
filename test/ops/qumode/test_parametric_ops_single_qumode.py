@@ -285,13 +285,16 @@ class TestSqueezing:
         assert op.wires == qp.wires.Wires(0)
 
     def test_adjoint(self):
-        import numpy as np
-
         op = hl.Squeezing(0.5, 0.3, wires=0)
         adj_op = op.adjoint()
         assert isinstance(adj_op, hl.Squeezing)
-        assert adj_op.parameters[0] == 0.5
-        assert adj_op.parameters[1] == pytest.approx((0.3 + np.pi) % (2 * np.pi))
+        assert adj_op.parameters[0] == -0.5
+        assert adj_op.parameters[1] == 0.3
+
+    def test_simplify(self):
+        op = hl.S(0.5, 0.3 + math.pi, wires=0)
+        expected_op = hl.S(0.5, 0.3, wires=0)
+        assert hl.math.allclose(op.simplify().parameters, expected_op.parameters)
 
     def test_label(self):
         op = hl.Squeezing(0.5, 0.3, wires=0)
@@ -307,6 +310,15 @@ class TestSqueezing:
         matrix = op.fock_matrix({0: 8})
         eye = hl.math.eye(8)
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    def test_fock_matrix_periodic(self):
+        # comes from the discussion on p. 33
+        op = hl.Squeezing(0.3, 0.5, wires=0)
+        matrix = op.fock_matrix({0: 8})
+
+        op2 = hl.Squeezing(0.3, 0.5 + math.pi, wires=0)
+        matrix2 = op2.fock_matrix({0: 8})
+        assert matrix2 == pytest.approx(matrix)
 
     def test_fock_matrix_action(self):
         # Check that the uncertainty in x decreases at the expense of p

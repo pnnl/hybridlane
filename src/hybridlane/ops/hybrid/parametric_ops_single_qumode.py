@@ -488,7 +488,7 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
                         0 & S^\dagger(\zeta)
                     \end{pmatrix}
 
-    where :math:`\zeta = ze^{i\phi} \in \mathbb{C}` (Box IV.3 of :footcite:p:`liu2026hybrid`).
+    where :math:`\zeta = ze^{i2\theta} \in \mathbb{C}` (Box IV.3 of :footcite:p:`liu2026hybrid`).
 
     **Details**:
 
@@ -548,19 +548,19 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
         super().__init__(z, phi, wires=wires, id=id)
 
     def pow(self, n: int | float):
-        z, phi = self.data
-        return [ConditionalSqueezing(z * n, phi, self.wires)]
+        z, theta = self.data
+        return [ConditionalSqueezing(z * n, theta, self.wires)]
 
     def adjoint(self):
         return ConditionalSqueezing(-self.data[0], self.data[1], self.wires)
 
     def simplify(self):
-        z, phi = self.data[0], self.data[1] % (2 * math.pi)
+        z, theta = self.data[0], self.data[1] % math.pi
 
         if _can_replace(z, 0):
             return qp.Identity(self.wires)
 
-        return ConditionalSqueezing(z, phi, self.wires)
+        return ConditionalSqueezing(z, theta, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -568,9 +568,9 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], z, phi) -> TensorLike:
-        s = hl.S.compute_fock_matrix(wire_dims[1:], z, phi)
-        sd = hl.math.conj(hl.math.transpose(s))
+    def compute_fock_matrix(wire_dims: tuple[int, ...], z, theta) -> TensorLike:
+        s = hl.S.compute_fock_matrix(wire_dims[1:], z, theta)
+        sd = hl.math.dag(s)
         return hl.math.block_diag([s, sd])
 
 
@@ -579,9 +579,9 @@ def _cs_decomp_resources():
 
 
 @qp.register_resources(_cs_decomp_resources)
-def _cs_decomp(r, phi, wires, **_):
+def _cs_decomp(r, theta, wires, **_):
     qp.adjoint(CR)(math.pi / 2, wires)
-    Squeezing(r, phi + math.pi / 2, wires[1])
+    Squeezing(r, theta + math.pi / 4, wires[1])
     CR(math.pi / 2, wires)
 
 

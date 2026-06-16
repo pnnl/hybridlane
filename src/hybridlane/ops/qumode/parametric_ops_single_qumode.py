@@ -253,14 +253,14 @@ r"""Phase space rotation gate :math:`R(\theta)`
 """
 
 
-# Re-export since it matches paper convention
+# Re-export with zeta = re^{i2theta}
 class Squeezing(CVOperation, FockRepresentation):
-    r"""Phase space squeezing gate :math:`S(\zeta)`
+    r"""Phase space squeezing gate :math:`S(r, \theta)`
 
     .. math::
-        S(\zeta) = \exp\left[\frac{1}{2}(\zeta^* a^2 - \zeta(\ad)^2)\right].
+        S(r, \theta) = \exp\left[\frac{1}{2}(\zeta^* a^2 - \zeta(\ad)^2)\right].
 
-    where :math:`\zeta = r e^{i\phi}`.
+    where :math:`\zeta = r e^{i2\theta}`.
 
     **Details**:
 
@@ -294,9 +294,16 @@ class Squeezing(CVOperation, FockRepresentation):
         return R @ np.diag([1, math.exp(-p[0]), math.exp(p[0])]) @ R.T
 
     def adjoint(self):
-        r, phi = self.parameters
-        new_phi = (phi + np.pi) % (2 * np.pi)
-        return Squeezing(r, new_phi, wires=self.wires)
+        r, theta = self.parameters
+        return Squeezing(-r, theta, wires=self.wires)
+
+    def simplify(self):
+        r, phi = self.data[0], self.data[1] % math.pi
+
+        if _can_replace(r, 0):
+            return qp.Identity(self.wires)
+
+        return Squeezing(r, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -304,10 +311,10 @@ class Squeezing(CVOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, theta) -> TensorLike:
         a = hl.math.asarray(hl.A.compute_fock_matrix(wire_dims), like=r)
-        ad = hl.math.conj(hl.math.transpose(a))
-        zeta = r * hl.math.exp(1j * phi)
+        ad = hl.math.dag(a)
+        zeta = r * hl.math.exp(1j * 2 * theta)
         op = 0.5 * (hl.math.conj(zeta) * a @ a - zeta * ad @ ad)
         return hl.math.expm(op)
 

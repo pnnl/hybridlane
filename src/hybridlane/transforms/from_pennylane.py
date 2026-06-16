@@ -123,8 +123,9 @@ def _(op: qp.Rotation):
 
 @convert_operator.register
 def _(op: qp.Squeezing):
-    # no change, convert to our gate
-    return hl.Squeezing(*op.data, wires=op.wires)
+    # we use re(i2t), they use re(ip), so t = p/2
+    r, phi = op.parameters
+    return hl.Squeezing(r, phi / 2, wires=op.wires)
 
 
 @convert_operator.register
