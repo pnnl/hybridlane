@@ -46,20 +46,20 @@ from pennylane.typing import PostprocessingFn, Result, ResultBatch
 from pennylane.wires import WiresLike
 
 import hybridlane as hl
-from hybridlane.devices.default_hybrid.measure import is_diagonalizable
-from hybridlane.devices.preprocess import fill_wire_dims
-from hybridlane.measurements import (
+
+from ... import math
+from ... import wires as sa
+from ...measurements import (
     ComputationalBasis,
     ExpectationMP,
     SampleMeasurement,
     SampleMP,
     StateMeasurement,
 )
-from hybridlane.ops.mixins import FockRepresentation
-from hybridlane.transforms import from_pennylane
-
-from ... import math
-from ... import wires as sa
+from ...ops.mixins import FockRepresentation
+from ...transforms import from_pennylane
+from ..preprocess import fill_wire_dims
+from .measure import is_diagonalizable
 from .simulate import simulate
 
 _base_qubit_gates = _BASE_DQ_GATE_SET
@@ -92,6 +92,22 @@ _base_hybrid_gates = {
     "SelectiveQubitRotation",
 }
 
+_base_qutrit_gates = {
+    "ControlledQutritUnitary",
+    "GellMann",
+    "QutritUnitary",
+    "TAdd",
+    "TClock",
+    "THadamard",
+    "THermitian",
+    "TRX",
+    "TRY",
+    "TRZ",
+    "TSWAP",
+    "TShift",
+    "TritFlip",
+}
+
 _state_preps = {
     "CatState",
     "FockState",
@@ -101,6 +117,7 @@ _state_preps = {
     "FockStateVector",
     "BasisState",
     "StatePrep",
+    "QutritBasisState",
 }
 
 ALL_DH_GATES = GateSet(
@@ -110,6 +127,7 @@ ALL_DH_GATES = GateSet(
     | {f"C({g})" for g in _base_cv_gates}
     | _base_hybrid_gates
     | {f"Adjoint({g})" for g in _base_hybrid_gates}
+    | _base_qutrit_gates
     | _state_preps,
     name="All DefaultHybrid gates",
 )
@@ -577,7 +595,11 @@ def _get_wire_dims(tape: QuantumScript, config: ExecutionConfig) -> dict[int, in
     # wire_dims by type checking the circuit
     if fock_level is not None:
         res = sa.type_check(tape)
-        wire_dims = {w: 2 for w in res.qubits} | {w: fock_level for w in res.qumodes}
+        wire_dims = (
+            {w: 2 for w in res.qubits}
+            | {w: fock_level for w in res.qumodes}
+            | {w: t.dim for w, t in res.wire_types.items() if isinstance(t, sa.Qudit)}
+        )
 
     # Guaranteed because we just overrode it above if it was None
     wire_dims = cast(Mapping[Any, int], wire_dims)

@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 from typing import Hashable, cast
 
 import pennylane as qp
+from pennylane.allocation import Allocate, Deallocate
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import CVObservable, CVOperation, Operator
 from pennylane.ops import (
@@ -162,16 +163,23 @@ def _infer_wires_from_ops(ops: Sequence[Operator], context) -> Context:
 
 
 @infer_wires.register
-def _infer_wire_types_from_operator(op: Operator, context: Context) -> Context:
+def _(op: Operator, context: Context) -> Context:
     # todo: rework for graph decomposition system
-    if op.has_decomposition:
-        return infer_wires(op.decomposition(), context)
+    module = type(op).__module__
 
-    module = op.__class__.__module__
+    # Check module first to avoid calling decomposition() on operators whose decomposition
+    # is inherited from a different wire-type class (e.g. THermitian inherits from Hermitian)
     if module.startswith("pennylane.ops.qubit"):
         return context | {w: Qubit() for w in op.wires}
     elif module.startswith("pennylane.ops.qutrit"):
         return context | {w: Qudit(3) for w in op.wires}
+
+    # Makes this robust to MRO ordering
+    if isinstance(op, Hybrid):
+        return _infer_from_hybrid(op, context)
+
+    if op.has_decomposition:
+        return infer_wires(op.decomposition(), context)
 
     raise TypeCheckError(f"Unable to infer wire types for operation {op}")
 
@@ -191,7 +199,7 @@ def _(op: CVOperation | CVObservable, context: Context):
 
 
 @infer_wires.register
-def _(op: Hybrid, context: Context):
+def _infer_from_hybrid(op: Hybrid, context: Context):
     return context | op.wire_types()
 
 
@@ -216,6 +224,11 @@ def _(
     op: qp.BasisState | qp.StatePrep | qp.Superposition,
     context: Context,
 ):
+    return context | {w: Qubit() for w in op.wires}
+
+
+@infer_wires.register
+def _(op: Allocate | Deallocate, context: Context):
     return context | {w: Qubit() for w in op.wires}
 
 
@@ -258,6 +271,10 @@ def _infer_wire_types_from_basis_map(map: BasisMap, context) -> Context:
 def infer_measurement_bases(obs: Operator, context) -> BasisMap:
     # Qubit observables are automatically discrete
     if obs.pauli_rep is not None:
+        return BasisMap({obs.wires: ComputationalBasis.Discrete})
+
+    # Qutrit observables (GellMann, THermitian, etc.) are also finite-dimensional discrete
+    if type(obs).__module__.startswith("pennylane.ops.qutrit"):
         return BasisMap({obs.wires: ComputationalBasis.Discrete})
 
     raise TypeCheckError(f"No known way to infer decomposition for observable {obs}")

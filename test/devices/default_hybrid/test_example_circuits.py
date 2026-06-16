@@ -142,6 +142,109 @@ class TestAnalyticCircuits:
         assert n1 == pytest.approx(0)
         assert n2 == pytest.approx(0)
 
+    def test_qutrit_hadamard_state(self, like):
+        dev = qp.device("default.hybrid", fock_level=4)
+
+        @qp.qnode(dev, interface=like)
+        def circuit():
+            qp.THadamard(wires=0)
+            return hl.state()
+
+        state = circuit()
+        assert hl.math.get_interface(state) == like
+        assert state.shape == (3,)
+        assert hl.math.sum(hl.math.abs(state) ** 2) == pytest.approx(1.0)
+        # THadamard maps |0> to the uniform superposition (|0>+|1>+|2>)/sqrt(3),
+        # so all basis state probabilities equal 1/3
+        assert hl.math.abs(state) ** 2 == pytest.approx([1 / 3, 1 / 3, 1 / 3])
+
+    @pytest.mark.parametrize(
+        "n,expected",
+        [
+            (0, 1.0),   # |0> is the +1 eigenstate of GellMann(3) = diag(1,-1,0)
+            (1, -1.0),  # |1> is the -1 eigenstate
+            (2, 0.0),   # |2> is the 0 eigenstate
+        ],
+    )
+    def test_qutrit_basis_state_gellmann(self, like, n, expected):
+        dev = qp.device("default.hybrid", fock_level=4)
+
+        @qp.qnode(dev, interface=like)
+        def circuit():
+            qp.QutritBasisState([n], wires=0)
+            return hl.expval(qp.GellMann(0, 3))
+
+        result = circuit()
+        assert hl.math.get_interface(result) == like
+        assert result == pytest.approx(expected)
+
+    def test_qutrit_trx_rotation(self, like):
+        dev = qp.device("default.hybrid", fock_level=4)
+
+        # TRX rotates in the {|0>,|1>} subspace of the qutrit, analogous to RX for qubits.
+        # TRX(0)|0>  = |0>        -> <GellMann(3)> = +1
+        # TRX(pi/2)|0>            -> <GellMann(3)> =  0  (equal |0>/|1> superposition)
+        # TRX(pi)|0> = -i|1>      -> <GellMann(3)> = -1
+        @qp.qnode(dev, interface=like)
+        def circuit(theta):
+            qp.TRX(theta, wires=0)
+            return hl.expval(qp.GellMann(0, 3))
+
+        assert circuit(hl.math.array(0.0, like=like)) == pytest.approx(1.0)
+        assert circuit(hl.math.array(np.pi / 2, like=like)) == pytest.approx(0.0)
+        assert circuit(hl.math.array(np.pi, like=like)) == pytest.approx(-1.0)
+
+    def test_qutrit_tswap(self, like):
+        dev = qp.device("default.hybrid", fock_level=4)
+
+        @qp.qnode(dev, interface=like)
+        def circuit():
+            qp.QutritBasisState([1, 2], wires=[0, 1])
+            qp.TSWAP(wires=[0, 1])
+            return hl.state()
+
+        state = circuit()
+        assert hl.math.get_interface(state) == like
+        assert state.shape == (9,)
+        assert hl.math.sum(hl.math.abs(state) ** 2) == pytest.approx(1.0)
+        # TSWAP swaps the two qutrits: |1,2> -> |2,1>
+        # In row-major order: |i,j> is at index i*3+j, so |2,1> is at index 7
+        assert hl.math.abs(state[7]) ** 2 == pytest.approx(1.0)
+
+    def test_qutrit_qubit_mixed(self, like):
+        dev = qp.device("default.hybrid", fock_level=4)
+
+        @qp.qnode(dev, interface=like)
+        def circuit():
+            qp.THadamard(wires=0)
+            qp.H(1)
+            return hl.expval(qp.GellMann(0, 3)), hl.expval(qp.Z(1))
+
+        # Both wires are in uniform superposition, so both expectation values are 0
+        gellmann, z = circuit()
+        assert hl.math.get_interface(gellmann) == like
+        assert hl.math.get_interface(z) == like
+        assert gellmann == pytest.approx(0.0)
+        assert z == pytest.approx(0.0)
+
+    def test_qutrit_qumode_mixed(self, like):
+        dev = qp.device("default.hybrid", fock_level=8)
+
+        @qp.qnode(dev, interface=like)
+        def circuit(alpha):
+            qp.THadamard(wires=0)
+            hl.D(alpha, 0, wires=1)
+            return hl.expval(qp.GellMann(0, 3)), hl.expval(hl.N(1))
+
+        alpha = hl.math.array(0.5, like=like)
+        gellmann, photon_number = circuit(alpha)
+        assert hl.math.get_interface(gellmann) == like
+        assert hl.math.get_interface(photon_number) == like
+        # Qutrit in uniform superposition -> <GellMann(3)> = 0
+        assert gellmann == pytest.approx(0.0)
+        # Displaced vacuum with alpha=0.5 -> <N> = |alpha|^2 = 0.25
+        assert photon_number == pytest.approx(0.25, abs=1e-6)
+
 
 @pytest.mark.integration
 @pytest.mark.all_interfaces
