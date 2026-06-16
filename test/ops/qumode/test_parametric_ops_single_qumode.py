@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import math
 
+import jax
+import jax.numpy as jnp
 import pennylane as qp
 import pytest
 
@@ -58,9 +60,6 @@ class TestSelectiveNumberArbitraryPhase:
 
     @pytest.mark.jax
     def test_fock_matrix_jit(self):
-        import jax
-        import jax.numpy as jnp
-
         @jax.jit
         def f(theta):
             op = hl.SNAP(theta, 3, wires=0)
@@ -71,8 +70,6 @@ class TestSelectiveNumberArbitraryPhase:
 
     @pytest.mark.jax
     def test_fock_matrix_grad(self):
-        import jax.numpy as jnp
-
         def f(theta):
             op = hl.SNAP(theta, 3, wires=0)
             return hl.math.real(op.fock_matrix({0: 4}))
@@ -128,7 +125,6 @@ class TestDisplacement:
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
-        import jax.numpy as jnp
         from scipy.special import factorial
 
         alpha_r = jnp.array(0.3)
@@ -150,9 +146,6 @@ class TestDisplacement:
 
     @pytest.mark.jax
     def test_fock_matrix_jit(self):
-        import jax
-        import jax.numpy as jnp
-
         @jax.jit
         def f(x):
             op = hl.D(*x, wires=0)
@@ -163,8 +156,6 @@ class TestDisplacement:
 
     @pytest.mark.jax
     def test_fock_matrix_grad(self):
-        import jax.numpy as jnp
-
         dims = {0: 4}
 
         def f(x):
@@ -189,6 +180,33 @@ class TestDisplacement:
         grad = grad_fn(x)
         assert grad[0] == pytest.approx(0)
         assert grad[1] < 0
+
+    @pytest.mark.all_interfaces
+    def test_heisenberg_rep(self, like):
+        a = hl.math.asarray(0.5, like=like)
+        phi = hl.math.asarray(0.3, like=like)
+        M = hl.Displacement._heisenberg_rep([a, phi])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == like
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        expected = hl.math.asarray(
+            [
+                [1, 0, 0],
+                [math.sqrt(2) * math.cos(0.3) * 0.5, 1, 0],
+                [math.sqrt(2) * math.sin(0.3) * 0.5, 0, 1],
+            ]
+        )
+        assert M == pytest.approx(expected, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_heisenberg_rep_jit(self):
+        @jax.jit
+        def f(x):
+            return hl.Displacement._heisenberg_rep(x)
+
+        x = jnp.array([0.5, 0.3])
+        f(x)  # errors if jit fails
 
 
 @pytest.mark.unit
@@ -232,8 +250,6 @@ class TestRotation:
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
-        import jax.numpy as jnp
-
         theta = jnp.array(math.pi / 2)
         op = hl.Rotation(theta, wires=0)
         matrix = op.fock_matrix({0: 4})
@@ -243,9 +259,6 @@ class TestRotation:
 
     @pytest.mark.jax
     def test_fock_matrix_jit(self):
-        import jax
-        import jax.numpy as jnp
-
         @jax.jit
         def f(theta):
             op = hl.R(theta, 0)
@@ -256,8 +269,6 @@ class TestRotation:
 
     @pytest.mark.jax
     def test_fock_matrix_grad(self):
-        import jax.numpy as jnp
-
         dim = 4
 
         # Should output cos(xn)
@@ -272,6 +283,26 @@ class TestRotation:
         grad = grad_fn(theta)
         expected_grad = -n * jnp.sin(theta * n)
         assert grad == pytest.approx(expected_grad)
+
+    @pytest.mark.all_interfaces
+    def test_heisenberg_rep(self, like):
+        theta = hl.math.asarray(0.5, like=like)
+        M = hl.Rotation._heisenberg_rep([theta])
+
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == like
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        expected = hl.math.symplectic.rotation(theta)
+        assert M == pytest.approx(expected, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_heisenberg_rep_jit(self):
+        @jax.jit
+        def f(theta):
+            return hl.Rotation._heisenberg_rep([theta])
+
+        f(jnp.array(0.5))  # errors if jit fails
 
 
 @pytest.mark.unit
@@ -342,8 +373,6 @@ class TestSqueezing:
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
-        import jax.numpy as jnp
-
         r = jnp.array(0.3)
         phi = jnp.array(0.5)
         op = hl.Squeezing(r, phi, wires=0)
@@ -353,9 +382,6 @@ class TestSqueezing:
 
     @pytest.mark.jax
     def test_fock_matrix_jit(self):
-        import jax
-        import jax.numpy as jnp
-
         @jax.jit
         def f(x):
             op = hl.S(*x, wires=0)
@@ -366,8 +392,6 @@ class TestSqueezing:
 
     @pytest.mark.jax
     def test_fock_matrix_grad(self):
-        import jax.numpy as jnp
-
         def var(obs, state):
             return (
                 hl.math.expectation_value(obs @ obs, state)
@@ -392,6 +416,66 @@ class TestSqueezing:
         assert grad[0] < 0
         assert grad[1] == pytest.approx(0)
 
+    @pytest.mark.all_interfaces
+    def test_heisenberg_rep(self, like):
+        r = hl.math.asarray(0.3, like=like)
+        theta = hl.math.asarray(0, like=like)
+        M = hl.Squeezing._heisenberg_rep([r, theta])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == like
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        # Check its form in the "mode" basis, eq. 167 of liu2026hybrid.
+        c, s = hl.math.cosh(r), hl.math.sinh(r)
+        expected_fock = hl.math.asarray(
+            [
+                [1, 0, 0],
+                [0, c, -s],
+                [0, -s, c],
+            ]
+        )
+        assert hl.math.to_fock_space(M) == pytest.approx(expected_fock)
+
+        eigvals, vecs = hl.math.linalg.eig(M)
+        indices = hl.math.argsort(eigvals)
+        eigvals = eigvals[indices]
+        assert hl.math.allclose(eigvals, [hl.math.exp(-r), 1, hl.math.exp(r)])
+
+        # Now check with a rotation
+        theta = hl.math.asarray(0.123, like=like)
+        M = hl.Squeezing._heisenberg_rep([r, theta])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == like
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        eigvals, vecs = hl.math.linalg.eig(M)
+        indices = hl.math.argsort(eigvals)
+        eigvals = eigvals[indices]
+        vecs = vecs[:, indices]
+        assert hl.math.allclose(eigvals, [hl.math.exp(-r), 1, hl.math.exp(r)])
+
+        # Constant vector should have eigenvalue 1
+        assert eigvals[1] == pytest.approx(1)
+        assert hl.math.allclose(vecs[..., 1], [1, 0, 0])
+
+        # The vector with eigenvalue exp(-r) should be a slightly rotated version of x,
+        # eq. 161
+        rotated_x = [0, hl.math.cos(theta), hl.math.sin(theta)]
+        assert hl.math.allclose(vecs[..., 0], rotated_x)
+
+        # Remaining vector with eigenvalue exp(r) is a rotated version of p
+        # eq. 162
+        rotated_p = [0, -hl.math.sin(theta), hl.math.cos(theta)]
+        assert hl.math.allclose(vecs[..., 2], rotated_p)
+
+    @pytest.mark.jax
+    def test_heisenberg_rep_jit(self):
+        @jax.jit
+        def f(x):
+            return hl.Squeezing._heisenberg_rep(x)
+
+        f(jnp.array([0.3, 0.5]))  # errors if jit fails
+
 
 @pytest.mark.unit
 class TestKerr:
@@ -413,8 +497,8 @@ class TestKerr:
         op = hl.Kerr(0, wires=0)
         assert isinstance(op.simplify(), qp.Identity)
 
-        op = hl.Kerr(1e-9, wires=0)
-        assert isinstance(op.simplify(), qp.Identity)
+        op = hl.Kerr(0.123 + 2 * math.pi, wires=0)
+        assert op.simplify().parameters == pytest.approx([0.123])
 
     def test_label(self):
         op = hl.Kerr(0.5, wires=0)
@@ -429,6 +513,12 @@ class TestKerr:
         expected = hl.math.diag(hl.math.exp(-1j * kappa * n**2))
         assert hl.math.get_interface(matrix) == "numpy"
         assert matrix == pytest.approx(expected)
+
+    def test_fock_matrix_periodic(self):
+        wire_dims = {0: 8}
+        op = hl.K(0.123, wires=0)
+        op2 = hl.K(0.123 + 2 * math.pi, wires=0)
+        assert op.fock_matrix(wire_dims) == pytest.approx(op2.fock_matrix(wire_dims))
 
     @pytest.mark.jax
     def test_fock_matrix_jax(self):

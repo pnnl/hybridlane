@@ -9,7 +9,7 @@ from pennylane.decomposition.symbolic_decomposition import (
     pow_rotation,
 )
 from pennylane.operation import CVOperation
-from pennylane.ops.cv import _rotation, _two_term_shift_rule
+from pennylane.ops.cv import _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
@@ -33,7 +33,7 @@ class Beamsplitter(CVOperation, FockRepresentation):
     * Number of wires: 2
     * Wire arguments: ``[qumode, qumode]``
     * Number of parameters: 2
-    * Number of dimensions per parameter: ``(0, 0)```
+    * Number of dimensions per parameter: ``(0, 0)``
 
     The beamsplitter gate conserves total excitation number, as :math:`[BS, n_a + n_b] = 0`.
     Its representation in the Fock basis can be obtained with:
@@ -47,6 +47,41 @@ class Beamsplitter(CVOperation, FockRepresentation):
              0.    +0.j    ],
            [ 0.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ,
              1.    +0.j    ]])
+
+    Its symplectic representation is given (in standard units) by
+
+    .. math::
+
+        \begin{pmatrix}
+            I \\
+            \hat{x}_a' \\
+            \hat{p}_a' \\
+            \hat{x}_b' \\
+            \hat{p}_b'
+        \end{pmatrix} =
+        \begin{pmatrix}
+            1 & 0 & 0 & 0 & 0 \\
+            0 & \cos\tfrac{\theta}{2} & 0 & \sin\tfrac{\theta}{2}\sin\varphi & \sin\tfrac{\theta}{2}\cos\varphi \\
+            0 & 0 & \cos\tfrac{\theta}{2} & -\sin\tfrac{\theta}{2}\cos\varphi & \sin\tfrac{\theta}{2}\sin\varphi \\
+            0 & -\sin\tfrac{\theta}{2}\sin\varphi & \sin\tfrac{\theta}{2}\cos\varphi & \cos\tfrac{\theta}{2} & 0 \\
+            0 & -\sin\tfrac{\theta}{2}\cos\varphi & -\sin\tfrac{\theta}{2}\sin\varphi & 0 & \cos\tfrac{\theta}{2}
+        \end{pmatrix}
+        \begin{pmatrix}
+            I \\
+            \hat{x}_a \\
+            \hat{p}_a \\
+            \hat{x}_b \\
+            \hat{p}_b
+        \end{pmatrix}
+
+    For specific parameter values, it may be obtained like
+
+    >>> BS(0.5, 0.1, wires=(0, 1)).heisenberg_tr((0, 1))
+    array([[ 1.    ,  0.    ,  0.    ,  0.    ,  0.    ],
+           [ 0.    ,  0.9689,  0.    ,  0.0247,  0.2462],
+           [ 0.    ,  0.    ,  0.9689, -0.2462,  0.0247],
+           [ 0.    , -0.0247,  0.2462,  0.9689,  0.    ],
+           [ 0.    , -0.2462, -0.0247,  0.    ,  0.9689]])
     """
 
     num_params = 2
@@ -66,29 +101,40 @@ class Beamsplitter(CVOperation, FockRepresentation):
     ):
         super().__init__(theta, phi, wires=wires, id=id)
 
-    # For the beamsplitter, both parameters are rotation-like
-    # Todo: Redo this with new convention
     @staticmethod
     def _heisenberg_rep(p):
-        R = _rotation(p[1], bare=True)
-        c = math.cos(p[0])
-        s = math.sin(p[0])
-        U = c * np.eye(5)
-        U[0, 0] = 1
-        U[1:3, 3:5] = -s * R.T
-        U[3:5, 1:3] = s * R
-        return U
+        theta, phi = p
+        c = hl.math.cos(theta / 2)
+        s = hl.math.sin(theta / 2)
+        ep = hl.math.exp(1j * phi)
+        emp = hl.math.exp(-1j * phi)
+
+        # eq. b6 of liu2026hybrid
+        mode_basis = hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, c, 0, -1j * ep * s, 0],
+                [0, 0, c, 0, 1j * emp * s],
+                [0, -1j * emp * s, 0, c, 0],
+                [0, 0, 1j * ep * s, 0, c],
+            ],
+            like=theta,
+        )
+
+        return hl.math.to_phase_space(mode_basis)
 
     def adjoint(self):
         theta, phi = self.parameters
         return Beamsplitter(-theta, phi, wires=self.wires)
 
     def simplify(self):
-        theta, phi = self.data
+        theta = self.data[0] % (4 * math.pi)
+        phi = self.data[1] % (2 * math.pi)
+
         if _can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
 
-        return self
+        return Beamsplitter(theta, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -143,6 +189,48 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
     * Wire arguments: ``[qumode, qumode]``
     * Number of parameters: 2
     * Number of dimensions per parameter: ``(0, 0)``
+
+    Its symplectic representation is given in the mode basis (in standard units) by
+
+    .. math::
+
+        \begin{pmatrix}
+            I \\
+            a' \\
+            (\ad)' \\
+            b' \\
+            (\bd)'
+        \end{pmatrix} =
+        \begin{pmatrix}
+            1 & 0 & 0 & 0 & 0 \\
+            0 & \cosh r & 0 & 0 & e^{i\varphi}\sinh r \\
+            0 & 0 & \cosh r & e^{-i\varphi}\sinh r & 0 \\
+            0 & 0 & e^{i\varphi}\sinh r & \cosh r & 0 \\
+            0 & e^{-i\varphi}\sinh r & 0 & 0 & \cosh r
+        \end{pmatrix}
+        \begin{pmatrix}
+            I \\
+            a \\
+            \ad \\
+            b \\
+            \bd
+        \end{pmatrix}
+
+    (eq. 182 of :footcite:p:`liu2026hybrid`).
+
+    For specific parameter values, it may be obtained like
+
+    >>> TMS(0.3, 0.2, wires=(0, 1)).heisenberg_tr((0, 1))
+    array([[ 1.    ,  0.    ,  0.    ,  0.    ,  0.    ],
+           [ 0.    ,  1.0453,  0.    ,  0.2985,  0.0605],
+           [ 0.    ,  0.    ,  1.0453,  0.0605, -0.2985],
+           [ 0.    ,  0.2985,  0.0605,  1.0453,  0.    ],
+           [ 0.    ,  0.0605, -0.2985,  0.    ,  1.0453]])
+
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 2
@@ -165,15 +253,25 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
 
     @staticmethod
     def _heisenberg_rep(p):
-        R = _rotation(p[1] + np.pi, bare=True)
+        r, phi = p
 
-        S = math.sinh(p[0]) * np.diag([1, -1])
-        U = math.cosh(p[0]) * np.identity(5)
+        c = hl.math.cosh(r)
+        s = hl.math.sinh(r)
+        ep = hl.math.exp(1j * phi)
+        emp = hl.math.exp(-1j * phi)
 
-        U[0, 0] = 1
-        U[1:3, 3:5] = S @ R.T
-        U[3:5, 1:3] = S @ R.T
-        return U
+        # eq. 182
+        mode_basis = hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, c, 0, 0, ep * s],
+                [0, 0, c, emp * s, 0],
+                [0, 0, ep * s, c, 0],
+                [0, emp * s, 0, 0, c],
+            ],
+            like=r,
+        )
+        return hl.math.to_phase_space(mode_basis)
 
     def adjoint(self):
         r, phi = self.parameters
@@ -182,10 +280,12 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
 
     def simplify(self):
         r = self.data[0]
+        phi = self.data[1] % (2 * math.pi)
+
         if _can_replace(r, 0):
             return qp.Identity(self.wires)
 
-        return self
+        return TwoModeSqueezing(r, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -197,7 +297,7 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
         ad = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[:1]), like=r)
         bd = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[1:]), like=r)
         adbd = hl.math.kron(ad, bd)
-        ab = hl.math.conj(hl.math.transpose(adbd))
+        ab = hl.math.dag(adbd)
         g = r * (hl.math.exp(1j * phi) * adbd - hl.math.exp(-1j * phi) * ab)
         return hl.math.expm(g)
 
@@ -250,6 +350,41 @@ class TwoModeSum(CVOperation, FockRepresentation):
 
     in the position basis (see Box III.6 of :footcite:p:`liu2026hybrid`).
 
+    Its symplectic representation is given (in standard units) by
+
+    .. math::
+
+        \begin{pmatrix}
+            I \\
+            \hat{x}_a' \\
+            \hat{p}_a' \\
+            \hat{x}_b' \\
+            \hat{p}_b'
+        \end{pmatrix} =
+        \begin{pmatrix}
+            1 & 0 & 0 & 0 & 0 \\
+            0 & 1 & 0 & 0 & 0 \\
+            0 & 0 & 1 & 0 & -\lambda \\
+            0 & \lambda & 0 & 1 & 0 \\
+            0 & 0 & 0 & 0 & 1
+        \end{pmatrix}
+        \begin{pmatrix}
+            I \\
+            \hat{x}_a \\
+            \hat{p}_a \\
+            \hat{x}_b \\
+            \hat{p}_b
+        \end{pmatrix}
+
+    For specific parameter values, it may be obtained like
+
+    >>> SUM(0.5, wires=(0, 1)).heisenberg_tr((0, 1))
+    array([[ 1. ,  0. ,  0. ,  0. ,  0. ],
+           [ 0. ,  1. ,  0. ,  0. ,  0. ],
+           [ 0. ,  0. ,  1. ,  0. , -0.5],
+           [ 0. ,  0.5,  0. ,  1. ,  0. ],
+           [ 0. ,  0. ,  0. ,  0. ,  1. ]])
+
     References
     ----------
 
@@ -259,12 +394,27 @@ class TwoModeSum(CVOperation, FockRepresentation):
     num_params = 1
     num_wires = 2
     ndim_params = (0,)
-    grad_method = "F"
+    grad_method = "A"
+    grad_recipe = (_two_term_shift_rule,)
 
     resource_keys = set()
 
     def __init__(self, lambda_: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lambda_, wires=wires, id=id)
+
+    @staticmethod
+    def _heisenberg_rep(p):
+        lam = p[0]
+        return hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, -lam],
+                [0, lam, 0, 1, 0],
+                [0, 0, 0, 0, 1],
+            ],
+            like=lam,
+        )
 
     def adjoint(self):
         lambda_ = self.parameters[0]

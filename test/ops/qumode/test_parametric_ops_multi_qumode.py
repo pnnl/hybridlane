@@ -91,6 +91,48 @@ class TestTwoModeSum:
         grad = grad_fn(x)
         assert not jnp.any(jnp.isnan(grad))
 
+    @pytest.mark.all_interfaces
+    def test_heisenberg_rep(self, like):
+        lam = hl.math.asarray(0.5, like=like)
+        M = hl.TwoModeSum._heisenberg_rep([lam])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == like
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        # Check the expression in the mode basis, eq. B3
+        mode_basis = hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, 1, 0, -lam / 2, lam / 2],
+                [0, 0, 1, lam / 2, -lam / 2],
+                [0, lam / 2, lam / 2, 1, 0],
+                [0, lam / 2, lam / 2, 0, 1],
+            ]
+        )
+        assert hl.math.to_fock_space(M) == pytest.approx(mode_basis)
+
+        expected = hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, -lam],
+                [0, lam, 0, 1, 0],
+                [0, 0, 0, 0, 1],
+            ]
+        )
+        assert M == pytest.approx(expected, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_heisenberg_rep_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(lam):
+            return hl.TwoModeSum._heisenberg_rep([lam])
+
+        f(jnp.array(0.5))  # errors if jit fails
+
 
 @pytest.mark.unit
 class TestBeamsplitter:
@@ -109,8 +151,12 @@ class TestBeamsplitter:
         assert adj_op.parameters == [-0.5, 0.3]
 
     def test_simplify(self):
-        op = hl.Beamsplitter(0, 0.3, wires=[0, 1])
+        op = hl.BS(0, 0.123, wires=(0, 1))
         assert isinstance(op.simplify(), qp.Identity)
+
+        op = hl.BS(0.123 + 4 * math.pi, 0.3 + 2 * math.pi, wires=[0, 1])
+        simplified = op.simplify()
+        assert simplified.parameters == pytest.approx([0.123, 0.3])
 
     def test_label(self):
         op = hl.Beamsplitter(0.5, 0.3, wires=[0, 1])
@@ -126,6 +172,28 @@ class TestBeamsplitter:
         matrix = op.fock_matrix({0: 4, 1: 4})
         eye = hl.math.eye(16)
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+
+    def test_fock_matrix_periodic(self):
+        dim = 16
+        n_cut = dim // 2
+        wire_dims = {0: dim, 1: dim}
+        op = hl.BS(0.123, 0.456, wires=(0, 1))
+        mat = op.fock_matrix(wire_dims)
+        op2 = hl.BS(0.123 + 4 * math.pi, 0.456 + 2 * math.pi, wires=(0, 1))
+        mat2 = op2.fock_matrix(wire_dims)
+
+        # Build index list for the inner subspace (n_total = n_a + n_b <= n_cut)
+        inner = hl.math.asarray(
+            [
+                n_a * dim + n_b
+                for n_a in range(dim)
+                for n_b in range(dim)
+                if n_a + n_b <= n_cut
+            ]
+        )
+        assert mat[hl.math.ix_(inner, inner)] == pytest.approx(
+            mat2[hl.math.ix_(inner, inner)], abs=1e-10
+        )
 
     def test_fock_matrix_commutes(self):
         # Beamsplitter should commute with n_a + n_b
@@ -233,6 +301,39 @@ class TestBeamsplitter:
         grad = grad_fn(x)
         assert grad == pytest.approx(0)
 
+    @pytest.mark.all_interfaces
+    def test_heisenberg_rep(self, like):
+        theta = hl.math.asarray(0.4, like=like)
+        phi = hl.math.asarray(0.3, like=like)
+        M = hl.Beamsplitter._heisenberg_rep([theta, phi])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == like
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        c, s = math.cos(0.4 / 2), math.sin(0.4 / 2)
+        cp, sp = math.cos(0.3), math.sin(0.3)
+        expected = hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, c, 0, s * sp, s * cp],
+                [0, 0, c, -s * cp, s * sp],
+                [0, -s * sp, s * cp, c, 0],
+                [0, -s * cp, -s * sp, 0, c],
+            ]
+        )
+        assert M == pytest.approx(expected, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_heisenberg_rep_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            return hl.Beamsplitter._heisenberg_rep([x[0], x[1]])
+
+        f(jnp.array([0.4, 0.3]))  # errors if jit fails
+
 
 @pytest.mark.unit
 class TestTwoModeSqueezing:
@@ -245,19 +346,20 @@ class TestTwoModeSqueezing:
         assert op.wires == qp.wires.Wires([0, 1])
 
     def test_adjoint(self):
-        import numpy as np
-
         op = hl.TwoModeSqueezing(0.5, 0.3, wires=[0, 1])
         adj_op = op.adjoint()
         assert isinstance(adj_op, hl.TwoModeSqueezing)
         assert adj_op.parameters[0] == 0.5
         assert adj_op.parameters[1] == pytest.approx(
-            (0.3 + np.pi) % (2 * np.pi), abs=1e-6
+            (0.3 + math.pi) % (2 * math.pi), abs=1e-6
         )
 
     def test_simplify(self):
         op = hl.TwoModeSqueezing(0, 0.3, wires=[0, 1])
         assert isinstance(op.simplify(), qp.Identity)
+
+        op = hl.TwoModeSqueezing(0.123, 0.3 + 2 * math.pi, wires=[0, 1])
+        assert op.simplify().parameters == pytest.approx([0.123, 0.3])
 
     def test_label(self):
         op = hl.TwoModeSqueezing(0.5, 0.3, wires=[0, 1])
@@ -311,3 +413,36 @@ class TestTwoModeSqueezing:
         grad_fn = hl.math.jacobian(f)
         grad = grad_fn(x)
         assert not jnp.any(jnp.isnan(grad))
+
+    @pytest.mark.all_interfaces
+    def test_heisenberg_rep(self, like):
+        r = hl.math.asarray(0.3, like=like)
+        phi = hl.math.asarray(0.4, like=like)
+        M = hl.TwoModeSqueezing._heisenberg_rep([r, phi])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == like
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        ch, sh = math.cosh(0.3), math.sinh(0.3)
+        cp, sp = math.cos(0.4), math.sin(0.4)
+        expected = hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, ch, 0, sh * cp, sh * sp],
+                [0, 0, ch, sh * sp, -sh * cp],
+                [0, sh * cp, sh * sp, ch, 0],
+                [0, sh * sp, -sh * cp, 0, ch],
+            ]
+        )
+        assert M == pytest.approx(expected, abs=1e-6)
+
+    @pytest.mark.jax
+    def test_heisenberg_rep_jit(self):
+        import jax
+        import jax.numpy as jnp
+
+        @jax.jit
+        def f(x):
+            return hl.TwoModeSqueezing._heisenberg_rep(x)
+
+        f(jnp.array([0.3, 0.4]))  # errors if jit fails

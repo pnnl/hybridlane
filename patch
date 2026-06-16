@@ -1,0 +1,1586 @@
+Added regular file patch:
+    (empty)
+Modified regular file src/hybridlane/math/__init__.py:
+    ...
+   6    6: from pennylane import math as pl_math
+   7    7: 
+   8    8: from . import array_manipulation  # noqa: F401
+        9: from . import symplectic  # noqa: F401
+   9   10: from .matrix_manipulation import expand_matrix, expand_vector
+  10   11: from .quantum import reduce_dm, reduce_statevector
+       12: from .symplectic import is_symplectic, symplectic_form, to_fock_space, to_phase_space
+  11   13: 
+  12   14: dag = ar.dag
+  13   15: 
+    ...
+  34   36:     "reduce_dm",
+  35   37:     "reduce_statevector",
+  36   38:     "dag",
+       39:     "symplectic",
+       40:     "is_symplectic",
+       41:     "symplectic_form",
+       42:     "to_fock_space",
+       43:     "to_phase_space",
+  37   44: ] + pl_math.__all__
+Added regular file src/hybridlane/math/symplectic.py:
+        1: # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+        2: # SPDX-License-Identifier: BSD-2-Clause
+        3: r"""Utilities for working with symplectic matrices.
+        4: 
+        5: Convention
+        6: ----------
+        7: Throughout this module the phase-space quadrature operators satisfy the
+        8: canonical commutation relation
+        9: 
+       10: .. math::
+       11: 
+       12:     [\hat{x}, \hat{p}] = i \quad (\hbar = 1)
+       13: 
+       14: which fixes the ladder-operator definitions
+       15: 
+       16: .. math::
+       17: 
+       18:     a = \frac{\hat{x} + i\hat{p}}{\sqrt{2}}, \qquad
+       19:     a^\dagger = \frac{\hat{x} - i\hat{p}}{\sqrt{2}}
+       20: 
+       21: Like PennyLane, symplectic matrices are represented in the xpxp ordering with an additional
+       22: constant term
+       23: 
+       24: .. math::
+       25: 
+       26:     \mathbf{r} = (1,\, \hat{x}_1,\, \hat{p}_1,\, \dots,\, \hat{x}_n,\, \hat{p}_n)^\top
+       27: 
+       28: For functions that convert between the phase-space basis and the Fock-space
+       29: ladder-operator basis, the resulting ordering is still interleaving:
+       30: 
+       31: .. math::
+       32: 
+       33:     \mathbf{f} = (1,\, a_1,\, a^\dagger_1,\, \dots,\, a_n,\, a^\dagger_n)^\top
+       34: """
+       35: 
+       36: import math as cmath
+       37: 
+       38: from pennylane import math
+       39: from pennylane.typing import TensorLike
+       40: 
+       41: # ---------------------------------------------------------------------------
+       42: # Public API
+       43: # ---------------------------------------------------------------------------
+       44: 
+       45: __all__ = [
+       46:     "rotation",
+       47:     "symplectic_form",
+       48:     "is_symplectic",
+       49:     "to_fock_space",
+       50:     "to_phase_space",
+       51: ]
+       52: 
+       53: 
+       54: def rotation(theta: TensorLike, include_constant: bool = True) -> TensorLike:
+       55:     r"""Symplectic rotation matrix in phase space.
+       56: 
+       57:     Returns the matrix :math:`R(\theta)` that describes a rotation of the
+       58:     phase-space quadratures by angle :math:`\theta`:
+       59: 
+       60:     .. math::
+       61: 
+       62:         \begin{pmatrix} \hat{x}' \\ \hat{p}' \end{pmatrix}
+       63:         = \begin{pmatrix} \cos\theta & \sin\theta \\
+       64:                          -\sin\theta & \cos\theta \end{pmatrix}
+       65:           \begin{pmatrix} \hat{x} \\ \hat{p} \end{pmatrix}
+       66: 
+       67:     Args:
+       68:         theta: The rotation angle
+       69: 
+       70:         include_constant: If ``True`` (default) the returned matrix acts on the
+       71:             extended basis :math:`(1, \hat{x}, \hat{p})^\top` and has shape
+       72:             ``(3, 3)``.  If ``False`` only the :math:`2 \times 2` quadrature
+       73:             block is returned.
+       74: 
+       75:     Returns:
+       76:         The symplectic rotation matrix with the same array interface as
+       77:         ``theta``.
+       78: 
+       79:     Examples:
+       80: 
+       81:     >>> rotation(np.pi / 2)
+       82:     array([[ 1.,  0.,  0.],
+       83:            [ 0.,  0.,  1.],
+       84:            [ 0., -1.,  0.]])
+       85: 
+       86:     >>> rotation(np.pi / 2, include_constant=False)
+       87:     array([[ 0.,  1.],
+       88:            [-1.,  0.]])
+       89:     """
+       90: 
+       91:     # see box IV.2 of liu2026hybrid
+       92:     c = math.cos(theta)
+       93:     s = math.sin(theta)
+       94:     # eq 147
+       95:     m = math.asarray(
+       96:         [
+       97:             [c, s],
+       98:             [-s, c],
+       99:         ],
+      100:         like=theta,
+      101:     )
+      102:     if include_constant:
+      103:         m = math.block_diag(
+      104:             [
+      105:                 math.asarray([[1.0]], like=theta),
+      106:                 m,
+      107:             ]
+      108:         )
+      109: 
+      110:     return m
+      111: 
+      112: 
+      113: def symplectic_form(n_modes: int, like: str | None = None) -> TensorLike:
+      114:     r"""The symplectic form :math:`\Omega` for :math:`n` modes.
+      115: 
+      116:     Returns the :math:`2n \times 2n` antisymmetric matrix
+      117: 
+      118:     .. math::
+      119: 
+      120:         \Omega = \bigoplus_{k=1}^{n}
+      121:                  \begin{pmatrix} 0 & 1 \\ -1 & 0 \end{pmatrix}
+      122: 
+      123:     This matrix satisfies :math:`\Omega^\top = -\Omega`.
+      124: 
+      125:     Args:
+      126:         n_modes: Number of bosonic modes.
+      127: 
+      128:         like: Optional interface specifier for the returned array.  If ``None`` (default) the
+      129:             array interface is inferred from the context.
+      130: 
+      131:     Returns:
+      132:         The :math:`2n \times 2n` symplectic form matrix.
+      133: 
+      134:     Examples:
+      135: 
+      136:     >>> symplectic_form(1)
+      137:     array([[ 0.,  1.],
+      138:            [-1.,  0.]])
+      139: 
+      140:     >>> symplectic_form(2)
+      141:     array([[ 0.,  1.,  0.,  0.],
+      142:            [-1.,  0.,  0.,  0.],
+      143:            [ 0.,  0.,  0.,  1.],
+      144:            [ 0.,  0., -1.,  0.]])
+      145:     """
+      146: 
+      147:     # eq. 49 of https://www.ams.org/notices/200705/fea-mezzadri-web.pdf
+      148:     identity = math.eye(n_modes, like=like, dtype="int32")
+      149:     e2 = math.asarray([[0, 1], [-1, 0]], like=like, dtype="int32")
+      150:     return math.cast(math.kron(identity, e2), dtype="float64")
+      151: 
+      152: 
+      153: def is_symplectic(S: TensorLike, rtol=1e-5, atol=1e-8) -> bool:
+      154:     r"""Test whether a matrix is symplectic.
+      155: 
+      156:     A matrix :math:`S` is symplectic if its :math:`2n \times 2n` quadrature
+      157:     block :math:`\tilde{S}` satisfies
+      158: 
+      159:     .. math::
+      160: 
+      161:         \tilde{S}^\top\, \Omega\, \tilde{S} = \Omega
+      162: 
+      163:     where :math:`\Omega` is the symplectic form returned by
+      164:     :func:`symplectic_form`.
+      165: 
+      166:     If ``S`` has an odd leading dimension (i.e. it is given in the extended
+      167:     basis with an affine constant row and column), the first row and column are
+      168:     stripped automatically before the test is applied.
+      169: 
+      170:     Args:
+      171:         S: A square matrix of shape ``(2n, 2n)`` or ``(2n+1, 2n+1)`` with an optional
+      172:         batch dimension.
+      173: 
+      174:     Returns:
+      175:         ``True`` if the symplecticity condition holds to machine precision,
+      176:         ``False`` otherwise.
+      177: 
+      178:     Examples:
+      179: 
+      180:     >>> is_symplectic(np.eye(3))
+      181:     np.True_
+      182: 
+      183:     >>> is_symplectic(np.array([[2, 1], [0, 0]]))
+      184:     np.False_
+      185:     """
+      186:     if math.ndim(S) < 2 or ((shape := math.shape(S)) and shape[-1] != shape[-2]):
+      187:         raise ValueError(f"Input must be a square matrix, got shape {shape}")
+      188: 
+      189:     n = shape[-1]
+      190:     n_modes = n // 2
+      191:     has_constant = bool(n % 2)
+      192: 
+      193:     batch_size = math.get_batch_size(S, (n, n), n**2)
+      194:     if batch_size is not None:
+      195:         transpose_axes = (0, 2, 1)
+      196:     else:
+      197:         transpose_axes = (1, 0)
+      198: 
+      199:     S = math.asarray(S)
+      200:     omega = symplectic_form(n_modes, like=math.get_interface(S))
+      201:     Sc = S[..., 1:, 1:] if has_constant else S
+      202:     residual = math.transpose(Sc, axes=transpose_axes) @ omega @ Sc - omega
+      203:     return math.all(math.isclose(residual, 0, rtol=rtol, atol=atol), axis=(-1, -2))
+      204: 
+      205: 
+      206: def to_fock_space(S: TensorLike) -> TensorLike:
+      207:     r"""Convert a symplectic matrix from the phase-space to the Fock-space basis.
+      208: 
+      209:     Given a symplectic matrix :math:`S` acting on the extended phase-space
+      210:     basis :math:`(1, \hat{x}_1, \hat{p}_1, \dots)`, returns the equivalent
+      211:     matrix acting on the extended Fock-space basis
+      212:     :math:`(1, a_1, a^\dagger_1, \dots)`.
+      213: 
+      214:     Args:
+      215:         S: Symplectic matrix of shape ``(2n+1, 2n+1)`` with an optional batch dimension.
+      216: 
+      217:     Returns:
+      218:         The equivalent symplectic matrix in the Fock-space basis.  The result
+      219:         is complex-valued.
+      220: 
+      221:     Examples:
+      222: 
+      223:     The symplectic representation of the displacment gate in phase space mapping
+      224:     :math:`x \mapsto x + \sqrt{2}\alpha`:
+      225: 
+      226:     >>> S = hl.D(0.5, 0, wires=0).heisenberg_tr((0,))
+      227:     >>> S
+      228:     array([[1.    , 0.    , 0.    ],
+      229:            [0.7071, 1.    , 0.    ],
+      230:            [0.    , 0.    , 1.    ]])
+      231: 
+      232:     Its corresponding representation in the mode basis maps :math:`a \mapsto a + \alpha`
+      233:     and :math:`\ad \mapsto \ad + \alpha^*`:
+      234: 
+      235:     >>> hl.math.to_fock_space(S)
+      236:     array([[1. +0.j, 0. +0.j, 0. +0.j],
+      237:            [0.5+0.j, 1. +0.j, 0. +0.j],
+      238:            [0.5+0.j, 0. +0.j, 1. +0.j]])
+      239:     """
+      240:     if math.ndim(S) < 2 or ((shape := math.shape(S)) and shape[-1] != shape[-2]):
+      241:         raise ValueError(f"Input must be a square matrix, got shape {shape}")
+      242: 
+      243:     n = shape[-1]
+      244:     n_modes = n // 2
+      245: 
+      246:     T, Tinv = _fock_conversion_matrices(n_modes, like=math.get_interface(S))
+      247:     S_c = math.cast(S, "complex128")
+      248:     return T @ S_c @ Tinv
+      249: 
+      250: 
+      251: def to_phase_space(S: TensorLike):
+      252:     r"""Convert a symplectic matrix from the Fock-space to the phase-space basis.
+      253: 
+      254:     Inverse of :func:`to_fock_space`.  Given a symplectic matrix :math:`S`
+      255:     acting on the extended Fock-space basis
+      256:     :math:`(1, a_1, a^\dagger_1, \dots)`, returns the equivalent real-valued
+      257:     matrix acting on the extended phase-space basis
+      258:     :math:`(1, \hat{x}_1, \hat{p}_1, \dots)`.
+      259: 
+      260:     Args:
+      261:         S: Symplectic matrix in the Fock-space basis of shape ``(2n+1, 2n+1)``. May have
+      262:             an optional batch dimension
+      263: 
+      264:     Returns:
+      265:         The equivalent real-valued symplectic matrix in the phase-space basis.
+      266: 
+      267:     Examples:
+      268: 
+      269:     >>> S = hl.D(0.5, 0, wires=0).heisenberg_tr((0,))
+      270:     >>> S
+      271:     array([[1.    , 0.    , 0.    ],
+      272:            [0.7071, 1.    , 0.    ],
+      273:            [0.    , 0.    , 1.    ]])
+      274:     >>> to_phase_space(to_fock_space(S))
+      275:     array([[1.    , 0.    , 0.    ],
+      276:            [0.7071, 1.    , 0.    ],
+      277:            [0.    , 0.    , 1.    ]])
+      278:     """
+      279:     if math.ndim(S) < 2 or ((shape := math.shape(S)) and shape[-1] != shape[-2]):
+      280:         raise ValueError(f"Input must be a square matrix, got shape {shape}")
+      281: 
+      282:     n = shape[-1]
+      283:     n_modes = n // 2
+      284: 
+      285:     T, Tinv = _fock_conversion_matrices(n_modes, like=math.get_interface(S))
+      286:     S_c = math.cast(S, "complex128")
+      287:     return math.real(Tinv @ S_c @ T)
+      288: 
+      289: 
+      290: def _fock_conversion_matrices(
+      291:     n_modes: int, like: str | None = None
+      292: ) -> tuple[TensorLike, TensorLike]:
+      293:     lam = 1.0 / cmath.sqrt(2)
+      294:     T2 = math.asarray([[1 + 0j, 1j], [1 + 0j, -1j]], like=like) * lam
+      295:     Tinv2 = math.asarray([[1 + 0j, 1 + 0j], [-1j, 1j]], like=like) * lam
+      296:     blocks_T = [math.eye(1, like=like)] + [T2] * n_modes
+      297:     blocks_Tinv = [math.eye(1, like=like)] + [Tinv2] * n_modes
+      298:     T = math.block_diag(blocks_T)
+      299:     Tinv = math.block_diag(blocks_Tinv)
+      300:     return T, Tinv
+Modified regular file src/hybridlane/ops/qumode/non_parametric_ops.py:
+    ...
+  30   30:     * Wire arguments: ``[qumode]``
+  31   31:     * Number of parameters: 0
+  32   32:     * Number of dimensions per parameter: None
+       33: 
+       34:     Its symplectic representation is given (in standard units) by
+       35: 
+       36:     .. math::
+       37: 
+       38:         \begin{pmatrix}
+       39:             I \\
+       40:             \hat{x}' \\
+       41:             \hat{p}'
+       42:         \end{pmatrix} =
+       43:         \begin{pmatrix}
+       44:             1 & 0 & 0 \\
+       45:             0 & 0 & 1 \\
+       46:             0 & -1 & 0
+       47:         \end{pmatrix}
+       48:         \begin{pmatrix}
+       49:             I \\
+       50:             \hat{x} \\
+       51:             \hat{p}
+       52:         \end{pmatrix}
+       53: 
+       54:     For specific parameter values, it may be obtained like
+       55: 
+       56:     >>> F(wires=0).heisenberg_tr((0,))
+       57:     array([[ 1.,  0.,  0.],
+       58:            [ 0.,  0.,  1.],
+       59:            [ 0., -1.,  0.]])
+  33   60:     """
+  34   61: 
+  35   62:     num_params = 0
+    ...
+  41   68:         super().__init__(wires=wires, id=id)
+  42   69: 
+  43   70:     @staticmethod
+  44     :     def _heisenberg_rep(_):
+  45     :         return hl.R._heisenberg_rep((math.pi / 2,))
+       71:     def _heisenberg_rep(p):
+       72:         return hl.math.symplectic.rotation(math.pi / 2)
+  46   73: 
+  47   74:     def adjoint(self):
+  48   75:         return hl.Rotation(-math.pi / 2, self.wires)
+    ...
+ 121  148:     * Number of parameters: 0
+ 122  149:     * Number of dimensions per parameter: None
+ 123  150: 
+      151:     Its symplectic representation is the permutation
+      152: 
+      153:     .. math::
+      154: 
+      155:         \begin{pmatrix}
+      156:             I \\
+      157:             \hat{x}_a' \\
+      158:             \hat{p}_a' \\
+      159:             \hat{x}_b' \\
+      160:             \hat{p}_b'
+      161:         \end{pmatrix} =
+      162:         \begin{pmatrix}
+      163:             1 & 0 & 0 & 0 & 0 \\
+      164:             0 & 0 & 0 & 1 & 0 \\
+      165:             0 & 0 & 0 & 0 & 1 \\
+      166:             0 & 1 & 0 & 0 & 0 \\
+      167:             0 & 0 & 1 & 0 & 0
+      168:         \end{pmatrix}
+      169:         \begin{pmatrix}
+      170:             I \\
+      171:             \hat{x}_a \\
+      172:             \hat{p}_a \\
+      173:             \hat{x}_b \\
+      174:             \hat{p}_b
+      175:         \end{pmatrix}
+      176: 
+ 124  177:     It has a matrix representation in the Fock basis
+ 125  178: 
+ 126  179:     >>> ModeSwap((0, 1)).fock_matrix({0: 2, 1: 2})
+    ...
+ 166  219:                 [0, 0, 0, 0, 1],
+ 167  220:                 [0, 1, 0, 0, 0],
+ 168  221:                 [0, 0, 1, 0, 0],
+ 169     :             ]
+      222:             ],
+      223:             dtype=float,
+ 170  224:         )
+ 171  225: 
+ 172  226:     def adjoint(self):
+    ...
+Modified regular file src/hybridlane/ops/qumode/parametric_ops_multi_qumode.py:
+    ...
+   9    9:     pow_rotation,
+  10   10: )
+  11   11: from pennylane.operation import CVOperation
+  12     : from pennylane.ops.cv import _rotation, _two_term_shift_rule
+       12: from pennylane.ops.cv import _two_term_shift_rule
+  13   13: from pennylane.typing import TensorLike
+  14   14: from pennylane.wires import WiresLike
+  15   15: 
+    ...
+  33   33:     * Number of wires: 2
+  34   34:     * Wire arguments: ``[qumode, qumode]``
+  35   35:     * Number of parameters: 2
+  36     :     * Number of dimensions per parameter: ``(0, 0)```
+       36:     * Number of dimensions per parameter: ``(0, 0)``
+  37   37: 
+  38   38:     The beamsplitter gate conserves total excitation number, as :math:`[BS, n_a + n_b] = 0`.
+  39   39:     Its representation in the Fock basis can be obtained with:
+    ...
+  47   47:              0.    +0.j    ],
+  48   48:            [ 0.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ,
+  49   49:              1.    +0.j    ]])
+       50: 
+       51:     Its symplectic representation is given (in standard units) by
+       52: 
+       53:     .. math::
+       54: 
+       55:         \begin{pmatrix}
+       56:             I \\
+       57:             \hat{x}_a' \\
+       58:             \hat{p}_a' \\
+       59:             \hat{x}_b' \\
+       60:             \hat{p}_b'
+       61:         \end{pmatrix} =
+       62:         \begin{pmatrix}
+       63:             1 & 0 & 0 & 0 & 0 \\
+       64:             0 & \cos\tfrac{\theta}{2} & 0 & \sin\tfrac{\theta}{2}\sin\varphi & \sin\tfrac{\theta}{2}\cos\varphi \\
+       65:             0 & 0 & \cos\tfrac{\theta}{2} & -\sin\tfrac{\theta}{2}\cos\varphi & \sin\tfrac{\theta}{2}\sin\varphi \\
+       66:             0 & -\sin\tfrac{\theta}{2}\sin\varphi & \sin\tfrac{\theta}{2}\cos\varphi & \cos\tfrac{\theta}{2} & 0 \\
+       67:             0 & -\sin\tfrac{\theta}{2}\cos\varphi & -\sin\tfrac{\theta}{2}\sin\varphi & 0 & \cos\tfrac{\theta}{2}
+       68:         \end{pmatrix}
+       69:         \begin{pmatrix}
+       70:             I \\
+       71:             \hat{x}_a \\
+       72:             \hat{p}_a \\
+       73:             \hat{x}_b \\
+       74:             \hat{p}_b
+       75:         \end{pmatrix}
+       76: 
+       77:     For specific parameter values, it may be obtained like
+       78: 
+       79:     >>> BS(0.5, 0.1, wires=(0, 1)).heisenberg_tr((0, 1))
+       80:     array([[ 1.    ,  0.    ,  0.    ,  0.    ,  0.    ],
+       81:            [ 0.    ,  0.9689,  0.    ,  0.0247,  0.2462],
+       82:            [ 0.    ,  0.    ,  0.9689, -0.2462,  0.0247],
+       83:            [ 0.    , -0.0247,  0.2462,  0.9689,  0.    ],
+       84:            [ 0.    , -0.2462, -0.0247,  0.    ,  0.9689]])
+  50   85:     """
+  51   86: 
+  52   87:     num_params = 2
+    ...
+  66  101:     ):
+  67  102:         super().__init__(theta, phi, wires=wires, id=id)
+  68  103: 
+  69     :     # For the beamsplitter, both parameters are rotation-like
+  70     :     # Todo: Redo this with new convention
+  71  104:     @staticmethod
+  72  105:     def _heisenberg_rep(p):
+  73     :         R = _rotation(p[1], bare=True)
+  74     :         c = math.cos(p[0])
+  75     :         s = math.sin(p[0])
+  76     :         U = c * np.eye(5)
+  77     :         U[0, 0] = 1
+  78     :         U[1:3, 3:5] = -s * R.T
+  79     :         U[3:5, 1:3] = s * R
+  80     :         return U
+      106:         theta, phi = p
+      107:         c = hl.math.cos(theta / 2)
+      108:         s = hl.math.sin(theta / 2)
+      109:         ep = hl.math.exp(1j * phi)
+      110:         emp = hl.math.exp(-1j * phi)
+      111: 
+      112:         # eq. b6 of liu2026hybrid
+      113:         mode_basis = hl.math.asarray(
+      114:             [
+      115:                 [1, 0, 0, 0, 0],
+      116:                 [0, c, 0, -1j * ep * s, 0],
+      117:                 [0, 0, c, 0, 1j * emp * s],
+      118:                 [0, -1j * emp * s, 0, c, 0],
+      119:                 [0, 0, 1j * ep * s, 0, c],
+      120:             ],
+      121:             like=theta,
+      122:         )
+      123: 
+      124:         return hl.math.to_phase_space(mode_basis)
+  81  125: 
+  82  126:     def adjoint(self):
+  83  127:         theta, phi = self.parameters
+  84  128:         return Beamsplitter(-theta, phi, wires=self.wires)
+  85  129: 
+  86  130:     def simplify(self):
+  87     :         theta, phi = self.data
+      131:         theta = self.data[0] % (4 * math.pi)
+      132:         phi = self.data[1] % (2 * math.pi)
+      133: 
+  88  134:         if _can_replace(theta, 0):
+  89  135:             return qp.Identity(wires=self.wires)
+  90  136: 
+  91     :         return self
+      137:         return Beamsplitter(theta, phi, self.wires)
+  92  138: 
+  93  139:     def label(self, decimals=None, base_label=None, cache=None):
+  94  140:         return super().label(
+    ...
+ 143  189:     * Wire arguments: ``[qumode, qumode]``
+ 144  190:     * Number of parameters: 2
+ 145  191:     * Number of dimensions per parameter: ``(0, 0)``
+      192: 
+      193:     Its symplectic representation is given in the mode basis (in standard units) by
+      194: 
+      195:     .. math::
+      196: 
+      197:         \begin{pmatrix}
+      198:             I \\
+      199:             a' \\
+      200:             (\ad)' \\
+      201:             b' \\
+      202:             (\bd)'
+      203:         \end{pmatrix} =
+      204:         \begin{pmatrix}
+      205:             1 & 0 & 0 & 0 & 0 \\
+      206:             0 & \cosh r & 0 & 0 & e^{i\varphi}\sinh r \\
+      207:             0 & 0 & \cosh r & e^{-i\varphi}\sinh r & 0 \\
+      208:             0 & 0 & e^{i\varphi}\sinh r & \cosh r & 0 \\
+      209:             0 & e^{-i\varphi}\sinh r & 0 & 0 & \cosh r
+      210:         \end{pmatrix}
+      211:         \begin{pmatrix}
+      212:             I \\
+      213:             a \\
+      214:             \ad \\
+      215:             b \\
+      216:             \bd
+      217:         \end{pmatrix}
+      218: 
+      219:     (eq. 182 of :footcite:p:`liu2026hybrid`).
+      220: 
+      221:     For specific parameter values, it may be obtained like
+      222: 
+      223:     >>> TMS(0.3, 0.2, wires=(0, 1)).heisenberg_tr((0, 1))
+      224:     array([[ 1.    ,  0.    ,  0.    ,  0.    ,  0.    ],
+      225:            [ 0.    ,  1.0453,  0.    ,  0.2985,  0.0605],
+      226:            [ 0.    ,  0.    ,  1.0453,  0.0605, -0.2985],
+      227:            [ 0.    ,  0.2985,  0.0605,  1.0453,  0.    ],
+      228:            [ 0.    ,  0.0605, -0.2985,  0.    ,  1.0453]])
+      229: 
+      230:     References
+      231:     ----------
+      232: 
+      233:     .. footbibliography::
+ 146  234:     """
+ 147  235: 
+ 148  236:     num_params = 2
+    ...
+ 165  253: 
+ 166  254:     @staticmethod
+ 167  255:     def _heisenberg_rep(p):
+ 168     :         R = _rotation(p[1] + np.pi, bare=True)
+      256:         r, phi = p
+ 169  257: 
+ 170     :         S = math.sinh(p[0]) * np.diag([1, -1])
+ 171     :         U = math.cosh(p[0]) * np.identity(5)
+      258:         c = hl.math.cosh(r)
+      259:         s = hl.math.sinh(r)
+      260:         ep = hl.math.exp(1j * phi)
+      261:         emp = hl.math.exp(-1j * phi)
+ 172  262: 
+ 173     :         U[0, 0] = 1
+ 174     :         U[1:3, 3:5] = S @ R.T
+ 175     :         U[3:5, 1:3] = S @ R.T
+ 176     :         return U
+      263:         # eq. 182
+      264:         mode_basis = hl.math.asarray(
+      265:             [
+      266:                 [1, 0, 0, 0, 0],
+      267:                 [0, c, 0, 0, ep * s],
+      268:                 [0, 0, c, emp * s, 0],
+      269:                 [0, 0, ep * s, c, 0],
+      270:                 [0, emp * s, 0, 0, c],
+      271:             ],
+      272:             like=r,
+      273:         )
+      274:         return hl.math.to_phase_space(mode_basis)
+ 177  275: 
+ 178  276:     def adjoint(self):
+ 179  277:         r, phi = self.parameters
+    ...
+ 182  280: 
+ 183  281:     def simplify(self):
+ 184  282:         r = self.data[0]
+      283:         phi = self.data[1] % (2 * math.pi)
+      284: 
+ 185  285:         if _can_replace(r, 0):
+ 186  286:             return qp.Identity(self.wires)
+ 187  287: 
+ 188     :         return self
+      288:         return TwoModeSqueezing(r, phi, self.wires)
+ 189  289: 
+ 190  290:     def label(self, decimals=None, base_label=None, cache=None):
+ 191  291:         return super().label(
+    ...
+ 197  297:         ad = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[:1]), like=r)
+ 198  298:         bd = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[1:]), like=r)
+ 199  299:         adbd = hl.math.kron(ad, bd)
+ 200     :         ab = hl.math.conj(hl.math.transpose(adbd))
+      300:         ab = hl.math.dag(adbd)
+ 201  301:         g = r * (hl.math.exp(1j * phi) * adbd - hl.math.exp(-1j * phi) * ab)
+ 202  302:         return hl.math.expm(g)
+ 203  303: 
+    ...
+ 250  350: 
+ 251  351:     in the position basis (see Box III.6 of :footcite:p:`liu2026hybrid`).
+ 252  352: 
+      353:     Its symplectic representation is given (in standard units) by
+      354: 
+      355:     .. math::
+      356: 
+      357:         \begin{pmatrix}
+      358:             I \\
+      359:             \hat{x}_a' \\
+      360:             \hat{p}_a' \\
+      361:             \hat{x}_b' \\
+      362:             \hat{p}_b'
+      363:         \end{pmatrix} =
+      364:         \begin{pmatrix}
+      365:             1 & 0 & 0 & 0 & 0 \\
+      366:             0 & 1 & 0 & 0 & 0 \\
+      367:             0 & 0 & 1 & 0 & -\lambda \\
+      368:             0 & \lambda & 0 & 1 & 0 \\
+      369:             0 & 0 & 0 & 0 & 1
+      370:         \end{pmatrix}
+      371:         \begin{pmatrix}
+      372:             I \\
+      373:             \hat{x}_a \\
+      374:             \hat{p}_a \\
+      375:             \hat{x}_b \\
+      376:             \hat{p}_b
+      377:         \end{pmatrix}
+      378: 
+      379:     For specific parameter values, it may be obtained like
+      380: 
+      381:     >>> SUM(0.5, wires=(0, 1)).heisenberg_tr((0, 1))
+      382:     array([[ 1. ,  0. ,  0. ,  0. ,  0. ],
+      383:            [ 0. ,  1. ,  0. ,  0. ,  0. ],
+      384:            [ 0. ,  0. ,  1. ,  0. , -0.5],
+      385:            [ 0. ,  0.5,  0. ,  1. ,  0. ],
+      386:            [ 0. ,  0. ,  0. ,  0. ,  1. ]])
+      387: 
+ 253  388:     References
+ 254  389:     ----------
+ 255  390: 
+    ...
+ 259  394:     num_params = 1
+ 260  395:     num_wires = 2
+ 261  396:     ndim_params = (0,)
+ 262     :     grad_method = "F"
+      397:     grad_method = "A"
+      398:     grad_recipe = (_two_term_shift_rule,)
+ 263  399: 
+ 264  400:     resource_keys = set()
+ 265  401: 
+ 266  402:     def __init__(self, lambda_: TensorLike, wires: WiresLike, id: str | None = None):
+ 267  403:         super().__init__(lambda_, wires=wires, id=id)
+ 268  404: 
+      405:     @staticmethod
+      406:     def _heisenberg_rep(p):
+      407:         lam = p[0]
+      408:         return hl.math.asarray(
+      409:             [
+      410:                 [1, 0, 0, 0, 0],
+      411:                 [0, 1, 0, 0, 0],
+      412:                 [0, 0, 1, 0, -lam],
+      413:                 [0, lam, 0, 1, 0],
+      414:                 [0, 0, 0, 0, 1],
+      415:             ],
+      416:             like=lam,
+      417:         )
+      418: 
+ 269  419:     def adjoint(self):
+ 270  420:         lambda_ = self.parameters[0]
+ 271  421:         return TwoModeSum(-lambda_, wires=self.wires)
+    ...
+Modified regular file src/hybridlane/ops/qumode/parametric_ops_single_qumode.py:
+   1    1: # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+   2    2: # SPDX-License-Identifier: BSD-2-Clause
+   3    3: import math
+   4    4: 
+   5     : import numpy as np
+   6    5: import pennylane as qp
+   7    6: from pennylane.decomposition.symbolic_decomposition import (
+   8    7:     adjoint_rotation,
+   9    8:     pow_rotation,
+  10    9: )
+  11   10: from pennylane.operation import CVOperation
+  12     : from pennylane.ops.cv import _rotation, _two_term_shift_rule
+       11: from pennylane.ops.cv import _two_term_shift_rule
+  13   12: from pennylane.typing import TensorLike
+  14   13: from pennylane.wires import WiresLike
+  15   14: 
+    ...
+  98   97: 
+  99   98:     @staticmethod
+ 100   99:     def _heisenberg_rep(p):
+ 101     :         c = math.cos(p[1])
+ 102     :         s = math.sin(p[1])
+      100:         c = hl.math.cos(p[1])
+      101:         s = hl.math.sin(p[1])
+ 103  102:         scale = math.sqrt(2)
+ 104  103:         return hl.math.asarray(
+ 105  104:             [
+    ...
+ 112  111: 
+ 113  112:     def adjoint(self):
+ 114  113:         a, phi = self.parameters
+ 115     :         new_phi = (phi + math.pi) % (2 * math.pi)
+ 116     :         return Displacement(a, new_phi, wires=self.wires)
+      114:         return Displacement(a, phi + math.pi, wires=self.wires).simplify()
+      115: 
+      116:     def simplify(self):
+      117:         a, phi = self.parameters[0], self.parameters[1] % (2 * math.pi)
+      118: 
+      119:         if _can_replace(a, 0):
+      120:             return qp.Identity(self.wires)
+      121: 
+      122:         return Displacement(a, phi, self.wires)
+ 117  123: 
+ 118  124:     def label(self, decimals=None, base_label=None, cache=None):
+ 119  125:         return super().label(
+    ...
+ 212  218: 
+ 213  219:     @staticmethod
+ 214  220:     def _heisenberg_rep(p):
+ 215     :         return _rotation(-p[0])
+      221:         return hl.math.symplectic.rotation(p[0])
+ 216  222: 
+ 217  223:     def adjoint(self):
+ 218  224:         return Rotation(-self.parameters[0], wires=self.wires)
+ 219  225: 
+ 220  226:     def simplify(self):
+ 221     :         theta = self.data[0]
+      227:         theta = self.data[0] % (2 * math.pi)
+      228: 
+ 222  229:         if _can_replace(theta, 0):
+ 223  230:             return qp.Identity(wires=self.wires)
+ 224  231: 
+ 225     :         return self
+      232:         return Rotation(theta, self.wires)
+ 226  233: 
+ 227  234:     def label(self, decimals=None, base_label=None, cache=None):
+ 228  235:         return super().label(
+    ...
+ 268  275:     * Wire arguments: ``[qumode]``
+ 269  276:     * Number of parameters: 2
+ 270  277:     * Number of dimensions per parameter: ``(0,0)``
+      278: 
+      279:     Its symplectic representation is given (in standard units) by
+      280: 
+      281:     .. math::
+      282: 
+      283:         \begin{pmatrix}
+      284:             I \\
+      285:             \hat{x}' \\
+      286:             \hat{p}'
+      287:         \end{pmatrix} =
+      288:         R^T(\theta) s(r) R(\theta)
+      289:         \begin{pmatrix}
+      290:             I \\
+      291:             \hat{x} \\
+      292:             \hat{p}
+      293:         \end{pmatrix}
+      294: 
+      295:     where :math:`s(r) = diag(1, \exp(-r), \exp(r))` (eq. 159 of :footcite:p:`liu2026hybrid`).
+      296: 
+      297:     For specific parameter values, it may be obtained like
+      298: 
+      299:     >>> S(0.5, 0, wires=0).heisenberg_tr((0,))
+      300:     array([[1.    , 0.    , 0.    ],
+      301:            [0.    , 0.6065, 0.    ],
+      302:            [0.    , 0.    , 1.6487]])
+      303: 
+      304:     References
+      305:     ----------
+      306: 
+      307:     .. footbibliography::
+ 271  308:     """
+ 272  309: 
+ 273  310:     num_params = 2
+    ...
+ 290  327: 
+ 291  328:     @staticmethod
+ 292  329:     def _heisenberg_rep(p):
+ 293     :         R = _rotation(p[1] / 2)
+ 294     :         return R @ np.diag([1, math.exp(-p[0]), math.exp(p[0])]) @ R.T
+      330:         r, phi = p
+      331: 
+      332:         # comes from eq. 152 and 153
+      333:         d = hl.math.asarray([1.0, hl.math.exp(-r), hl.math.exp(r)], like=r)
+      334:         s_r = hl.math.diag(d)
+      335: 
+      336:         R = hl.math.symplectic.rotation(phi)
+      337:         return hl.math.transpose(R) @ s_r @ R  # eq. 159
+ 295  338: 
+ 296  339:     def adjoint(self):
+ 297  340:         r, theta = self.parameters
+    ...
+ 378  421:         return Kerr(-self.parameters[0], wires=self.wires)
+ 379  422: 
+ 380  423:     def simplify(self):
+ 381     :         kappa = self.data[0]
+      424:         kappa = self.data[0] % (2 * math.pi)
+      425: 
+ 382  426:         if _can_replace(kappa, 0):
+ 383  427:             return qp.Identity(wires=self.wires)
+ 384  428: 
+ 385     :         return self
+      429:         return Kerr(kappa, self.wires)
+ 386  430: 
+ 387  431:     def label(self, decimals=None, base_label=None, cache=None):
+ 388  432:         return super().label(
+    ...
+Modified regular file src/hybridlane/transforms/from_pennylane.py:
+    ...
+  23   23: from pennylane.typing import PostprocessingFn
+  24   24: 
+  25   25: import hybridlane as hl
+       26: from hybridlane.measurements import BasisMap
+  26   27: 
+  27   28: from .. import measurements as hl_mp
+  28     : from ..wires import ComputationalBasis, type_check
+       29: from ..wires import ComputationalBasis, TypeCheckResult, type_check
+  29   30: 
+  30   31: optional_qumode_measurements = {
+  31   32:     "homodyne": ComputationalBasis.Position,
+    ...
+ 261  262:     if mp.obs:
+ 262  263:         return hl_mp.SampleMP(obs=convert_observable(mp.obs))
+ 263  264: 
+ 264     :     sa_res: sa.StaticAnalysisResult = cache["sa_res"]
+ 265     :     schema = sa.BasisMap(
+ 266     :         {q: sa.ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
+      265:     sa_res: TypeCheckResult = cache["sa_res"]
+      266:     schema = BasisMap(
+      267:         {q: ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
+ 267  268:     )
+ 268  269:     if sa_res.qumodes:
+ 269  270:         if default_qumode_measurement is None:
+    ...
+ 272  273:                 "Consider passing in the `default_qumode_measurement` argument"
+ 273  274:             )
+ 274  275:         fill_value = optional_qumode_measurements[default_qumode_measurement]
+ 275     :         qumode_schema = sa.BasisMap({m: fill_value for m in mp.wires & sa_res.qumodes})
+      276:         qumode_schema = BasisMap({m: fill_value for m in mp.wires & sa_res.qumodes})
+ 276  277:         schema |= qumode_schema
+ 277  278: 
+ 278  279:     return hl_mp.SampleMP(bases=schema)
+Added regular file test/math/test_symplectic.py:
+        1: # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+        2: # SPDX-License-Identifier: BSD-2-Clause
+        3: import math
+        4: 
+        5: import jax
+        6: import jax.numpy as jnp
+        7: import numpy as np
+        8: import pytest
+        9: 
+       10: import hybridlane as hl
+       11: from hybridlane.math.symplectic import (
+       12:     is_symplectic,
+       13:     rotation,
+       14:     symplectic_form,
+       15:     to_fock_space,
+       16:     to_phase_space,
+       17: )
+       18: 
+       19: 
+       20: def _make_rotation_expected(theta):
+       21:     # eq 147 of liu2026hybrid
+       22:     c, s = math.cos(theta), math.sin(theta)
+       23:     return np.array([[1.0, 0.0, 0.0], [0.0, c, s], [0.0, -s, c]])
+       24: 
+       25: 
+       26: @pytest.mark.unit
+       27: class TestRotation:
+       28:     @pytest.mark.all_interfaces
+       29:     @pytest.mark.parametrize(
+       30:         "theta", [0.0, math.pi / 6, math.pi / 4, math.pi / 2, math.pi, 1.234]
+       31:     )
+       32:     def test_values(self, theta, like):
+       33:         theta = hl.math.asarray(theta, like=like)
+       34:         for include_constant in [True, False]:
+       35:             M = rotation(theta, include_constant)
+       36:             assert hl.math.get_interface(M) == like
+       37:             assert is_symplectic(M)
+       38: 
+       39:             if not include_constant:
+       40:                 M = hl.math.block_diag([np.array([[1.0]]), M])
+       41: 
+       42:             expected = _make_rotation_expected(theta)
+       43:             assert M == pytest.approx(expected, abs=1e-12)
+       44: 
+       45:     @pytest.mark.jax
+       46:     def test_jit(self):
+       47:         @jax.jit
+       48:         def f(theta):
+       49:             return rotation(theta)
+       50: 
+       51:         f(jnp.array(0.5))  # errors if jit fails
+       52: 
+       53:     @pytest.mark.jax
+       54:     def test_grad(self):
+       55:         def loss(t):
+       56:             M = rotation(t)
+       57:             return M @ jnp.array([1, 1, 0])  # pure x quadrature
+       58: 
+       59:         t = jnp.array(0.5)
+       60:         grad_fn = jax.jacobian(loss)
+       61:         grad = grad_fn(t)
+       62:         assert jnp.all(jnp.isfinite(grad))
+       63: 
+       64:         # x' = cos(t) x, p' = -sin(t) x
+       65:         assert grad[0] == pytest.approx(0)
+       66:         assert grad[1] == pytest.approx(-math.sin(t))
+       67:         assert grad[2] == pytest.approx(-math.cos(t))
+       68: 
+       69: 
+       70: @pytest.mark.unit
+       71: class TestSymplecticForm:
+       72:     def test_antisymmetric(self):
+       73:         for n in [1, 2, 3]:
+       74:             omega = symplectic_form(n)
+       75:             assert omega.T == pytest.approx(-omega, abs=1e-12)
+       76: 
+       77:     def test_shape(self):
+       78:         for n in [1, 2, 3]:
+       79:             assert symplectic_form(n).shape == (2 * n, 2 * n)
+       80: 
+       81:     @pytest.mark.all_interfaces
+       82:     def test_interface(self, like):
+       83:         for n in [1, 2, 3]:
+       84:             omega = symplectic_form(n, like=like)
+       85:             assert hl.math.get_interface(omega) == like
+       86: 
+       87: 
+       88: @pytest.mark.unit
+       89: @pytest.mark.all_interfaces
+       90: class TestIsSymplectic:
+       91:     def test_identity_is_symplectic(self, like):
+       92:         for n in range(2, 10):  # odd dimensions include the constant
+       93:             assert is_symplectic(hl.math.eye(n, like=like))
+       94: 
+       95:     def test_rotation_is_symplectic(self, like):
+       96:         for theta in [0.1, 0.5, math.pi / 3]:
+       97:             theta = hl.math.asarray(theta, like=like)
+       98:             assert is_symplectic(rotation(theta))
+       99: 
+      100:     def test_not_symplectic(self, like):
+      101:         for n in range(2, 10):
+      102:             for _ in range(5):
+      103:                 mat = np.random.rand(n, n)
+      104:                 mat = hl.math.asarray(mat, like=like)
+      105:                 assert not is_symplectic(
+      106:                     mat
+      107:                 )  # really unlikely a random matrix is symplectic
+      108: 
+      109:     def test_batched(self, like):
+      110:         for n in (2, 3):
+      111:             for batch_size in (3, 5):
+      112:                 mats = np.random.rand(batch_size, n, n)
+      113:                 mats[-1] = rotation(
+      114:                     np.random.rand(), include_constant=n % 2 == 1
+      115:                 )  # make one symplectic
+      116: 
+      117:                 mats = hl.math.asarray(mats, like=like)
+      118:                 results = is_symplectic(mats)
+      119: 
+      120:                 assert hl.math.shape(results) == (batch_size,)
+      121:                 assert not hl.math.any(results[:-1])
+      122:                 assert results[-1]  # last one is symplectic
+      123: 
+      124: 
+      125: @pytest.mark.unit
+      126: class TestFockPhaseSpaceConversion:
+      127:     def _displacement_fock(self, a, phi, like=None):
+      128:         alpha = a * hl.math.exp(1j * phi)
+      129:         return hl.math.asarray(
+      130:             [
+      131:                 [1, 0, 0],
+      132:                 [alpha, 1, 0],
+      133:                 [hl.math.conj(alpha), 0, 1],
+      134:             ],
+      135:             like=like,
+      136:         )
+      137: 
+      138:     @pytest.mark.all_interfaces
+      139:     def test_to_phase_space_displacement(self, like):
+      140:         p = hl.math.asarray([0.5, 0.3], like=like)
+      141:         S_fock = self._displacement_fock(*p, like=like)
+      142:         S_xp = to_phase_space(S_fock)
+      143:         expected = hl.Displacement._heisenberg_rep(p)
+      144: 
+      145:         assert hl.math.get_interface(S_xp) == like
+      146:         assert hl.math.get_dtype_name(S_xp) == "float64"  # should be real
+      147:         assert S_xp == pytest.approx(expected, abs=1e-10)
+      148: 
+      149:     @pytest.mark.all_interfaces
+      150:     def test_to_fock_space_displacement(self, like):
+      151:         p = hl.math.asarray([0.5, 0.3], like=like)
+      152:         S_xp = hl.Displacement._heisenberg_rep(p)
+      153:         S_fock = to_fock_space(S_xp)
+      154:         expected = self._displacement_fock(*p, like=like)
+      155: 
+      156:         assert hl.math.get_interface(S_fock) == like
+      157:         assert S_fock == pytest.approx(expected, abs=1e-10)
+      158: 
+      159:     @pytest.mark.all_interfaces
+      160:     def test_round_trip_conversion(self, like):
+      161:         for gate, params in [
+      162:             (hl.Rotation, [0.5]),
+      163:             (hl.Squeezing, [0.3, 0.4]),
+      164:             (hl.Displacement, [0.5, 0.3]),
+      165:             (hl.Beamsplitter, [0.4, 0.3]),
+      166:             (hl.TwoModeSqueezing, [0.3, 0.4]),
+      167:             (hl.TwoModeSum, [0.5]),
+      168:         ]:
+      169:             p = hl.math.asarray(params, like=like)
+      170:             M = gate._heisenberg_rep(p)
+      171:             converted = to_phase_space(to_fock_space(M))
+      172: 
+      173:             assert hl.math.get_interface(converted) == like
+      174:             assert converted == pytest.approx(M, abs=1e-10)
+      175: 
+      176:     @pytest.mark.jax
+      177:     def test_to_fock_space_jit(self):
+      178:         @jax.jit
+      179:         def f(M):
+      180:             return to_fock_space(M)
+      181: 
+      182:         p = jnp.array([0.5])
+      183:         M = hl.Rotation._heisenberg_rep(p)
+      184:         f(M)  # errors if jit fails
+      185: 
+      186:     @pytest.mark.jax
+      187:     def test_to_phase_space_jit(self):
+      188:         @jax.jit
+      189:         def f(M):
+      190:             return to_phase_space(M)
+      191: 
+      192:         p = jnp.array([0.3, 0.4])
+      193:         M = self._displacement_fock(*p, like="jax")
+      194:         f(M)  # errors if jit fails
+Modified regular file test/ops/qumode/test_non_parametric_ops.py:
+    ...
+  40   40:         assert hl.math.get_interface(matrix) == "numpy"
+  41   41:         assert matrix == pytest.approx(expected)
+  42   42: 
+       43:     def test_heisenberg_rep(self):
+       44:         M = hl.Fourier._heisenberg_rep([])
+       45:         assert hl.math.is_symplectic(M)
+       46:         assert hl.math.get_interface(M) == "numpy"
+       47:         assert hl.math.get_dtype_name(M) == "float64"
+       48: 
+       49:         # see box IV.2 of liu2026hybrid for these relations. the fourier
+       50:         # gate should perform a clockwise rotation by pi/2
+       51:         expected = hl.math.asarray(
+       52:             [
+       53:                 [1, 0, 0],
+       54:                 [0, 0, 1],  # p -> x
+       55:                 [0, -1, 0],  # x -> -p
+       56:             ]
+       57:         )
+       58:         assert M == pytest.approx(expected)
+       59: 
+  43   60: 
+  44   61: @pytest.mark.unit
+  45   62: class TestModeSwap:
+    ...
+  97  114:         assert hl.math.get_interface(matrix) == "numpy"
+  98  115:         assert matrix == pytest.approx(expected)
+  99  116: 
+      117:     def test_heisenberg_rep(self):
+      118:         M = hl.ModeSwap._heisenberg_rep([])
+      119:         assert hl.math.is_symplectic(M)
+      120:         assert hl.math.get_interface(M) == "numpy"
+      121:         assert hl.math.get_dtype_name(M) == "float64"
+      122: 
+      123:         expected = hl.math.asarray(
+      124:             [
+      125:                 [1, 0, 0, 0, 0],
+      126:                 [0, 0, 0, 1, 0],
+      127:                 [0, 0, 0, 0, 1],
+      128:                 [0, 1, 0, 0, 0],
+      129:                 [0, 0, 1, 0, 0],
+      130:             ]
+      131:         )
+      132:         assert M == pytest.approx(expected, abs=1e-6)
+      133: 
+ 100  134: 
+ 101  135: @pytest.mark.unit
+ 102  136: class TestCreationOp:
+    ...
+Modified regular file test/ops/qumode/test_parametric_ops_multi_qumode.py:
+    ...
+  91   91:         grad = grad_fn(x)
+  92   92:         assert not jnp.any(jnp.isnan(grad))
+  93   93: 
+       94:     @pytest.mark.all_interfaces
+       95:     def test_heisenberg_rep(self, like):
+       96:         lam = hl.math.asarray(0.5, like=like)
+       97:         M = hl.TwoModeSum._heisenberg_rep([lam])
+       98:         assert hl.math.is_symplectic(M)
+       99:         assert hl.math.get_interface(M) == like
+      100:         assert hl.math.get_dtype_name(M) == "float64"
+      101: 
+      102:         # Check the expression in the mode basis, eq. B3
+      103:         mode_basis = hl.math.asarray(
+      104:             [
+      105:                 [1, 0, 0, 0, 0],
+      106:                 [0, 1, 0, -lam / 2, lam / 2],
+      107:                 [0, 0, 1, lam / 2, -lam / 2],
+      108:                 [0, lam / 2, lam / 2, 1, 0],
+      109:                 [0, lam / 2, lam / 2, 0, 1],
+      110:             ]
+      111:         )
+      112:         assert hl.math.to_fock_space(M) == pytest.approx(mode_basis)
+      113: 
+      114:         expected = hl.math.asarray(
+      115:             [
+      116:                 [1, 0, 0, 0, 0],
+      117:                 [0, 1, 0, 0, 0],
+      118:                 [0, 0, 1, 0, -lam],
+      119:                 [0, lam, 0, 1, 0],
+      120:                 [0, 0, 0, 0, 1],
+      121:             ]
+      122:         )
+      123:         assert M == pytest.approx(expected, abs=1e-6)
+      124: 
+      125:     @pytest.mark.jax
+      126:     def test_heisenberg_rep_jit(self):
+      127:         import jax
+      128:         import jax.numpy as jnp
+      129: 
+      130:         @jax.jit
+      131:         def f(lam):
+      132:             return hl.TwoModeSum._heisenberg_rep([lam])
+      133: 
+      134:         f(jnp.array(0.5))  # errors if jit fails
+      135: 
+  94  136: 
+  95  137: @pytest.mark.unit
+  96  138: class TestBeamsplitter:
+    ...
+ 109  151:         assert adj_op.parameters == [-0.5, 0.3]
+ 110  152: 
+ 111  153:     def test_simplify(self):
+ 112     :         op = hl.Beamsplitter(0, 0.3, wires=[0, 1])
+      154:         op = hl.BS(0, 0.123, wires=(0, 1))
+ 113  155:         assert isinstance(op.simplify(), qp.Identity)
+ 114  156: 
+      157:         op = hl.BS(0.123 + 4 * math.pi, 0.3 + 2 * math.pi, wires=[0, 1])
+      158:         simplified = op.simplify()
+      159:         assert simplified.parameters == pytest.approx([0.123, 0.3])
+      160: 
+ 115  161:     def test_label(self):
+ 116  162:         op = hl.Beamsplitter(0.5, 0.3, wires=[0, 1])
+ 117  163:         assert op.label() == "BS"
+    ...
+ 127  173:         eye = hl.math.eye(16)
+ 128  174:         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+ 129  175: 
+      176:     def test_fock_matrix_periodic(self):
+      177:         dim = 16
+      178:         n_cut = dim // 2
+      179:         wire_dims = {0: dim, 1: dim}
+      180:         op = hl.BS(0.123, 0.456, wires=(0, 1))
+      181:         mat = op.fock_matrix(wire_dims)
+      182:         op2 = hl.BS(0.123 + 4 * math.pi, 0.456 + 2 * math.pi, wires=(0, 1))
+      183:         mat2 = op2.fock_matrix(wire_dims)
+      184: 
+      185:         # Build index list for the inner subspace (n_total = n_a + n_b <= n_cut)
+      186:         inner = hl.math.asarray(
+      187:             [
+      188:                 n_a * dim + n_b
+      189:                 for n_a in range(dim)
+      190:                 for n_b in range(dim)
+      191:                 if n_a + n_b <= n_cut
+      192:             ]
+      193:         )
+      194:         assert mat[hl.math.ix_(inner, inner)] == pytest.approx(
+      195:             mat2[hl.math.ix_(inner, inner)], abs=1e-10
+      196:         )
+      197: 
+ 130  198:     def test_fock_matrix_commutes(self):
+ 131  199:         # Beamsplitter should commute with n_a + n_b
+ 132  200:         dim = 8
+    ...
+ 233  301:         grad = grad_fn(x)
+ 234  302:         assert grad == pytest.approx(0)
+ 235  303: 
+      304:     @pytest.mark.all_interfaces
+      305:     def test_heisenberg_rep(self, like):
+      306:         theta = hl.math.asarray(0.4, like=like)
+      307:         phi = hl.math.asarray(0.3, like=like)
+      308:         M = hl.Beamsplitter._heisenberg_rep([theta, phi])
+      309:         assert hl.math.is_symplectic(M)
+      310:         assert hl.math.get_interface(M) == like
+      311:         assert hl.math.get_dtype_name(M) == "float64"
+      312: 
+      313:         c, s = math.cos(0.4 / 2), math.sin(0.4 / 2)
+      314:         cp, sp = math.cos(0.3), math.sin(0.3)
+      315:         expected = hl.math.asarray(
+      316:             [
+      317:                 [1, 0, 0, 0, 0],
+      318:                 [0, c, 0, s * sp, s * cp],
+      319:                 [0, 0, c, -s * cp, s * sp],
+      320:                 [0, -s * sp, s * cp, c, 0],
+      321:                 [0, -s * cp, -s * sp, 0, c],
+      322:             ]
+      323:         )
+      324:         assert M == pytest.approx(expected, abs=1e-6)
+      325: 
+      326:     @pytest.mark.jax
+      327:     def test_heisenberg_rep_jit(self):
+      328:         import jax
+      329:         import jax.numpy as jnp
+      330: 
+      331:         @jax.jit
+      332:         def f(x):
+      333:             return hl.Beamsplitter._heisenberg_rep([x[0], x[1]])
+      334: 
+      335:         f(jnp.array([0.4, 0.3]))  # errors if jit fails
+      336: 
+ 236  337: 
+ 237  338: @pytest.mark.unit
+ 238  339: class TestTwoModeSqueezing:
+    ...
+ 245  346:         assert op.wires == qp.wires.Wires([0, 1])
+ 246  347: 
+ 247  348:     def test_adjoint(self):
+ 248     :         import numpy as np
+ 249     : 
+ 250  349:         op = hl.TwoModeSqueezing(0.5, 0.3, wires=[0, 1])
+ 251  350:         adj_op = op.adjoint()
+ 252  351:         assert isinstance(adj_op, hl.TwoModeSqueezing)
+ 253  352:         assert adj_op.parameters[0] == 0.5
+ 254  353:         assert adj_op.parameters[1] == pytest.approx(
+ 255     :             (0.3 + np.pi) % (2 * np.pi), abs=1e-6
+      354:             (0.3 + math.pi) % (2 * math.pi), abs=1e-6
+ 256  355:         )
+ 257  356: 
+ 258  357:     def test_simplify(self):
+ 259  358:         op = hl.TwoModeSqueezing(0, 0.3, wires=[0, 1])
+ 260  359:         assert isinstance(op.simplify(), qp.Identity)
+ 261  360: 
+      361:         op = hl.TwoModeSqueezing(0.123, 0.3 + 2 * math.pi, wires=[0, 1])
+      362:         assert op.simplify().parameters == pytest.approx([0.123, 0.3])
+      363: 
+ 262  364:     def test_label(self):
+ 263  365:         op = hl.TwoModeSqueezing(0.5, 0.3, wires=[0, 1])
+ 264  366:         assert op.label() == "TMS"
+    ...
+ 311  413:         grad_fn = hl.math.jacobian(f)
+ 312  414:         grad = grad_fn(x)
+ 313  415:         assert not jnp.any(jnp.isnan(grad))
+      416: 
+      417:     @pytest.mark.all_interfaces
+      418:     def test_heisenberg_rep(self, like):
+      419:         r = hl.math.asarray(0.3, like=like)
+      420:         phi = hl.math.asarray(0.4, like=like)
+      421:         M = hl.TwoModeSqueezing._heisenberg_rep([r, phi])
+      422:         assert hl.math.is_symplectic(M)
+      423:         assert hl.math.get_interface(M) == like
+      424:         assert hl.math.get_dtype_name(M) == "float64"
+      425: 
+      426:         ch, sh = math.cosh(0.3), math.sinh(0.3)
+      427:         cp, sp = math.cos(0.4), math.sin(0.4)
+      428:         expected = hl.math.asarray(
+      429:             [
+      430:                 [1, 0, 0, 0, 0],
+      431:                 [0, ch, 0, sh * cp, sh * sp],
+      432:                 [0, 0, ch, sh * sp, -sh * cp],
+      433:                 [0, sh * cp, sh * sp, ch, 0],
+      434:                 [0, sh * sp, -sh * cp, 0, ch],
+      435:             ]
+      436:         )
+      437:         assert M == pytest.approx(expected, abs=1e-6)
+      438: 
+      439:     @pytest.mark.jax
+      440:     def test_heisenberg_rep_jit(self):
+      441:         import jax
+      442:         import jax.numpy as jnp
+      443: 
+      444:         @jax.jit
+      445:         def f(x):
+      446:             return hl.TwoModeSqueezing._heisenberg_rep(x)
+      447: 
+      448:         f(jnp.array([0.3, 0.4]))  # errors if jit fails
+Modified regular file test/ops/qumode/test_parametric_ops_single_qumode.py:
+   1    1: # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+   2    2: # SPDX-License-Identifier: BSD-2-Clause
+   3    3: import math
+   4    4: 
+        5: import jax
+        6: import jax.numpy as jnp
+   5    7: import pennylane as qp
+   6    8: import pytest
+   7    9: 
+    ...
+  58   60: 
+  59   61:     @pytest.mark.jax
+  60   62:     def test_fock_matrix_jit(self):
+  61     :         import jax
+  62     :         import jax.numpy as jnp
+  63     : 
+  64   63:         @jax.jit
+  65   64:         def f(theta):
+  66   65:             op = hl.SNAP(theta, 3, wires=0)
+    ...
+  71   70: 
+  72   71:     @pytest.mark.jax
+  73   72:     def test_fock_matrix_grad(self):
+  74     :         import jax.numpy as jnp
+  75     : 
+  76   73:         def f(theta):
+  77   74:             op = hl.SNAP(theta, 3, wires=0)
+  78   75:             return hl.math.real(op.fock_matrix({0: 4}))
+    ...
+ 128  125: 
+ 129  126:     @pytest.mark.jax
+ 130  127:     def test_fock_matrix_jax(self):
+ 131     :         import jax.numpy as jnp
+ 132  128:         from scipy.special import factorial
+ 133  129: 
+ 134  130:         alpha_r = jnp.array(0.3)
+    ...
+ 150  146: 
+ 151  147:     @pytest.mark.jax
+ 152  148:     def test_fock_matrix_jit(self):
+ 153     :         import jax
+ 154     :         import jax.numpy as jnp
+ 155     : 
+ 156  149:         @jax.jit
+ 157  150:         def f(x):
+ 158  151:             op = hl.D(*x, wires=0)
+    ...
+ 163  156: 
+ 164  157:     @pytest.mark.jax
+ 165  158:     def test_fock_matrix_grad(self):
+ 166     :         import jax.numpy as jnp
+ 167     : 
+ 168  159:         dims = {0: 4}
+ 169  160: 
+ 170  161:         def f(x):
+    ...
+ 190  181:         assert grad[0] == pytest.approx(0)
+ 191  182:         assert grad[1] < 0
+ 192  183: 
+      184:     @pytest.mark.all_interfaces
+      185:     def test_heisenberg_rep(self, like):
+      186:         a = hl.math.asarray(0.5, like=like)
+      187:         phi = hl.math.asarray(0.3, like=like)
+      188:         M = hl.Displacement._heisenberg_rep([a, phi])
+      189:         assert hl.math.is_symplectic(M)
+      190:         assert hl.math.get_interface(M) == like
+      191:         assert hl.math.get_dtype_name(M) == "float64"
+      192: 
+      193:         expected = hl.math.asarray(
+      194:             [
+      195:                 [1, 0, 0],
+      196:                 [math.sqrt(2) * math.cos(0.3) * 0.5, 1, 0],
+      197:                 [math.sqrt(2) * math.sin(0.3) * 0.5, 0, 1],
+      198:             ]
+      199:         )
+      200:         assert M == pytest.approx(expected, abs=1e-6)
+      201: 
+      202:     @pytest.mark.jax
+      203:     def test_heisenberg_rep_jit(self):
+      204:         @jax.jit
+      205:         def f(x):
+      206:             return hl.Displacement._heisenberg_rep(x)
+      207: 
+      208:         x = jnp.array([0.5, 0.3])
+      209:         f(x)  # errors if jit fails
+      210: 
+ 193  211: 
+ 194  212: @pytest.mark.unit
+ 195  213: class TestRotation:
+    ...
+ 232  250: 
+ 233  251:     @pytest.mark.jax
+ 234  252:     def test_fock_matrix_jax(self):
+ 235     :         import jax.numpy as jnp
+ 236     : 
+ 237  253:         theta = jnp.array(math.pi / 2)
+ 238  254:         op = hl.Rotation(theta, wires=0)
+ 239  255:         matrix = op.fock_matrix({0: 4})
+    ...
+ 243  259: 
+ 244  260:     @pytest.mark.jax
+ 245  261:     def test_fock_matrix_jit(self):
+ 246     :         import jax
+ 247     :         import jax.numpy as jnp
+ 248     : 
+ 249  262:         @jax.jit
+ 250  263:         def f(theta):
+ 251  264:             op = hl.R(theta, 0)
+    ...
+ 256  269: 
+ 257  270:     @pytest.mark.jax
+ 258  271:     def test_fock_matrix_grad(self):
+ 259     :         import jax.numpy as jnp
+ 260     : 
+ 261  272:         dim = 4
+ 262  273: 
+ 263  274:         # Should output cos(xn)
+    ...
+ 273  284:         expected_grad = -n * jnp.sin(theta * n)
+ 274  285:         assert grad == pytest.approx(expected_grad)
+ 275  286: 
+      287:     @pytest.mark.all_interfaces
+      288:     def test_heisenberg_rep(self, like):
+      289:         theta = hl.math.asarray(0.5, like=like)
+      290:         M = hl.Rotation._heisenberg_rep([theta])
+      291: 
+      292:         assert hl.math.is_symplectic(M)
+      293:         assert hl.math.get_interface(M) == like
+      294:         assert hl.math.get_dtype_name(M) == "float64"
+      295: 
+      296:         expected = hl.math.symplectic.rotation(theta)
+      297:         assert M == pytest.approx(expected, abs=1e-6)
+      298: 
+      299:     @pytest.mark.jax
+      300:     def test_heisenberg_rep_jit(self):
+      301:         @jax.jit
+      302:         def f(theta):
+      303:             return hl.Rotation._heisenberg_rep([theta])
+      304: 
+      305:         f(jnp.array(0.5))  # errors if jit fails
+      306: 
+ 276  307: 
+ 277  308: @pytest.mark.unit
+ 278  309: class TestSqueezing:
+    ...
+ 342  373: 
+ 343  374:     @pytest.mark.jax
+ 344  375:     def test_fock_matrix_jax(self):
+ 345     :         import jax.numpy as jnp
+ 346     : 
+ 347  376:         r = jnp.array(0.3)
+ 348  377:         phi = jnp.array(0.5)
+ 349  378:         op = hl.Squeezing(r, phi, wires=0)
+    ...
+ 353  382: 
+ 354  383:     @pytest.mark.jax
+ 355  384:     def test_fock_matrix_jit(self):
+ 356     :         import jax
+ 357     :         import jax.numpy as jnp
+ 358     : 
+ 359  385:         @jax.jit
+ 360  386:         def f(x):
+ 361  387:             op = hl.S(*x, wires=0)
+    ...
+ 366  392: 
+ 367  393:     @pytest.mark.jax
+ 368  394:     def test_fock_matrix_grad(self):
+ 369     :         import jax.numpy as jnp
+ 370     : 
+ 371  395:         def var(obs, state):
+ 372  396:             return (
+ 373  397:                 hl.math.expectation_value(obs @ obs, state)
+    ...
+ 392  416:         assert grad[0] < 0
+ 393  417:         assert grad[1] == pytest.approx(0)
+ 394  418: 
+      419:     @pytest.mark.all_interfaces
+      420:     def test_heisenberg_rep(self, like):
+      421:         r = hl.math.asarray(0.3, like=like)
+      422:         theta = hl.math.asarray(0, like=like)
+      423:         M = hl.Squeezing._heisenberg_rep([r, theta])
+      424:         assert hl.math.is_symplectic(M)
+      425:         assert hl.math.get_interface(M) == like
+      426:         assert hl.math.get_dtype_name(M) == "float64"
+      427: 
+      428:         # Check its form in the "mode" basis, eq. 167 of liu2026hybrid.
+      429:         c, s = hl.math.cosh(r), hl.math.sinh(r)
+      430:         expected_fock = hl.math.asarray(
+      431:             [
+      432:                 [1, 0, 0],
+      433:                 [0, c, -s],
+      434:                 [0, -s, c],
+      435:             ]
+      436:         )
+      437:         assert hl.math.to_fock_space(M) == pytest.approx(expected_fock)
+      438: 
+      439:         eigvals, vecs = hl.math.linalg.eig(M)
+      440:         indices = hl.math.argsort(eigvals)
+      441:         eigvals = eigvals[indices]
+      442:         assert hl.math.allclose(eigvals, [hl.math.exp(-r), 1, hl.math.exp(r)])
+      443: 
+      444:         # Now check with a rotation
+      445:         theta = hl.math.asarray(0.123, like=like)
+      446:         M = hl.Squeezing._heisenberg_rep([r, theta])
+      447:         assert hl.math.is_symplectic(M)
+      448:         assert hl.math.get_interface(M) == like
+      449:         assert hl.math.get_dtype_name(M) == "float64"
+      450: 
+      451:         eigvals, vecs = hl.math.linalg.eig(M)
+      452:         indices = hl.math.argsort(eigvals)
+      453:         eigvals = eigvals[indices]
+      454:         vecs = vecs[:, indices]
+      455:         assert hl.math.allclose(eigvals, [hl.math.exp(-r), 1, hl.math.exp(r)])
+      456: 
+      457:         # Constant vector should have eigenvalue 1
+      458:         assert eigvals[1] == pytest.approx(1)
+      459:         assert hl.math.allclose(vecs[..., 1], [1, 0, 0])
+      460: 
+      461:         # The vector with eigenvalue exp(-r) should be a slightly rotated version of x,
+      462:         # eq. 161
+      463:         rotated_x = [0, hl.math.cos(theta), hl.math.sin(theta)]
+      464:         assert hl.math.allclose(vecs[..., 0], rotated_x)
+      465: 
+      466:         # Remaining vector with eigenvalue exp(r) is a rotated version of p
+      467:         # eq. 162
+      468:         rotated_p = [0, -hl.math.sin(theta), hl.math.cos(theta)]
+      469:         assert hl.math.allclose(vecs[..., 2], rotated_p)
+      470: 
+      471:     @pytest.mark.jax
+      472:     def test_heisenberg_rep_jit(self):
+      473:         @jax.jit
+      474:         def f(x):
+      475:             return hl.Squeezing._heisenberg_rep(x)
+      476: 
+      477:         f(jnp.array([0.3, 0.5]))  # errors if jit fails
+      478: 
+ 395  479: 
+ 396  480: @pytest.mark.unit
+ 397  481: class TestKerr:
+    ...
+ 413  497:         op = hl.Kerr(0, wires=0)
+ 414  498:         assert isinstance(op.simplify(), qp.Identity)
+ 415  499: 
+ 416     :         op = hl.Kerr(1e-9, wires=0)
+ 417     :         assert isinstance(op.simplify(), qp.Identity)
+      500:         op = hl.Kerr(0.123 + 2 * math.pi, wires=0)
+      501:         assert op.simplify().parameters == pytest.approx([0.123])
+ 418  502: 
+ 419  503:     def test_label(self):
+ 420  504:         op = hl.Kerr(0.5, wires=0)
+    ...
+ 430  514:         assert hl.math.get_interface(matrix) == "numpy"
+ 431  515:         assert matrix == pytest.approx(expected)
+ 432  516: 
+      517:     def test_fock_matrix_periodic(self):
+      518:         wire_dims = {0: 8}
+      519:         op = hl.K(0.123, wires=0)
+      520:         op2 = hl.K(0.123 + 2 * math.pi, wires=0)
+      521:         assert op.fock_matrix(wire_dims) == pytest.approx(op2.fock_matrix(wire_dims))
+      522: 
+ 433  523:     @pytest.mark.jax
+ 434  524:     def test_fock_matrix_jax(self):
+ 435  525:         import jax.numpy as jnp
+    ...

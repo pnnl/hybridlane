@@ -2,14 +2,13 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import math
 
-import numpy as np
 import pennylane as qp
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
     pow_rotation,
 )
 from pennylane.operation import CVOperation
-from pennylane.ops.cv import _rotation, _two_term_shift_rule
+from pennylane.ops.cv import _two_term_shift_rule
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
@@ -98,8 +97,8 @@ class Displacement(CVOperation, FockRepresentation):
 
     @staticmethod
     def _heisenberg_rep(p):
-        c = math.cos(p[1])
-        s = math.sin(p[1])
+        c = hl.math.cos(p[1])
+        s = hl.math.sin(p[1])
         scale = math.sqrt(2)
         return hl.math.asarray(
             [
@@ -112,8 +111,15 @@ class Displacement(CVOperation, FockRepresentation):
 
     def adjoint(self):
         a, phi = self.parameters
-        new_phi = (phi + math.pi) % (2 * math.pi)
-        return Displacement(a, new_phi, wires=self.wires)
+        return Displacement(a, phi + math.pi, wires=self.wires).simplify()
+
+    def simplify(self):
+        a, phi = self.parameters[0], self.parameters[1] % (2 * math.pi)
+
+        if _can_replace(a, 0):
+            return qp.Identity(self.wires)
+
+        return Displacement(a, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -212,17 +218,18 @@ class Rotation(CVOperation, FockRepresentation):
 
     @staticmethod
     def _heisenberg_rep(p):
-        return _rotation(-p[0])
+        return hl.math.symplectic.rotation(p[0])
 
     def adjoint(self):
         return Rotation(-self.parameters[0], wires=self.wires)
 
     def simplify(self):
-        theta = self.data[0]
+        theta = self.data[0] % (2 * math.pi)
+
         if _can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
 
-        return self
+        return Rotation(theta, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -268,6 +275,36 @@ class Squeezing(CVOperation, FockRepresentation):
     * Wire arguments: ``[qumode]``
     * Number of parameters: 2
     * Number of dimensions per parameter: ``(0,0)``
+
+    Its symplectic representation is given (in standard units) by
+
+    .. math::
+
+        \begin{pmatrix}
+            I \\
+            \hat{x}' \\
+            \hat{p}'
+        \end{pmatrix} =
+        R^T(\theta) s(r) R(\theta)
+        \begin{pmatrix}
+            I \\
+            \hat{x} \\
+            \hat{p}
+        \end{pmatrix}
+
+    where :math:`s(r) = diag(1, \exp(-r), \exp(r))` (eq. 159 of :footcite:p:`liu2026hybrid`).
+
+    For specific parameter values, it may be obtained like
+
+    >>> S(0.5, 0, wires=0).heisenberg_tr((0,))
+    array([[1.    , 0.    , 0.    ],
+           [0.    , 0.6065, 0.    ],
+           [0.    , 0.    , 1.6487]])
+
+    References
+    ----------
+
+    .. footbibliography::
     """
 
     num_params = 2
@@ -290,8 +327,14 @@ class Squeezing(CVOperation, FockRepresentation):
 
     @staticmethod
     def _heisenberg_rep(p):
-        R = _rotation(p[1] / 2)
-        return R @ np.diag([1, math.exp(-p[0]), math.exp(p[0])]) @ R.T
+        r, phi = p
+
+        # comes from eq. 152 and 153
+        d = hl.math.asarray([1.0, hl.math.exp(-r), hl.math.exp(r)], like=r)
+        s_r = hl.math.diag(d)
+
+        R = hl.math.symplectic.rotation(phi)
+        return hl.math.transpose(R) @ s_r @ R  # eq. 159
 
     def adjoint(self):
         r, theta = self.parameters
@@ -378,11 +421,12 @@ class Kerr(CVOperation, FockRepresentation):
         return Kerr(-self.parameters[0], wires=self.wires)
 
     def simplify(self):
-        kappa = self.data[0]
+        kappa = self.data[0] % (2 * math.pi)
+
         if _can_replace(kappa, 0):
             return qp.Identity(wires=self.wires)
 
-        return self
+        return Kerr(kappa, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
