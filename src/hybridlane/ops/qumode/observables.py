@@ -45,7 +45,7 @@ class QuadX(qp.QuadX, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hl.sa.ComputationalBasis.Position
+        return hl.wires.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -105,7 +105,7 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hl.sa.ComputationalBasis.Position
+        return hl.wires.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -165,7 +165,7 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hl.sa.ComputationalBasis.Position
+        return hl.wires.ComputationalBasis.Position
 
     @staticmethod
     def compute_diagonalizing_gates(
@@ -228,7 +228,7 @@ class NumberOperator(qp.NumberOperator, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hl.sa.ComputationalBasis.Discrete
+        return hl.wires.ComputationalBasis.Discrete
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
@@ -304,7 +304,7 @@ class FockStateProjector(qp.FockStateProjector, Spectral, FockRepresentation):
 
     @property
     def natural_basis(self):
-        return hl.sa.ComputationalBasis.Discrete
+        return hl.wires.ComputationalBasis.Discrete
 
     @property
     def num_wires(self):

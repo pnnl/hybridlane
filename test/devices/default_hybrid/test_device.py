@@ -17,7 +17,7 @@ from hybridlane.devices.default_hybrid.device import (
     is_sampled_observable_supported,
 )
 from hybridlane.measurements import ComputationalBasis
-from hybridlane.sa import BasisSchema
+from hybridlane.wires import BasisMap
 
 
 @pytest.mark.unit
@@ -154,12 +154,12 @@ class TestMeasurementSupport:
             )
 
         assert is_sampled_mp_supported(
-            hl.sample(schema=BasisSchema({0: ComputationalBasis.Discrete}))
+            hl.sample(schema=BasisMap({0: ComputationalBasis.Discrete}))
         )
 
         assert not is_sampled_mp_supported(hl.state())
         assert not is_sampled_mp_supported(
-            hl.sample(schema=BasisSchema({0: ComputationalBasis.Position}))
+            hl.sample(schema=BasisMap({0: ComputationalBasis.Position}))
         )
 
     @pytest.mark.xfail(reason="expval doesn't support mcm")

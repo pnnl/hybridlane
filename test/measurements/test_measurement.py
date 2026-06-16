@@ -10,17 +10,17 @@ from hybridlane.measurements import (
     FockTruncation,
     SampleResult,
 )
-from hybridlane.sa.base import BasisSchema, ComputationalBasis
+from hybridlane.wires.base import BasisMap, ComputationalBasis
 
 
 @pytest.mark.unit
-class TestBasisSchema:
+class TestBasisMap:
     def test_init(self):
         wire_map = {
             "a": ComputationalBasis.Discrete,
             "b": ComputationalBasis.Position,
         }
-        schema = BasisSchema(wire_map)
+        schema = BasisMap(wire_map)
         assert schema.get_basis("a") == ComputationalBasis.Discrete
         assert schema.get_basis("b") == ComputationalBasis.Position
 
@@ -29,23 +29,19 @@ class TestBasisSchema:
             "a": ComputationalBasis.Discrete,
             ("b", "c"): ComputationalBasis.Position,
         }
-        schema = BasisSchema(wire_map)
+        schema = BasisMap(wire_map)
         assert schema.get_basis("a") == ComputationalBasis.Discrete
         assert schema.get_basis("b") == ComputationalBasis.Position
         assert schema.get_basis("c") == ComputationalBasis.Position
 
-    def test_init_error(self):
-        with pytest.raises(ValueError):
-            BasisSchema({"a": "not a basis"})
-
     def test_eq(self):
-        schema1 = BasisSchema({"a": ComputationalBasis.Discrete})
-        schema2 = BasisSchema({"a": ComputationalBasis.Discrete})
+        schema1 = BasisMap({"a": ComputationalBasis.Discrete})
+        schema2 = BasisMap({"a": ComputationalBasis.Discrete})
         assert schema1 == schema2
 
     def test_neq(self):
-        schema1 = BasisSchema({"a": ComputationalBasis.Discrete})
-        schema2 = BasisSchema({"b": ComputationalBasis.Discrete})
+        schema1 = BasisMap({"a": ComputationalBasis.Discrete})
+        schema2 = BasisMap({"b": ComputationalBasis.Discrete})
         assert schema1 != schema2
 
 
@@ -108,10 +104,8 @@ class TestCountsResult:
     def test_init_basis_states(self):
         counts = {(0, 1): 10, (1, 0): 20}
         wire_order = Wires(["a", "b"])
-        basis_schema = BasisSchema({wire_order: ComputationalBasis.Discrete})
-        result = CountsResult(
-            counts=counts, wire_order=wire_order, basis_schema=basis_schema
-        )
+        basis_schema = BasisMap({wire_order: ComputationalBasis.Discrete})
+        result = CountsResult(counts=counts, wire_order=wire_order, bases=basis_schema)
         assert result.is_basis_states
         assert not result.is_eigenvals
         assert result.shots == 30
@@ -127,7 +121,7 @@ class TestCountsResult:
 @pytest.mark.unit
 class TestFockTruncation:
     def test_shape(self):
-        schema = BasisSchema(
+        schema = BasisMap(
             {"a": ComputationalBasis.Discrete, "b": ComputationalBasis.Position}
         )
         truncation = FockTruncation(basis_schema=schema, dim_sizes={"a": 2, "b": 10})

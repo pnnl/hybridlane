@@ -1,19 +1,27 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 
-from hybridlane import decomposition, math, ops, sa, transforms  # noqa: F401
+from hybridlane import decomposition, math, ops, transforms, wires  # noqa: F401
 from hybridlane.drawer import draw_mpl  # noqa: F401
 from hybridlane.io import to_openqasm  # noqa: F401
 from hybridlane.measurements import (  # noqa: F401
     density_matrix,
     expval,
-    # probs, # fixme: uncomment when probs is supported
     sample,
     state,
     var,
+    # probs, # fixme: uncomment when probs is supported
 )
 from hybridlane.ops import *  # noqa: F403
 from hybridlane.templates import FockState, GKPState, SqueezedCatState  # noqa: F401
 from hybridlane.transforms import from_pennylane  # noqa: F401
+from hybridlane.wires import (  # noqa: F401
+    Qubit,
+    Qudit,
+    Qumode,
+    qubits,
+    qumodes,
+    type_check,
+)
 
-from ._version import __version__
+from ._version import __version__  # noqa: F401

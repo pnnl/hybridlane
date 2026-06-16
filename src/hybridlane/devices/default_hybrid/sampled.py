@@ -15,7 +15,7 @@ from pennylane.wires import Wires
 from hybridlane.devices.default_hybrid.apply_operation import apply_operation
 from hybridlane.devices.default_hybrid.measure import diagonalize, flatten_state
 from hybridlane.measurements import (
-    BasisSchema,
+    BasisMap,
     ComputationalBasis,
     ExpectationMP,
     ProbabilityMP,
@@ -92,16 +92,17 @@ def measure_with_diagonalizing_gates(
 
     # Sampling wires, remap to original circuit wire labels
     if isinstance(mp, SampleMP) and mp.obs is None:
+        assert isinstance(result, SampleResult)
         if wire_map is not None:
             rev_wire_map = {v: k for k, v in wire_map.items()}
             new_data = {rev_wire_map.get(w, w): arr for w, arr in result.data.items()}
-            new_schema = BasisSchema(
+            new_schema = BasisMap(
                 {
-                    rev_wire_map.get(w, w): result.schema.get_basis(w)
-                    for w in result.schema.wires
+                    rev_wire_map.get(w, w): result.bases.get_basis(w)
+                    for w in result.bases.wires
                 }
             )
-            result = SampleResult(schema=new_schema, data=new_data)
+            result = SampleResult(bases=new_schema, data=new_data)
 
     return [result]  # ty:ignore[invalid-return-type]
 
@@ -151,11 +152,11 @@ def sample_state(
 
     sampled_wires = wires or wire_order
     probs_shape = tuple(wire_dims[w] for w in sampled_wires)
-    schema = BasisSchema({sampled_wires: ComputationalBasis.Discrete})
+    schema = BasisMap({sampled_wires: ComputationalBasis.Discrete})
 
     flat_state = flatten_state(state, is_state_batched)
     with qp.QueuingManager.stop_recording():
-        probs = ProbabilityMP(schema=schema).process_state(
+        probs = ProbabilityMP(bases=schema).process_state(
             flat_state, wire_order, wire_dims
         )
 

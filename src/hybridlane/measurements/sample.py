@@ -12,13 +12,13 @@ from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
 from ..ops import attributes
-from ..sa import BasisSchema, ComputationalBasis
+from ..wires import BasisMap, ComputationalBasis
 from .base import CountsResult, SampleMeasurement, SampleResult
 
 
 def sample(
     op: Operator | MeasurementValue | Sequence[MeasurementValue] | None = None,
-    schema: BasisSchema | None = None,
+    schema: BasisMap | None = None,
 ):
     r"""Samples the supplied observable or the wires in a provided schema
 
@@ -28,7 +28,7 @@ def sample(
 
     When sampling wires without an observable, unlike in the DV (qubit) case, there are multiple possible
     computational bases to use (see :py:class:`~hybridlane.measurements.measurement.ComputationalBasis`).
-    Therefore, one must provide a :py:class`~hybridlane.measurements.measurement.BasisSchema` specifying what
+    Therefore, one must provide a :py:class`~hybridlane.measurements.measurement.BasisMap` specifying what
     basis to measure each wire in. Note that it'll likely be easier to perform homodyne (:math:`\hat{x}`) or Fock
     (:math:`\hat{n}`) measurements by supplying the corresponding observable rather than manually constructing
     the appropriate schema.
@@ -37,7 +37,7 @@ def sample(
     if isinstance(op, MeasurementValue):
         raise NotImplementedError("Mid-circuit measurement is currently not supported")
 
-    return SampleMP(obs=op, schema=schema)
+    return SampleMP(obs=op, bases=schema)
 
 
 class SampleMP(SampleMeasurement):
@@ -114,7 +114,7 @@ class SampleMP(SampleMeasurement):
         ):
             wires = obs.wires
             obs_bases = {self.schema.get_basis(w) for w in wires}
-            result_bases = {result.schema.get_basis(w) for w in wires}
+            result_bases = {result.bases.get_basis(w) for w in wires}
             basis = next(iter(result_bases))
 
             # We don't know how to handle mixed bases. An operator like n_1 p_0 is valid, but because

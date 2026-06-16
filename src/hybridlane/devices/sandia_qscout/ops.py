@@ -13,7 +13,7 @@ from pennylane.wires import WiresLike
 import hybridlane as hl
 
 from ...ops.hybrid.parametric_ops_single_qumode import _can_replace
-from ...ops.mixins import Hybrid
+from ...ops.mixins import HybridOperation
 
 Red = hl.Red
 Blue = hl.Blue
@@ -23,7 +23,7 @@ ZCD = hl.CD
 FockState = hl.FockState
 
 
-class ConditionalXSqueezing(Operation, Hybrid):
+class ConditionalXSqueezing(HybridOperation):
     r"""Qubit-conditioned squeezing gate :math:`xCS(\beta)`
 
     This gate implements the unitary
@@ -68,7 +68,7 @@ class ConditionalXSqueezing(Operation, Hybrid):
         )
 
 
-class SidebandProbe(Operation, Hybrid):
+class SidebandProbe(HybridOperation):
     r"""General sideband probe operation
 
     This is represented by the hardware instruction ``Rt_SBProbe``
@@ -106,7 +106,7 @@ class SidebandProbe(Operation, Hybrid):
         )
 
 
-class NativeBeamsplitter(Operation, Hybrid):
+class NativeBeamsplitter(HybridOperation):
     r"""Hardware-native beamsplitter gate
 
     This class is named NativeBeamsplitter to distinguish it from

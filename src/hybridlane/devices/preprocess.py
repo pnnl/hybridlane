@@ -7,16 +7,14 @@ import pennylane as qp
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
 
-from hybridlane.measurements.base import ShapeRequiresWireDims
-from hybridlane.sa import Qubit, Qumode
-from hybridlane.sa.base import Qudit
-
-from .. import sa
+from .. import wires as sa
+from ..measurements.base import ShapeRequiresWireDims
+from ..wires import Qubit, Qudit, Qumode
 
 
 @qp.transform
 def static_analyze_tape(
-    tape: QuantumScript, fill_missing: str | None = None
+    tape: QuantumScript,
 ) -> tuple[QuantumScriptBatch, PostprocessingFn]:
     """Circuit pass that validates a wire is only used as a qubit or a qumode
 
@@ -37,15 +35,12 @@ def static_analyze_tape(
     Args:
         tape: The quantum circuit to check
 
-        fill_missing: An optional string of ``("qubits", "qumodes")`` specifying what default
-            to provide for unidentified wires
-
     Raises:
         :py:class:`~hybridlane.sa.StaticAnalysisError` if any wire is used as both a qubit and a qumode across the circuit, or
         if its type cannot be inferred and no default is provided.
     """
 
-    sa.analyze(tape, fill_missing=fill_missing)  # errors if anything is wrong
+    sa.type_check(tape)  # errors if anything is wrong
 
     return (tape,), null_postprocessing
 
@@ -64,7 +59,7 @@ def fill_wire_dims(
     wire_dims = dict(wire_dims)
 
     # First type check the circuit and fill any missing qumode dimensions
-    res = sa.analyze(tape)
+    res = sa.type_check(tape)
     for wire, type_ in res.wire_types.items():
         match type_:
             case Qubit():

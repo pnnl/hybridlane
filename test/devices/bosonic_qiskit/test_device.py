@@ -10,7 +10,7 @@ from pennylane.exceptions import DeviceError
 
 import hybridlane as hl
 from hybridlane.measurements import FockTruncation
-from hybridlane.sa.exceptions import StaticAnalysisError
+from hybridlane.wires.exceptions import TypeCheckError
 
 from ...util import poisson_test
 
@@ -83,7 +83,7 @@ class TestBosonicQiskitDevice:
             )  # wire 0 established as a qubit here
             return hl.expval(hl.NumberOperator(0))  # measure wire 0 in fock basis
 
-        with pytest.raises(StaticAnalysisError):
+        with pytest.raises(TypeCheckError):
             circuit()
 
     @pytest.mark.unit
@@ -103,7 +103,7 @@ class TestBosonicQiskitDevice:
         def circuit():
             return hl.expval(obs)
 
-        with pytest.raises(StaticAnalysisError):
+        with pytest.raises(TypeCheckError):
             circuit()
 
     @pytest.mark.integration

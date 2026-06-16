@@ -21,7 +21,7 @@ from pennylane.tape import QuantumScript
 
 import hybridlane as hl
 
-from ... import sa
+from ... import wires as sa
 from . import ops as native_ops
 
 if TYPE_CHECKING:
@@ -233,7 +233,7 @@ def batch_to_jaqal(
     # to find out the required number of qubits for all the tapes
     num_qubits = 0
     for tape in batch:
-        sa_res = sa.analyze(tape)
+        sa_res = sa.type_check(tape)
         num_qubits = max(num_qubits, max(sa_res.qubits) + 1)
 
     @jaqal_circuit(

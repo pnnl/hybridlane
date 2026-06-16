@@ -9,10 +9,8 @@ from pennylane.ops.mid_measure import MeasurementValue
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
-from hybridlane.measurements import ComputationalBasis
-
 from .. import math
-from ..sa import BasisSchema
+from ..wires import BasisMap, ComputationalBasis
 from .base import (
     CountsResult,
     SampleMeasurement,
@@ -54,7 +52,7 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
     ) -> TensorLike | list[TensorLike]:
         with qp.QueuingManager.stop_recording():
             eigvals = SampleMP(
-                self.obs, schema=None, eigvals=self._eigvals
+                self.obs, bases=None, eigvals=self._eigvals
             ).process_samples(
                 samples,
                 wire_order=self.obs.wires,
@@ -72,7 +70,7 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
             with qp.QueuingManager.stop_recording():
                 counts = SampleMP(
                     self.obs,
-                    schema=None,
+                    bases=None,
                     eigvals=self._eigvals,
                 ).process_counts(counts)
 
@@ -99,8 +97,8 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
         with qp.QueuingManager.stop_recording():
             # The schema here doesn't matter, we just need it to take up the full
             # state space so that the probabilities are computed correctly.
-            schema = BasisSchema({wire_order: ComputationalBasis.Discrete})
-            probs = ProbabilityMP(schema=schema).process_state(
+            schema = BasisMap({wire_order: ComputationalBasis.Discrete})
+            probs = ProbabilityMP(bases=schema).process_state(
                 state, wire_order, wire_dims
             )
         return math.dot(eigvals, probs)
@@ -121,8 +119,8 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
         with qp.QueuingManager.stop_recording():
             # The schema here doesn't matter, we just need it to take up the full
             # state space so that the probabilities are computed correctly.
-            schema = BasisSchema({wire_order: ComputationalBasis.Discrete})
-            probs = ProbabilityMP(schema=schema).process_density_matrix(
+            schema = BasisMap({wire_order: ComputationalBasis.Discrete})
+            probs = ProbabilityMP(bases=schema).process_density_matrix(
                 dm, wire_order, wire_dims
             )
         return math.dot(eigvals, probs)

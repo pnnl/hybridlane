@@ -13,7 +13,7 @@ from pennylane.wires import Wires
 from pennylane.workflow import construct_tape
 
 import hybridlane as hl
-from hybridlane import sa
+from hybridlane import wires as sa
 from hybridlane.devices.sandia_qscout import Qumode
 from hybridlane.devices.sandia_qscout import ops as ion
 
@@ -186,7 +186,7 @@ class TestLayout:
             return hl.expval(qp.Z(0))
 
         tape = construct_tape(circuit, level="device")()
-        sa_res = sa.analyze(tape)
+        sa_res = sa.type_check(tape)
 
         allowed_wires = Wires([Qumode(m, i) for m in (0, 1) for i in range(1, 4)])
         assert allowed_wires.contains_wires(sa_res.qumodes)
@@ -203,7 +203,7 @@ class TestLayout:
             return hl.expval(qp.Z(0))
 
         tape = construct_tape(circuit, level="device")()
-        sa_res = sa.analyze(tape)
+        sa_res = sa.type_check(tape)
 
         allowed_wires = Wires([Qumode(m, i) for m in (0, 1) for i in range(0, 4)])
         assert allowed_wires.contains_wires(sa_res.qumodes)

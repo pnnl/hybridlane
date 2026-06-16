@@ -110,8 +110,9 @@ from pennylane.operation import Operator
 from pennylane.tape import QuantumScript
 from pennylane.wires import Wires
 
-from .. import ops, sa
+from .. import ops
 from ..transforms import from_pennylane
+from ..wires import ComputationalBasis, type_check
 
 
 def to_openqasm(
@@ -140,7 +141,7 @@ def to_openqasm(
     .. note::
         Qubit measurements are assumed to be performed in the computational basis, while
         qumode measurements are determined from the
-        :class:`~hybridlane.sa.base.BasisSchema` of each measurement. If sampling an
+        :class:`~hybridlane.sa.base.BasisMap` of each measurement. If sampling an
         observable, this function can provide the gates necessary to diagonalize
         each observable by setting ``rotations=True``. Only wires that are actually
         measured will have measurement statements. Finally, non-overlapping
@@ -281,7 +282,7 @@ def tape_to_openqasm(
     # Preprocessing
     tape = tape.map_to_standard_wires()
     [tape], _ = qp.transforms.convert_to_numpy_parameters(tape)
-    res = sa.analyze(tape)
+    res = type_check(tape)
 
     wire_to_str = {w: f"q[{i}]" for i, w in enumerate(res.qubits)} | {
         w: f"m[{i}]" for i, w in enumerate(res.qumodes)
@@ -369,16 +370,16 @@ def tape_to_openqasm(
 
             # Qumodes are more complicated, as we must determine whether it's a
             # homodyne or fock measurement from the basis schema
-            if schema := res.schemas[tape.measurements.index(mp)]:
+            if schema := res.basis_maps[tape.measurements.index(mp)]:
                 measured_qumodes = res.qumodes & all_wires
                 for qumode in measured_qumodes:
                     cvar = f"c{classical_vars}"
                     classical_vars += 1
                     basis = schema.get_basis(qumode)
 
-                    if basis == sa.ComputationalBasis.Discrete:
+                    if basis == ComputationalBasis.Discrete:
                         result_type, func = ("uint", Keywords.MeasureN)
-                    elif basis == sa.ComputationalBasis.Position:
+                    elif basis == ComputationalBasis.Position:
                         result_type, func = ("float", Keywords.MeasureQuadX)
                     else:
                         raise ValueError("Unsupported basis", basis)

@@ -17,7 +17,7 @@ from pennylane.wires import Wires
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import hybridlane as hl
-import hybridlane.sa as sa  # fixes a circular import
+import hybridlane.wires as sa  # fixes a circular import
 
 # -----------------------------------
 #           Sampling Methods
@@ -38,15 +38,15 @@ class SampleResult:
     Each array has shape ``(shots,)`` or an optional batch dimension ``(B, shots)``
     """
 
-    schema: sa.BasisSchema
+    bases: sa.BasisMap
 
     def __post_init__(self):
-        self.validate_sample_tensors(self.schema, self.data)
+        self.validate_sample_tensors(self.bases, self.data)
 
     @classmethod
     def from_basis_states(cls, basis_states: dict[Any, TensorLike]) -> Self:
-        schema = sa.infer_schema_from_tensors(basis_states)
-        return cls(data=basis_states, schema=schema)
+        bases = sa.infer_bases_from_tensors(basis_states)
+        return cls(data=basis_states, bases=bases)
 
     @functools.cached_property
     def shape(self) -> tuple[int, ...]:
@@ -68,7 +68,7 @@ class SampleResult:
         return self.shape[-1]
 
     def concatenate(self, other: Self) -> "SampleResult":
-        if self.schema != other.schema:
+        if self.bases != other.bases:
             raise ValueError("Schemas of each result must match")
 
         if self.batch_size != other.batch_size:
@@ -78,18 +78,18 @@ class SampleResult:
         for w in self.data.keys():
             new_tensors[w] = qp.math.concatenate([self.data[w], other.data[w]], axis=-1)
 
-        return SampleResult(data=new_tensors, schema=self.schema)
+        return SampleResult(data=new_tensors, bases=self.bases)
 
     def slice(self, indices: slice):
         new_tensors = {}
         for w in self.data.keys():
             new_tensors[w] = self.data[w][..., indices]  # ty:ignore[not-subscriptable, invalid-argument-type]
 
-        return SampleResult(data=new_tensors, schema=self.schema)
+        return SampleResult(data=new_tensors, bases=self.bases)
 
     @staticmethod
     def validate_sample_tensors(
-        schema: sa.BasisSchema, tensors: dict[Hashable, TensorLike]
+        schema: sa.BasisMap, tensors: dict[Hashable, TensorLike]
     ):
         r"""Validates the tensors with several checks
 
@@ -148,7 +148,7 @@ class CountsResult(BaseModel):
     wire_order: Wires | None = Field(None)
     """The order of the wires in each basis state"""
 
-    basis_schema: sa.BasisSchema | None = Field(None)
+    bases: sa.BasisMap | None = Field(None)
     """Schema determining the basis each wire is measured in"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -170,7 +170,7 @@ class CountsResult(BaseModel):
 
     @model_validator(mode="after")
     def check_optional_fields(self) -> "CountsResult":
-        if (self.wire_order is None) != (self.basis_schema is None):
+        if (self.wire_order is None) != (self.bases is None):
             raise ValueError(
                 "Both wire_order and basis_schema must be provided, or neither provided"
             )
@@ -218,14 +218,14 @@ class SampleMeasurement(MeasurementProcess):
     _shortname = "sample"
 
     def __init__(
-        self, obs=None, schema: sa.BasisSchema | None = None, eigvals=None, id=None
+        self, obs=None, bases: sa.BasisMap | None = None, eigvals=None, id=None
     ):
         """
         Args:
             obs: The optional observable to sample from. If provided, the samples will be a set of
                 eigenvalue samples.
 
-            schema: The optional schema describing the bases each wire is measured in. If it is provided,
+            bases: The optional schema describing the bases each wire is measured in. If it is provided,
                 the samples will be computational basis states matching the format in the schema. If an
                 observable is provided, ``schema`` must be ``None``, where it will be inferred from the
                 observable.
@@ -236,21 +236,21 @@ class SampleMeasurement(MeasurementProcess):
 
             id: An optional identifier to label the measurement operation.
         """
-        if (obs is None) == (schema is None):
+        if (obs is None) == (bases is None):
             raise ValueError(
                 "Can only pass observable or schema because schemas are inferred from an observable"
             )
 
-        if schema is None and obs is not None:
-            schema = sa.infer_schema_from_observable(obs)
+        if bases is None and obs is not None:
+            bases = sa.infer_measurement_bases(obs, {})
             wires = None
-        elif schema is not None and obs is None:
-            wires = schema.wires
+        elif bases is not None and obs is None:
+            wires = bases.wires
 
-        assert schema is not None
+        assert bases is not None
 
-        self.schema = schema
-        super().__init__(obs=obs, wires=wires, eigvals=eigvals, id=id)  # type: ignore
+        self.schema = bases
+        super().__init__(obs=obs, wires=wires, eigvals=eigvals, id=id)
 
     @abstractmethod
     def process_samples(
@@ -334,7 +334,7 @@ class FockTruncation(Truncation, BaseModel):
     the maximum energy of a qumode.
     """
 
-    basis_schema: sa.BasisSchema
+    basis_schema: sa.BasisMap
     """Schema holding the basis for each wire"""
 
     dim_sizes: dict[Hashable, int]
@@ -348,7 +348,7 @@ class FockTruncation(Truncation, BaseModel):
     @classmethod
     def all_fock_space(cls, wires: Sequence[Hashable], dim_sizes: dict[Hashable, int]):
         wires = Wires.all_wires(wires)
-        schema = sa.BasisSchema({w: sa.ComputationalBasis.Discrete for w in wires})
+        schema = sa.BasisMap({w: sa.ComputationalBasis.Discrete for w in wires})
         return cls(basis_schema=schema, dim_sizes=dim_sizes)
 
     def __eq__(self, other):

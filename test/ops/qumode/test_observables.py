@@ -6,7 +6,7 @@ import pennylane as qp
 import pytest
 
 import hybridlane as hl
-import hybridlane.sa as sa
+import hybridlane.wires as sa
 
 
 @pytest.mark.unit

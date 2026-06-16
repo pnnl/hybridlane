@@ -14,7 +14,7 @@ from hybridlane.measurements.base import (
 )
 from hybridlane.measurements.sample import SampleMP
 from hybridlane.ops import NumberOperator, QuadX
-from hybridlane.sa.base import BasisSchema, ComputationalBasis
+from hybridlane.wires import BasisMap, ComputationalBasis
 
 
 @pytest.mark.unit
@@ -30,7 +30,7 @@ class TestSampleMP:
         """Test that process_samples passes through basis states if obs is None."""
         mp = SampleMP(
             obs=None,
-            schema=BasisSchema(
+            bases=BasisMap(
                 {
                     Wires(0): ComputationalBasis.Position,
                     Wires(1): ComputationalBasis.Discrete,
@@ -99,8 +99,8 @@ class TestSampleMP:
         obs = NumberOperator(0)
         mp = SampleMP(obs=obs)
 
-        schema = BasisSchema({Wires(0): ComputationalBasis.Position})
-        result = SampleResult({0: np.random.randn(5)}, schema=schema)
+        schema = BasisMap({Wires(0): ComputationalBasis.Position})
+        result = SampleResult({0: np.random.randn(5)}, bases=schema)
 
         with pytest.raises(ValueError, match="This observable is not diagonal"):
             mp._sample_observable(obs, result)

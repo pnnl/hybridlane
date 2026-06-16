@@ -501,11 +501,15 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
 
     Using this decomposition requires dynamic qubit allocation with ``num_work_wires >= 1``:
 
-    >>> dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
-    >>> @qp.transforms.decompose(gate_set={hl.SQR}, num_work_wires=1)
-    ... @qp.qnode(dev)
-    ... def circuit():
-    ...     hl.SNAP(0.5, 1, wires=0)
+    .. code-block:: python
+
+        dev = qp.device("default.hybrid", fock_level=8)
+
+        @qp.transforms.decompose(gate_set={hl.SQR}, num_work_wires=1)
+        @qp.qnode(dev)
+        def circuit():
+            hl.SNAP(0.5, 1, wires=0)
+
     >>> print(qp.draw(circuit)())
     <DynamicWire>: ──Allocate─╭SQR_{1}(3.14,0.00)─╭SQR_{1}(-3.14,0.50)──Deallocate─┤...
                 0: ───────────╰SQR_{1}(3.14,0.00)─╰SQR_{1}(-3.14,0.50)─────────────┤...

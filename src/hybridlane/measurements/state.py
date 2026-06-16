@@ -6,9 +6,8 @@ from typing import Hashable
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
-from hybridlane.measurements.base import ShapeRequiresWireDims, StateMeasurement
-
 from .. import math
+from .base import ShapeRequiresWireDims, StateMeasurement
 
 
 def state() -> "StateMP":

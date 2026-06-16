@@ -26,6 +26,7 @@ cv_state_prep_ops = {
     qp.CoherentState,
     qp.FockStateVector,
     qp.BasisState,
+    qp.QutritBasisState,
     hl.FockState,
 }
 

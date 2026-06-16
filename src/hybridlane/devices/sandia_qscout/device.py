@@ -39,7 +39,7 @@ import hybridlane as hl
 from hybridlane.ops.hybrid.parametric_ops_single_qumode import _cd_to_xcd
 from hybridlane.ops.op_math.decompositions import make_gate_with_ancilla_qubit
 
-from ... import sa
+from ... import wires as sa
 from ...measurements import SampleMeasurement
 from ...transforms import from_pennylane
 from . import jaqal
@@ -202,7 +202,7 @@ class QscoutIonTrap(Device):
                 updated_values["device_options"][option] = getattr(self, f"_{option}")
 
         if circuit and updated_values["device_options"].get("n_qubits") is None:
-            sa_res = sa.analyze(circuit)
+            sa_res = sa.type_check(circuit)
             updated_values["device_options"]["n_qubits"] = len(sa_res.qubits)
 
         return replace(config, **updated_values)
@@ -313,12 +313,12 @@ def validate_gates_supported_on_hardware(tape: QuantumScript):
 @qp.transform
 def dynamic_gate_decompose(
     tape: QuantumScript,
-    sa_res: sa.StaticAnalysisResult | None = None,
+    sa_res: sa.TypeCheckResult | None = None,
     max_qubits: int | None = None,
     gate_set: set | dict | None = None,
 ):
     if sa_res is None:
-        sa_res = sa.analyze(tape)
+        sa_res = sa.type_check(tape)
 
     gate_set = gate_set or NATIVE_GATES_WITH_COST
 
@@ -346,12 +346,12 @@ def dynamic_gate_decompose(
 @qp.transform
 def layout_wires(
     tape: QuantumScript,
-    sa_res: sa.StaticAnalysisResult | None = None,
+    sa_res: sa.TypeCheckResult | None = None,
     max_qubits: int | None = None,
     use_com_modes: bool = False,
 ):
     if sa_res is None:
-        sa_res = sa.analyze(tape)
+        sa_res = sa.type_check(tape)
 
     max_qubits = max_qubits or len(sa_res.qubits)
     max_qumodes = 2 * max_qubits if use_com_modes else 2 * max_qubits - 2
@@ -404,7 +404,7 @@ def parse_hardware_wires(tape: QuantumScript):
 
 def _constrained_layout(
     tape: QuantumScript,
-    sa_res: sa.StaticAnalysisResult,
+    sa_res: sa.TypeCheckResult,
     max_qubits: int | None = None,
     use_com_modes: bool = False,
 ) -> dict | None:
@@ -421,7 +421,7 @@ def _constrained_layout(
 
 def _construct_csp(
     tape: QuantumScript,
-    sa_res: sa.StaticAnalysisResult,
+    sa_res: sa.TypeCheckResult,
     hw_qubits: Wires,
     hw_qumodes: Wires,
 ):

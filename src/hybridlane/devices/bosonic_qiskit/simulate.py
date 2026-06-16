@@ -25,7 +25,8 @@ from scipy.special import factorial
 
 import hybridlane as hl
 
-from ... import sa, util
+from ... import util
+from ... import wires as sa
 from ...measurements import (
     DensityMatrixMP,
     ExpectationMP,
@@ -269,7 +270,7 @@ def get_observable_matrix(
 def make_cv_circuit(
     tape: QuantumScript, truncation: FockTruncation, fast_transpilation: bool = True
 ) -> tuple[bq.CVCircuit, RegisterMapping]:
-    res = sa.analyze(tape)
+    res = sa.type_check(tape)
 
     if not res.qumodes:
         raise DeviceError(
