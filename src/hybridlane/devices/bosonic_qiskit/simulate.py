@@ -336,8 +336,8 @@ def _(op: CVOperation, qc: bq.CVCircuit, regmapper: RegisterMapping):
         case hl.Displacement(parameters=(r, phi)):
             arg = r * np.exp(1j * phi)
             getattr(qc, method)(arg, *qumodes)
-        case hl.Squeezing(parameters=(r, phi)):
-            arg = -r * np.exp(-1j * phi)
+        case hl.Squeezing(parameters=(r, theta)):
+            arg = -r * np.exp(-1j * 2 * theta)
             getattr(qc, method)(arg, *qumodes)
         case hl.Rotation(parameters=(theta,)):
             getattr(qc, method)(-theta, *qumodes)
@@ -375,8 +375,8 @@ def _(op: Hybrid, qc: bq.CVCircuit, regmapper: RegisterMapping):
         case hl.ConditionalDisplacement(parameters=(r, phi)):
             arg = r * np.exp(1j * phi)
             getattr(qc, method)(arg, *qumodes, *qubits)
-        case hl.ConditionalSqueezing(parameters=(r, phi)):
-            arg = -r * np.exp(-1j * phi)
+        case hl.ConditionalSqueezing(parameters=(r, theta)):
+            arg = -r * np.exp(-1j * 2 * theta)
             getattr(qc, method)(arg, *qumodes, *qubits)
         case hl.SQR(parameters=parameters, hyperparameters={"n": n}):
             getattr(qc, method)(*parameters, n, *qumodes, *qubits)
