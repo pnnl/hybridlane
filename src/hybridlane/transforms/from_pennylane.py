@@ -23,9 +23,10 @@ from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
 
 import hybridlane as hl
+from hybridlane.measurements import BasisMap
 
 from .. import measurements as hl_mp
-from ..wires import ComputationalBasis, type_check
+from ..wires import ComputationalBasis, TypeCheckResult, type_check
 
 optional_qumode_measurements = {
     "homodyne": ComputationalBasis.Position,
@@ -261,9 +262,9 @@ def _(
     if mp.obs:
         return hl_mp.SampleMP(obs=convert_observable(mp.obs))
 
-    sa_res: sa.StaticAnalysisResult = cache["sa_res"]
-    schema = sa.BasisMap(
-        {q: sa.ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
+    sa_res: TypeCheckResult = cache["sa_res"]
+    schema = BasisMap(
+        {q: ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
     )
     if sa_res.qumodes:
         if default_qumode_measurement is None:
@@ -272,7 +273,7 @@ def _(
                 "Consider passing in the `default_qumode_measurement` argument"
             )
         fill_value = optional_qumode_measurements[default_qumode_measurement]
-        qumode_schema = sa.BasisMap({m: fill_value for m in mp.wires & sa_res.qumodes})
+        qumode_schema = BasisMap({m: fill_value for m in mp.wires & sa_res.qumodes})
         schema |= qumode_schema
 
     return hl_mp.SampleMP(bases=schema)

@@ -30,6 +30,33 @@ class Fourier(CVOperation, FockRepresentation):
     * Wire arguments: ``[qumode]``
     * Number of parameters: 0
     * Number of dimensions per parameter: None
+
+    Its symplectic representation is given (in standard units) by
+
+    .. math::
+
+        \begin{pmatrix}
+            I \\
+            \hat{x}' \\
+            \hat{p}'
+        \end{pmatrix} =
+        \begin{pmatrix}
+            1 & 0 & 0 \\
+            0 & 0 & 1 \\
+            0 & -1 & 0
+        \end{pmatrix}
+        \begin{pmatrix}
+            I \\
+            \hat{x} \\
+            \hat{p}
+        \end{pmatrix}
+
+    For specific parameter values, it may be obtained like
+
+    >>> F(wires=0).heisenberg_tr((0,))
+    array([[ 1.,  0.,  0.],
+           [ 0.,  0.,  1.],
+           [ 0., -1.,  0.]])
     """
 
     num_params = 0
@@ -41,8 +68,8 @@ class Fourier(CVOperation, FockRepresentation):
         super().__init__(wires=wires, id=id)
 
     @staticmethod
-    def _heisenberg_rep(_):
-        return hl.R._heisenberg_rep((math.pi / 2,))
+    def _heisenberg_rep(p):
+        return hl.math.symplectic.rotation(math.pi / 2)
 
     def adjoint(self):
         return hl.Rotation(-math.pi / 2, self.wires)
@@ -121,6 +148,32 @@ class ModeSwap(CVOperation, FockRepresentation):
     * Number of parameters: 0
     * Number of dimensions per parameter: None
 
+    Its symplectic representation is the permutation
+
+    .. math::
+
+        \begin{pmatrix}
+            I \\
+            \hat{x}_a' \\
+            \hat{p}_a' \\
+            \hat{x}_b' \\
+            \hat{p}_b'
+        \end{pmatrix} =
+        \begin{pmatrix}
+            1 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 1 & 0 \\
+            0 & 0 & 0 & 0 & 1 \\
+            0 & 1 & 0 & 0 & 0 \\
+            0 & 0 & 1 & 0 & 0
+        \end{pmatrix}
+        \begin{pmatrix}
+            I \\
+            \hat{x}_a \\
+            \hat{p}_a \\
+            \hat{x}_b \\
+            \hat{p}_b
+        \end{pmatrix}
+
     It has a matrix representation in the Fock basis
 
     >>> ModeSwap((0, 1)).fock_matrix({0: 2, 1: 2})
@@ -166,7 +219,8 @@ class ModeSwap(CVOperation, FockRepresentation):
                 [0, 0, 0, 0, 1],
                 [0, 1, 0, 0, 0],
                 [0, 0, 1, 0, 0],
-            ]
+            ],
+            dtype=float,
         )
 
     def adjoint(self):

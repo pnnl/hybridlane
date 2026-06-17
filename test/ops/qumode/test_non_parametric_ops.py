@@ -40,6 +40,23 @@ class TestFourier:
         assert hl.math.get_interface(matrix) == "numpy"
         assert matrix == pytest.approx(expected)
 
+    def test_heisenberg_rep(self):
+        M = hl.Fourier._heisenberg_rep([])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == "numpy"
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        # see box IV.2 of liu2026hybrid for these relations. the fourier
+        # gate should perform a clockwise rotation by pi/2
+        expected = hl.math.asarray(
+            [
+                [1, 0, 0],
+                [0, 0, 1],  # p -> x
+                [0, -1, 0],  # x -> -p
+            ]
+        )
+        assert M == pytest.approx(expected)
+
 
 @pytest.mark.unit
 class TestModeSwap:
@@ -96,6 +113,23 @@ class TestModeSwap:
         expected = qp.SWAP.compute_matrix()
         assert hl.math.get_interface(matrix) == "numpy"
         assert matrix == pytest.approx(expected)
+
+    def test_heisenberg_rep(self):
+        M = hl.ModeSwap._heisenberg_rep([])
+        assert hl.math.is_symplectic(M)
+        assert hl.math.get_interface(M) == "numpy"
+        assert hl.math.get_dtype_name(M) == "float64"
+
+        expected = hl.math.asarray(
+            [
+                [1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 1],
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, 0],
+            ]
+        )
+        assert M == pytest.approx(expected, abs=1e-6)
 
 
 @pytest.mark.unit
