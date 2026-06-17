@@ -93,13 +93,11 @@ class TestDecomposition:
         ]
 
 
-# Todo: We should in principle be able to rewrite these to not use bosonic qiskit
-@pytest.mark.bq
 @pytest.mark.usefixtures("enable_graph_decomp")
 @pytest.mark.integration
 class TestGraphDecomposition:
     def test_qcondf_to_cr(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -113,7 +111,7 @@ class TestGraphDecomposition:
         assert len(tape.operations) == 1  # 1 cr
 
     def test_multi_qcondf_to_cr(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -127,7 +125,7 @@ class TestGraphDecomposition:
         assert len(tape.operations) == 3  # 1 cr, 2 cnot
 
     def test_ctrlf_to_cr(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -141,7 +139,7 @@ class TestGraphDecomposition:
         assert len(tape.operations) == 2  # 1 r, 1 cr
 
     def test_multicondf_to_cr(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -159,7 +157,7 @@ class TestGraphDecomposition:
         ]
 
     def test_condbs_to_cbs(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -173,7 +171,7 @@ class TestGraphDecomposition:
         assert tape.operations == [hl.ConditionalBeamsplitter(0.5, 0, [2, 0, 1])]
 
     def test_multicondbs_to_cbs(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -191,7 +189,7 @@ class TestGraphDecomposition:
         ]
 
     def test_cond_cd(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -211,7 +209,7 @@ class TestGraphDecomposition:
         ]
 
     def test_cond_pow_cr(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -231,7 +229,7 @@ class TestGraphDecomposition:
         ]
 
     def test_pow_adj_cr(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
@@ -245,7 +243,7 @@ class TestGraphDecomposition:
         assert tape.operations == [hl.ConditionalRotation(-2.5, [0, 1])]
 
     def test_pow_cond_cr(self):
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @partial(
             qp.transforms.decompose,
