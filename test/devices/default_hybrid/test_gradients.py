@@ -27,7 +27,7 @@ def test_binomial_state_prep():
                 hl.SNAP(params[i, 2 + j], j, wires=0)
 
         loop_body()
-        return hl.density_matrix()
+        return hl.state()
 
     # Target state is the binomial codeword |0_L> = (|0> + |4>)/sqrt(2)
     codeword = hl.math.concatenate(
@@ -36,15 +36,14 @@ def test_binomial_state_prep():
             hl.math.zeros(fock_level - 5, like="jax"),
         ]
     )
-    target = hl.math.outer(codeword, codeword)
 
     @jax.jit
     def loss(params):
         state = circuit(params)
-        return 1 - hl.math.real(hl.math.fidelity(state, target))
+        return 1 - hl.math.real(hl.math.fidelity_statevector(state, codeword))
 
     # Initialize parameters randomly
-    key = jax.random.PRNGKey(0)
+    key = jax.random.key(0)
     params = jax.random.normal(key, (5, 10))
 
     starting_loss = loss(params)
