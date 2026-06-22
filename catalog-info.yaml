@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
@@ -15,5 +17,3 @@ spec:
     lifecycle: experimental
     owner: group:default/pnnl # Must match a group in the catalog
     visibility: "public"
-    dependsOn:
-        - component:github-pnnl/hybridlane
