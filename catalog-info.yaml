@@ -1,0 +1,19 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: hybridlane
+    title: hybridlane
+    description: A frontend library for hybrid CV-DV computation based on Pennylane
+    annotations:
+        github.com/project-slug: pnnl/hybridlane
+    tags:
+        - python
+        - quantum-computing
+
+spec:
+    type: library
+    lifecycle: experimental
+    owner: group:default/pnnl # Must match a group in the catalog
+    visibility: "public"
+    dependsOn:
+        - component:github-pnnl/hybridlane
