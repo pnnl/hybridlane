@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from functools import wraps
+from functools import partial, wraps
 from typing import TYPE_CHECKING, Callable, Literal
 from unittest.mock import patch
 
@@ -26,10 +26,7 @@ def draw_mpl(
     *,
     max_length: int | None = None,
     fig=None,
-    level: Literal["top", "user", "device", "gradient"]
-    | int
-    | slice
-    | None = "gradient",
+    level: Literal["top", "user", "device", "gradient"] | int | slice = "gradient",
     **kwargs,
 ):
     r"""Draws a circuit using matplotlib
@@ -49,8 +46,8 @@ def draw_mpl(
         style: The drawing style to use. See :py:func:`qp.draw_mpl <pennylane.draw_mpl>`.
 
     Keyword Args:
-        wire_icon_colors (dict): A dictionary mapping wires to optional matplotlib-compatible colors.
-            All wires that aren't provided will use default qubit or qumode colors.
+        wire_icon_colors (dict): A dictionary mapping wires to optional matplotlib-compatible
+            colors. All wires that aren't provided will use default qubit or qumode colors.
 
     For other arguments, see :py:func:`qp.draw_mpl <pennylane.draw_mpl>`.
 
@@ -78,8 +75,9 @@ def draw_mpl(
 
     .. figure:: ../../_static/draw_mpl/ex_jc_circuit.png
 
-    Furthermore, icon colors can be adjusted from their defaults (say to color different motional modes of an ion trap). Note
-    that Hybridlane also has a special notation for "qubit-conditioned" gates.
+    Furthermore, icon colors can be adjusted from their defaults (say to color different motional
+    modes of an ion trap). Note that Hybridlane also has a special notation for
+    "qubit-conditioned" gates like :math:`CD`.
 
     .. code-block:: python
 
@@ -126,12 +124,22 @@ def draw_mpl(
 
     @wraps(qnode)
     def wrapper(*args, **kwargs_qnode):
-        with patch("pennylane.drawer.draw.tape_mpl", tape_mpl):
+        # By applying the custom kwargs here for hybridlane, we ensure they'll reach tape_mpl.
+        # Otherwise, particularly when calling draw_mpl on regular non-QNode funcs, PL internally
+        # drops the kwargs and we can't rely on them to reach our tape_mpl. This is a bit of a
+        # hack, and long term we should redo the drawing mechanism
+        wire_icon_colors = kwargs.pop("wire_icon_colors", None)
+        patched_fn = partial(
+            tape_mpl,
+            wire_icon_colors=wire_icon_colors,
+            show_wire_types=show_wire_types,
+        )
+
+        with patch("pennylane.drawer.draw.tape_mpl", patched_fn):
             orig_wrapper = qp.draw_mpl(
                 qnode,
                 wire_order=wire_order,
                 show_all_wires=show_all_wires,
-                show_wire_types=show_wire_types,
                 decimals=decimals,
                 style=style,
                 max_length=max_length,

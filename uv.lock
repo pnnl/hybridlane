@@ -742,6 +742,7 @@ qscout = [
 [package.dev-dependencies]
 dev = [
     { name = "jax" },
+    { name = "matplotlib" },
     { name = "openqasm3", extra = ["parser"] },
     { name = "optax" },
     { name = "pytest" },
@@ -776,6 +777,7 @@ provides-extras = ["bq", "all", "qscout"]
 [package.metadata.requires-dev]
 dev = [
     { name = "jax", specifier = ">=0.10.1" },
+    { name = "matplotlib", specifier = ">=3.10.9" },
     { name = "openqasm3", extras = ["parser"], specifier = ">=1.0.1" },
     { name = "optax", specifier = ">=0.2.8" },
     { name = "pytest", specifier = ">=8.4.1" },
