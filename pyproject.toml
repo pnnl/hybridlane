@@ -55,7 +55,14 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "jax>=0.10.1",
+    "matplotlib>=3.10.9",
+    "openqasm3[parser]>=1.0.1",
+    "optax>=0.2.8",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
     "ruff>=0.12.0",
+    "sybil[pytest]>=9.3.0",
     "ty>=0.0.39",
 ]
 docs = [
@@ -66,13 +73,4 @@ docs = [
     "sphinx-copybutton>=0.5.2",
     "sphinx-math-dollar>=1.2.1",
     "sphinxcontrib-bibtex>=2.6.5",
-]
-test = [
-    "jax>=0.10.1",
-    "matplotlib>=3.10.9",
-    "openqasm3[parser]>=1.0.1",
-    "optax>=0.2.8",
-    "pytest>=8.4.1",
-    "pytest-cov>=6.2.1",
-    "sybil[pytest]>=9.3.0",
 ]

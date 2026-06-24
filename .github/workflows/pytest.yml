@@ -24,12 +24,12 @@ jobs:
 
             - name: Install dependencies with uv
               run: |
-                  uv sync --all-extras --frozen && uv pip install jax torch --torch-backend=cpu
+                  uv sync --all-extras --frozen
 
             - name: Run core tests
               run: |
-                  uv run pytest -m "not bq and not docs"
-          
+                  uv run pytest -m "not (bq or docs or slow)"
+
             - name: Run non-core tests
               run: |
-                  uv run pytest -m "bq or docs"
+                  uv run pytest -m "bq or docs or slow"
