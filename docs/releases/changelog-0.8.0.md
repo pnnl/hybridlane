@@ -225,6 +225,8 @@
 
 - Fixed the `fock_spectrum` function for `hl.FockStateProjector` (#55)
 
+- `wire_icon_colors` keyword argument is now properly passed down when calling `hl.draw_mpl` on a non-QNode callable (#72)
+
 ### Miscellaneous
 
 - Added a `justfile` to facilitate running common developer tasks (#42)
