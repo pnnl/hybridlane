@@ -741,13 +741,7 @@ qscout = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "jax" },
-    { name = "openqasm3", extra = ["parser"] },
-    { name = "optax" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
     { name = "ruff" },
-    { name = "sybil", extra = ["pytest"] },
     { name = "ty" },
 ]
 docs = [
@@ -759,6 +753,15 @@ docs = [
     { name = "sphinx-copybutton" },
     { name = "sphinx-math-dollar" },
     { name = "sphinxcontrib-bibtex" },
+]
+test = [
+    { name = "jax" },
+    { name = "matplotlib" },
+    { name = "openqasm3", extra = ["parser"] },
+    { name = "optax" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "sybil", extra = ["pytest"] },
 ]
 
 [package.metadata]
@@ -775,13 +778,7 @@ provides-extras = ["bq", "all", "qscout"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "jax", specifier = ">=0.10.1" },
-    { name = "openqasm3", extras = ["parser"], specifier = ">=1.0.1" },
-    { name = "optax", specifier = ">=0.2.8" },
-    { name = "pytest", specifier = ">=8.4.1" },
-    { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "ruff", specifier = ">=0.12.0" },
-    { name = "sybil", extras = ["pytest"], specifier = ">=9.3.0" },
     { name = "ty", specifier = ">=0.0.39" },
 ]
 docs = [
@@ -792,6 +789,15 @@ docs = [
     { name = "sphinx-copybutton", specifier = ">=0.5.2" },
     { name = "sphinx-math-dollar", specifier = ">=1.2.1" },
     { name = "sphinxcontrib-bibtex", specifier = ">=2.6.5" },
+]
+test = [
+    { name = "jax", specifier = ">=0.10.1" },
+    { name = "matplotlib", specifier = ">=3.10.9" },
+    { name = "openqasm3", extras = ["parser"], specifier = ">=1.0.1" },
+    { name = "optax", specifier = ">=0.2.8" },
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-cov", specifier = ">=6.2.1" },
+    { name = "sybil", extras = ["pytest"], specifier = ">=9.3.0" },
 ]
 
 [[package]]

@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import warnings
-from typing import Literal
 
 import matplotlib.colors as mc
 import numpy as np
@@ -10,6 +9,8 @@ from matplotlib import patches
 from matplotlib import pyplot as plt
 from numpy.polynomial import Polynomial
 from pennylane.drawer.mpldrawer import MPLDrawer, _to_tuple
+
+from ..wires import Qubit, Qudit, Qumode, WireType
 
 
 class HybridMPLDrawer(MPLDrawer):
@@ -25,9 +26,7 @@ class HybridMPLDrawer(MPLDrawer):
         # Store instances so we can retrieve them in _draw_icons
         self._instances.append(self)
 
-    def wire_icons(
-        self, icons: list[Literal["qumode", "qubit"]], colors: list | None = None
-    ):
+    def wire_icons(self, icons: list[WireType], colors: list | None = None):
         # Shift the left side over to make room for the icons
         left = self._ax.get_xlim()[0]
         left -= self._icon_width + 0.25  # extra padding
@@ -37,16 +36,16 @@ class HybridMPLDrawer(MPLDrawer):
 
         colors = colors or [plt.rcParams["lines.color"]] * len(icons)
         for wire, (icon, color) in enumerate(zip(icons, colors)):
-            if icon not in ("qumode", "qubit"):
-                raise ValueError(f"Unknown icon type {icon}")
-
             options = {"color": color}
 
             match icon:
-                case "qumode":
+                case Qumode():
                     self._qumode_icon(icon_x, wire, options=options)
-                case "qubit":
+                case Qubit():
                     self._qubit_icon(icon_x, wire, options=options)
+                # todo: support drawing qudits
+                case Qudit():  # pragma: no cover
+                    raise NotImplementedError("Drawing qudits is not yet supported")
 
     def _qumode_icon(self, icon_x, wire, options: dict | None = None):
         # For a parabola with the icon centered at x0, y0, and width w, h, we have
@@ -115,16 +114,12 @@ class HybridMPLDrawer(MPLDrawer):
         plt.plot([x - w / 2, x + w / 2], [y - r / 3, y - r / 3], color=color)
         plt.plot([x - w / 2, x + w / 2], [y + r / 3, y + r / 3], color=color)
 
-    def z_conditional(
-        self, layer, wires, wires_target=None, control_values=None, options=None
-    ):
+    def z_conditional(self, layer, wires, wires_target=None, options=None):
         if options is None:
             options = {}
 
         wires_ctrl = _to_tuple(wires)
         wires_target = _to_tuple(wires_target)
-        if control_values is not None:
-            control_values = _to_tuple(control_values)
 
         wires_all = wires_ctrl + wires_target
         min_wire = min(wires_all)
@@ -142,17 +137,8 @@ class HybridMPLDrawer(MPLDrawer):
         line = plt.Line2D((layer, layer), (min_wire, max_wire), **options)
         self._ax.add_line(line)
 
-        if control_values is None:
-            for wire in wires_ctrl:
-                self._cond_diamond(layer, wire, options=options)
-        else:
-            if len(control_values) != len(wires_ctrl):
-                raise ValueError("`control_values` must be the same length as `wires`")
-            for wire, control_on in zip(wires_ctrl, control_values):
-                if control_on:
-                    self._cond_diamond(layer, wire, options=options)
-                else:
-                    self._condo_diamond(layer, wire, options=options)
+        for wire in wires_ctrl:
+            self._cond_diamond(layer, wire, options=options)
 
     def _cond_diamond(self, layer, wires, options=None):
         if options is None:
@@ -166,38 +152,6 @@ class HybridMPLDrawer(MPLDrawer):
             (layer, wires), 4, radius=self._ctrl_rad, orientation=0, **options
         )
         self._ax.add_patch(poly)
-
-    def _condo_diamond(self, layer, wires, options=None):
-        new_options = _open_diamond_options_process(options)
-
-        poly = patches.RegularPolygon(
-            (layer, wires),
-            4,
-            radius=self._ctrl_rad,
-            orientation=0,
-            **new_options,
-        )
-        self._ax.add_patch(poly)
-
-
-def _open_diamond_options_process(options):
-    options = options or {}
-
-    new_options = options.copy()
-    if "color" in new_options:
-        new_options["facecolor"] = plt.rcParams["axes.facecolor"]
-        new_options["edgecolor"] = options["color"]
-        new_options["color"] = None
-    else:
-        new_options["edgecolor"] = plt.rcParams["lines.color"]
-        new_options["facecolor"] = plt.rcParams["axes.facecolor"]
-
-    if "linewidth" not in new_options:
-        new_options["linewidth"] = plt.rcParams["lines.linewidth"]
-    if "zorder" not in new_options:
-        new_options["zorder"] = 3
-
-    return new_options
 
 
 def _parabola_width(poly: Polynomial, y: float):

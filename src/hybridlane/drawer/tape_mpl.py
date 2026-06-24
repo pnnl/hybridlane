@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import patch
 
 from pennylane.drawer import tape_mpl as pl_tape_mpl
@@ -24,83 +24,79 @@ try:
     import matplotlib as mpl
 
     from .mpldrawer import HybridMPLDrawer
-except (ModuleNotFoundError, ImportError):
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
     has_mpl = False
-    HybridMPLDrawer = object
+    HybridMPLDrawer = object  # ty:ignore[invalid-assignment]
 
 default_qumode_color = "mediumseagreen"
 default_qubit_color = "darkorchid"
 
+if TYPE_CHECKING:
+    import matplotlib as mpl
+    import matplotlib.figure
+
 
 # Register our custom gates
-# Todo: Maybe we should create a symbolicop for "conditional", not the mcm conditional
+# todo: Maybe we should create a symbolicop for "conditional", not the mcm conditional
 # but another kind that acts similarly to conditional displacement
 @_add_operation_to_drawer.register
-def _(op: ops.ConditionalDisplacement, drawer: HybridMPLDrawer, layer: int, _config):
+def _(op: ops.CD, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode, control_values=[True])
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)
 
     new_op = ops.Displacement(*op.parameters, wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
 
 
 @_add_operation_to_drawer.register
-def _(op: ops.ConditionalParity, drawer: HybridMPLDrawer, layer: int, _config):
+def _(op: ops.CP, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode, control_values=[True])
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)
 
     new_op = ops.Fourier(wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
 
 
 @_add_operation_to_drawer.register
-def _(op: ops.ConditionalRotation, drawer: HybridMPLDrawer, layer: int, _config):
+def _(op: ops.CR, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode, control_values=[True])
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)
 
     new_op = ops.Rotation(*op.parameters, wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
 
 
 @_add_operation_to_drawer.register
-def _(op: ops.ConditionalSqueezing, drawer: HybridMPLDrawer, layer: int, _config):
+def _(op: ops.CS, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode, control_values=[True])
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)
 
     new_op = ops.Squeezing(*op.parameters, wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
 
 
 @_add_operation_to_drawer.register
-def _(op: ops.ConditionalBeamsplitter, drawer: HybridMPLDrawer, layer: int, _config):
+def _(op: ops.CBS, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, *qumodes = op.wires.tolist()
-    drawer.z_conditional(
-        layer, [qubit], wires_target=min(qumodes), control_values=[True]
-    )
+    drawer.z_conditional(layer, [qubit], wires_target=qumodes)
 
     new_op = ops.Beamsplitter(*op.parameters, wires=qumodes)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
 
 
 @_add_operation_to_drawer.register
-def _(
-    op: ops.ConditionalTwoModeSqueezing, drawer: HybridMPLDrawer, layer: int, _config
-):
+def _(op: ops.CTMS, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, *qumodes = op.wires.tolist()
-    drawer.z_conditional(
-        layer, [qubit], wires_target=min(qumodes), control_values=[True]
-    )
+    drawer.z_conditional(layer, [qubit], wires_target=qumodes)
 
     new_op = ops.TwoModeSqueezing(*op.parameters, wires=qumodes)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
 
 
 @_add_operation_to_drawer.register
-def _(op: ops.ConditionalTwoModeSum, drawer: HybridMPLDrawer, layer: int, _config):
+def _(op: ops.CSUM, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, *qumodes = op.wires.tolist()
-    drawer.z_conditional(
-        layer, [qubit], wires_target=min(qumodes), control_values=[True]
-    )
+    drawer.z_conditional(layer, [qubit], wires_target=qumodes)
 
     new_op = ops.TwoModeSum(*op.parameters, wires=qumodes)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -118,19 +114,14 @@ def _draw_icons(
     show_all_wires=False,
     wire_icon_colors: dict[Any, str] | None = None,
 ):
-    sa_res = sa.type_check(tape)
-
+    type_res = cast(sa.TypeCheckResult, sa.type_check(tape))
     _, wire_map = convert_wire_order(
         tape, wire_order=wire_order, show_all_wires=show_all_wires
     )
 
-    # This section assumes the types of all wires can be inferred
-    wire_colors = _get_default_colors(wire_map, sa_res) | (wire_icon_colors or {})
-    icons = []
-    colors = []
-    for wire_label in wire_map:
-        icons.append("qumode" if wire_label in sa_res.qumodes else "qubit")
-        colors.append(wire_colors[wire_label])
+    icons = [type_res.wire_types[w] for w in wire_map]
+    wire_colors = _get_default_colors(wire_map, type_res) | (wire_icon_colors or {})
+    colors = [wire_colors[w] for w in wire_map]
 
     drawer.wire_icons(icons, colors)
 
@@ -164,12 +155,13 @@ def tape_mpl(
 
         show_wire_types: If True, draw qumode/qubit icons next to each wire
 
-        wire_icon_colors (dict | None): A dict of wires -> colors to use for each wire icon. If a wire
-            is not provided, a default color will be used (``mediumseagreen`` for qumodes and ``darkorchid``
-            for qubits). Colors are anything compatible with Matplotlib.
+        wire_icon_colors (dict | None): A dict of wires -> colors to use for each wire icon. If a
+            wire is not provided, a default color will be used (``mediumseagreen`` for qumodes and
+            ``darkorchid`` for qubits). Colors are anything compatible with Matplotlib.
 
     Returns:
-        matplotlib.figure.Figure, matplotlib.axes._axes.Axes: the return of :py:func:`qp.draw_mpl <pennylane.drawer.draw.draw_mpl>`
+        matplotlib.figure.Figure, matplotlib.axes._axes.Axes: the return of
+            :py:func:`qp.draw_mpl <pennylane.drawer.draw.draw_mpl>`
 
     .. seealso::
 
@@ -212,9 +204,12 @@ def _get_default_colors(
 ) -> dict[Any, str]:
     result = {}
     for wire in wire_map:
-        if wire in checked_types.qubits:
-            result[wire] = default_qubit_color
-        elif wire in checked_types.qumodes:
-            result[wire] = default_qumode_color
+        match checked_types.wire_types[wire]:
+            case sa.Qubit():
+                result[wire] = default_qubit_color
+            case sa.Qumode():
+                result[wire] = default_qumode_color
+            case sa.Qudit():  # pragma: no cover
+                raise NotImplementedError("Drawing qudit circuits is not yet supported")
 
     return result
