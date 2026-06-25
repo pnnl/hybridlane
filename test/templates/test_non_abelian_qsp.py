@@ -23,12 +23,10 @@ def cat_state_probs(alpha, ns, odd: bool):
     return np.exp(log_Pn)
 
 
-# @pytest.mark.slow
-# @pytest.mark.bq
 class TestSqueezedCatState:
     @pytest.mark.integration
     @pytest.mark.parametrize(
-        "alpha,parity", itertools.product([3, 4, 5, 6], ("even", "odd"))
+        "alpha,parity", list(itertools.product([3, 4, 5, 6], ("even", "odd")))
     )
     def test_parity(self, alpha, parity):
         fock_level = 128

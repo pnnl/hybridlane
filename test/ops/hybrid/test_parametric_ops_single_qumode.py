@@ -219,6 +219,11 @@ class TestJaynesCummings:
         simplified_op = op.simplify()
         assert isinstance(simplified_op, qp.Identity)
 
+        # JC is not periodic w.r.t. theta
+        op = hl.JC(5 * math.pi, 0.3, wires=[0, 1])
+        simplified_op = op.simplify()
+        assert simplified_op.parameters == pytest.approx(op.parameters)
+
     def test_label(self):
         op = hl.JaynesCummings(0.5, 0.3, wires=[0, 1])
         assert op.label() == "JC"
@@ -347,6 +352,11 @@ class TestAntiJaynesCummings:
         op = hl.AntiJaynesCummings(0, 0.3, wires=[0, 1])
         simplified_op = op.simplify()
         assert isinstance(simplified_op, qp.Identity)
+
+        # AJC is not periodic w.r.t. theta
+        op = hl.AJC(5 * math.pi, 0.3, wires=[0, 1])
+        simplified_op = op.simplify()
+        assert simplified_op.parameters == pytest.approx(op.parameters)
 
     def test_label(self):
         op = hl.AntiJaynesCummings(0.5, 0.3, wires=[0, 1])

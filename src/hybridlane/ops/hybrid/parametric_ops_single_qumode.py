@@ -800,7 +800,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
         super().__init__(theta, phi, wires=wires, id=id)
 
     def simplify(self):
-        theta = self.data[0] % (2 * math.pi)
+        theta = self.data[0]
         phi = self.data[1] % (2 * math.pi)
 
         if _can_replace(theta, 0):
@@ -922,7 +922,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
         super().__init__(theta, phi, wires=wires, id=id)
 
     def simplify(self):
-        theta = self.data[0] % (2 * math.pi)
+        theta = self.data[0]
         phi = self.data[1] % (2 * math.pi)
 
         if _can_replace(theta, 0):
