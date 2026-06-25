@@ -227,6 +227,8 @@
 
 - `wire_icon_colors` keyword argument is now properly passed down when calling `hl.draw_mpl` on a non-QNode callable (#72)
 
+- The `simplify()` method of the JC and AJC gates is no longer periodic in theta (#74)
+
 ### Miscellaneous
 
 - Added a `justfile` to facilitate running common developer tasks (#42)
