@@ -8,7 +8,7 @@ import numpy as np
 import pennylane as qp
 import pytest
 from sybil import Sybil
-from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser
+from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser, SkipParser
 
 import hybridlane as hl
 
@@ -38,6 +38,7 @@ pytest_collect_file = Sybil(
     parsers=[
         DocTestParser(optionflags=ELLIPSIS),
         PythonCodeBlockParser(),
+        SkipParser(),
     ],
     patterns=["docs/source/*.rst", "*.py"],
     setup=setup,

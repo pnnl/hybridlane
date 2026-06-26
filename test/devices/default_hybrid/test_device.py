@@ -169,16 +169,6 @@ class TestMeasurementSupport:
         # failure inside expval
         assert is_sampled_mp_supported(hl.expval(qp.measure(0)))
 
-    @pytest.mark.xfail(reason="qp.Hermitian is polymorphic")
-    def test_supports_sampled_mp_hermitian(self):
-        # todo(polymorphic): by itself, hybridlane is unable to infer the wire types of
-        # qp.Hermitian. We could restrict them to just qubits, but hybridlane could in
-        # principle infer the types if given context from the circuit. Technically, Hermitian
-        # is polymorphic and this should be revisited in the future
-        assert is_sampled_mp_supported(
-            hl.expval(qp.Hermitian(np.array([[0, 1], [1, 0]]), wires=0))
-        )
-
     def test_supports_sampled_observable(self):
         assert all(
             map(

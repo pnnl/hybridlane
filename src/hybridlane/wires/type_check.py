@@ -269,15 +269,15 @@ def _infer_wire_types_from_basis_map(map: BasisMap, context) -> Context:
 # todo: maybe incorporate the attributes.diagonal_in_fock_basis and attributes.diagonal_in_position_basis?
 @functools.singledispatch
 def infer_measurement_bases(obs: Operator, context) -> BasisMap:
-    # Qubit observables are automatically discrete
-    if obs.pauli_rep is not None:
+    inferred_types = infer_wires(obs, context)
+
+    if all(inferred_types.get(w, None) != Qumode() for w in obs.wires):
         return BasisMap({obs.wires: ComputationalBasis.Discrete})
 
-    # Qutrit observables (GellMann, THermitian, etc.) are also finite-dimensional discrete
-    if type(obs).__module__.startswith("pennylane.ops.qutrit"):
-        return BasisMap({obs.wires: ComputationalBasis.Discrete})
-
-    raise TypeCheckError(f"No known way to infer decomposition for observable {obs}")
+    raise TypeCheckError(
+        f"{obs} contains qumodes and there's not enough information to determine"
+        " the measurement bases."
+    )
 
 
 @infer_measurement_bases.register
