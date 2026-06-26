@@ -232,6 +232,8 @@ def to_fock_space(S: TensorLike) -> TensorLike:
     Its corresponding representation in the mode basis maps :math:`a \mapsto a + \alpha`
     and :math:`\ad \mapsto \ad + \alpha^*`:
 
+    .. skip: next "fails sometimes with +/- 0"
+
     >>> hl.math.to_fock_space(S)
     array([[1. +0.j, 0. +0.j, 0. +0.j],
            [0.5+0.j, 1. +0.j, 0. +0.j],

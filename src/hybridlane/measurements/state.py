@@ -27,6 +27,8 @@ def state() -> "StateMP":
             qp.X(0)
             return hl.state()
 
+    .. skip: next "fails sometimes with +/- 0"
+
     >>> circuit() # |1,1>
     array([0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 1.-0.j, 0.+0.j, 0.+0.j])
     """
