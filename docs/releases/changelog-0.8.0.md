@@ -133,7 +133,7 @@
 
 #### Fock and symplectic representations
 
-- Each operator now has NumPy and JAX-compatible definitions for obtaining the matrix representation of the operator in the Fock basis (#41)
+- Each operator now has NumPy and JAX-compatible definitions for obtaining the matrix representation of the operator in the Fock basis (#41) (#76)
 
     This function works for all operators inheriting from `FockRepresentation`. The `fock_matrix` function accepts a dictionary mapping each wire to its dimension
 
@@ -146,6 +146,8 @@
            [0.        +0.j        , 0.        +0.j        ,
             0.54030231-0.84147098j]])
     ```
+
+  See also the `hl.fock_matrix` function, which does the analogous operation to `qp.matrix`, and can construct the matrix for entire circuits.
 
 - The symplectic representations (`_heisenberg_rep`) of the Gaussian operations have also been updated (#71)
 
