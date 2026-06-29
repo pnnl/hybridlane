@@ -12,7 +12,7 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hl
 
-from ...ops.hybrid.parametric_ops_single_qumode import _can_replace
+from ...math.utils import can_replace, concrete_or_error
 from ...ops.mixins import HybridOperation
 
 Red = hl.Red
@@ -174,19 +174,23 @@ class R(Operation):
     def simplify(self):
         theta, phi = self.data[0] % (4 * math.pi), self.data[1] % math.pi
 
-        if _can_replace(theta, 0):
+        theta = concrete_or_error(
+            None, theta, "Cannot simplify R when ``theta`` is a tracer"
+        )
+        phi = concrete_or_error(None, phi, "Cannot simplify R when ``phi`` is a tracer")
+        if can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
 
-        elif _can_replace(phi, 0):
+        elif can_replace(phi, 0):
             return qp.RX(theta, wires=self.wires)
 
-        elif _can_replace(phi, math.pi / 2):
+        elif can_replace(phi, math.pi / 2):
             return qp.RY(theta, wires=self.wires)
 
-        elif _can_replace(phi, -math.pi):
+        elif can_replace(phi, -math.pi):
             return qp.RX(-theta, wires=self.wires)
 
-        elif _can_replace(phi, -math.pi / 2):
+        elif can_replace(phi, -math.pi / 2):
             return qp.RY(theta, wires=self.wires)
 
         return R(theta, phi, wires=self.wires)

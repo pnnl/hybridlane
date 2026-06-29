@@ -15,6 +15,7 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hl
 
+from ...math.utils import can_replace, concrete_or_error
 from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
@@ -131,7 +132,10 @@ class Beamsplitter(CVOperation, FockRepresentation):
         theta = self.data[0] % (4 * math.pi)
         phi = self.data[1] % (2 * math.pi)
 
-        if _can_replace(theta, 0):
+        theta = concrete_or_error(
+            None, theta, "Cannot simplify BS when ``theta`` is a tracer"
+        )
+        if can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
 
         return Beamsplitter(theta, phi, self.wires)
@@ -282,7 +286,8 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
         r = self.data[0]
         phi = self.data[1] % (2 * math.pi)
 
-        if _can_replace(r, 0):
+        r = concrete_or_error(None, r, "Cannot simplify TMS when ``r`` is a tracer")
+        if can_replace(r, 0):
             return qp.Identity(self.wires)
 
         return TwoModeSqueezing(r, phi, self.wires)
@@ -425,7 +430,11 @@ class TwoModeSum(CVOperation, FockRepresentation):
 
     def simplify(self):
         lambda_ = self.data[0]
-        if _can_replace(lambda_, 0):
+
+        lambda_ = concrete_or_error(
+            None, lambda_, "Cannot simplify SUM when ``lambda`` is a tracer"
+        )
+        if can_replace(lambda_, 0):
             return qp.Identity(self.wires)
 
         return TwoModeSum(lambda_, self.wires)
@@ -464,11 +473,3 @@ r"""Two-mode summing gate :math:`SUM(\lambda)`
 
     This is an alias of :class:`~hybridlane.TwoModeSum`
 """
-
-
-def _can_replace(x, y):
-    return (
-        not qp.math.is_abstract(x)
-        and not qp.math.requires_grad(x)
-        and qp.math.allclose(x, y)
-    )

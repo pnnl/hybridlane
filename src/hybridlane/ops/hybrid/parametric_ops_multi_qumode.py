@@ -12,6 +12,7 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hl
 
+from ...math.utils import can_replace, concrete_or_error
 from ..mixins import FockRepresentation, HybridOperation
 from ..op_math.decompositions.qubit_conditioned_decompositions import (
     decompose_multiqcond_native,
@@ -91,7 +92,10 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
         theta = self.data[0] % (4 * math.pi)
         phi = self.data[1] % math.pi
 
-        if _can_replace(theta, 0):
+        theta = concrete_or_error(
+            None, theta, "Cannot simplify CBS when ``theta`` is a tracer"
+        )
+        if can_replace(theta, 0):
             return qp.Identity(self.wires)
 
         return ConditionalBeamsplitter(theta, phi, self.wires)
@@ -208,7 +212,8 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
     def simplify(self):
         r, phi = self.data[0], self.data[1] % (2 * math.pi)
 
-        if _can_replace(r, 0):
+        r = concrete_or_error(None, r, "Cannot simplify CTMS when ``r`` is a tracer")
+        if can_replace(r, 0):
             return qp.Identity(self.wires)
 
         return ConditionalTwoModeSqueezing(r, phi, self.wires)
@@ -309,7 +314,11 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
 
     def simplify(self):
         lambda_ = self.data[0]
-        if _can_replace(lambda_, 0):
+
+        lambda_ = concrete_or_error(
+            None, lambda_, "Cannot simplify CSUM when ``lambda`` is a tracer"
+        )
+        if can_replace(lambda_, 0):
             return qp.Identity(self.wires)
 
         return ConditionalTwoModeSum(lambda_, self.wires)
@@ -341,11 +350,3 @@ r"""Qubit-conditioned two-mode sum gate :math:`CSUM(\lambda)`
 
     This is an alias for :class:`~hybridlane.ConditionalTwoModeSum`
 """
-
-
-def _can_replace(x, y):
-    return (
-        not qp.math.is_abstract(x)
-        and not qp.math.requires_grad(x)
-        and qp.math.allclose(x, y)
-    )
