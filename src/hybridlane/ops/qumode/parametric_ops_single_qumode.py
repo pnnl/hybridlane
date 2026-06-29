@@ -14,6 +14,7 @@ from pennylane.wires import WiresLike
 
 import hybridlane as hl
 
+from ...math.utils import can_replace, concrete_or_error
 from ..mixins import FockRepresentation
 from ..op_math.decompositions.qubit_conditioned_decompositions import to_native_qcond
 
@@ -116,7 +117,8 @@ class Displacement(CVOperation, FockRepresentation):
     def simplify(self):
         a, phi = self.parameters[0], self.parameters[1] % (2 * math.pi)
 
-        if _can_replace(a, 0):
+        a = concrete_or_error(None, a, "Cannot simplify D when ``a`` is a tracer")
+        if can_replace(a, 0):
             return qp.Identity(self.wires)
 
         return Displacement(a, phi, self.wires)
@@ -226,7 +228,10 @@ class Rotation(CVOperation, FockRepresentation):
     def simplify(self):
         theta = self.data[0] % (2 * math.pi)
 
-        if _can_replace(theta, 0):
+        theta = concrete_or_error(
+            None, theta, "Cannot simplify R when ``theta`` is a tracer"
+        )
+        if can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
 
         return Rotation(theta, self.wires)
@@ -343,7 +348,8 @@ class Squeezing(CVOperation, FockRepresentation):
     def simplify(self):
         r, phi = self.data[0], self.data[1] % math.pi
 
-        if _can_replace(r, 0):
+        r = concrete_or_error(None, r, "Cannot simplify S when ``r`` is a tracer")
+        if can_replace(r, 0):
             return qp.Identity(self.wires)
 
         return Squeezing(r, phi, self.wires)
@@ -423,7 +429,10 @@ class Kerr(CVOperation, FockRepresentation):
     def simplify(self):
         kappa = self.data[0] % (2 * math.pi)
 
-        if _can_replace(kappa, 0):
+        kappa = concrete_or_error(
+            None, kappa, "Cannot simplify K when ``kappa`` is a tracer"
+        )
+        if can_replace(kappa, 0):
             return qp.Identity(wires=self.wires)
 
         return Kerr(kappa, self.wires)
@@ -487,7 +496,9 @@ class CubicPhase(CVOperation, FockRepresentation):
 
     def simplify(self):
         r = self.data[0]
-        if _can_replace(r, 0):
+
+        r = concrete_or_error(None, r, "Cannot simplify C when ``r`` is a tracer")
+        if can_replace(r, 0):
             return qp.Identity(wires=self.wires)
 
         return self
@@ -630,7 +641,10 @@ class SelectiveNumberArbitraryPhase(CVOperation, FockRepresentation):
         phi = self.data[0] % (2 * math.pi)
         n = self.hyperparameters["n"]
 
-        if _can_replace(phi, 0):
+        phi = concrete_or_error(
+            None, phi, "Cannot simplify SNAP when ``phi`` is a tracer"
+        )
+        if can_replace(phi, 0):
             return qp.Identity(self.wires)
 
         return SelectiveNumberArbitraryPhase(phi, n, self.wires)
@@ -681,11 +695,3 @@ def _snap_to_sqr(phi, wires, n, **_):
 qp.add_decomps(SNAP, _snap_to_sqr)
 qp.add_decomps("Adjoint(SelectiveNumberArbitraryPhase)", adjoint_rotation)
 qp.add_decomps("Pow(SelectiveNumberArbitraryPhase)", pow_rotation)
-
-
-def _can_replace(x, y):
-    return (
-        not qp.math.is_abstract(x)
-        and not qp.math.requires_grad(x)
-        and qp.math.allclose(x, y)
-    )
