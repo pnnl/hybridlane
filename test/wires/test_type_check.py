@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 import pennylane as qp
 import pytest
-from pennylane.operation import Operator
+from pennylane.operation import Operation, Operator
 from pennylane.tape import QuantumScript
 from pennylane.wires import Wires
 
@@ -10,6 +10,15 @@ import hybridlane as hl
 from hybridlane.measurements import ComputationalBasis
 from hybridlane.wires import Qubit, TypedWires, infer_measurement_bases, type_check
 from hybridlane.wires.type_check import infer_wires
+
+
+# Operator to test that people can create primitive qubit operators outside of pennylane
+class DummyQubitOperator(Operation):
+    num_wires = 2
+    num_params = 0
+
+    def __init__(self, wires):
+        super().__init__(wires=wires)
 
 
 @pytest.mark.unit
@@ -61,6 +70,7 @@ class TestWireTypeChecking:
             qp.Projector([1, 0, 1], wires=(0, 1, 2)),
             qp.MultiRZ(0.1, wires=range(10)),
             qp.Hermitian([[1, 0], [0, 1]], wires=1),
+            DummyQubitOperator(wires=(0, 1)),
         ],
     )
     def test_with_qubit_ops(self, op: Operator):

@@ -20,7 +20,7 @@ from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
 from ..ops import QubitConditioned
-from ..ops.mixins import Hybrid, Spectral
+from ..ops.mixins import Hybrid, HybridOperation, Spectral
 from .base import (
     BasisMap,
     ComputationalBasis,
@@ -174,14 +174,16 @@ def _(op: Operator, context: Context) -> Context:
     elif module.startswith("pennylane.ops.qutrit"):
         return context | {w: Qudit(3) for w in op.wires}
 
-    # Makes this robust to MRO ordering
+    # Even though we have a branch below for Hybrid, depending on the inheritance order, a Hybrid
+    # gate may end up here. So we handle it again just in case.
     if isinstance(op, Hybrid):
         return _infer_from_hybrid(op, context)
 
     if op.has_decomposition:
         return infer_wires(op.decomposition(), context)
 
-    raise TypeCheckError(f"Unable to infer wire types for operation {op}")
+    # We have to assume that this is a custom primitive qubit operation with no decompositions.
+    return context | {w: Qubit() for w in op.wires}
 
 
 @infer_wires.register
@@ -199,7 +201,7 @@ def _(op: CVOperation | CVObservable, context: Context):
 
 
 @infer_wires.register
-def _infer_from_hybrid(op: Hybrid, context: Context):
+def _infer_from_hybrid(op: Hybrid | HybridOperation, context: Context):
     return context | op.wire_types()
 
 
