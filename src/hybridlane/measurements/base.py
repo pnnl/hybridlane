@@ -14,7 +14,6 @@ from pennylane.measurements import (
 )
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
-from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import hybridlane as hl
 import hybridlane.wires as sa  # fixes a circular import
@@ -139,19 +138,18 @@ class SampleResult:
 
 
 # todo: fill this out with any initialization etc. this should be a serializable format
-class CountsResult(BaseModel):
+@dataclass(frozen=True)
+class CountsResult:
     r"""Class for holding histogram results of CV-DV programs"""
 
     counts: dict[int | float | tuple[int | float | complex, ...], int]
     """Histogram of basis states or eigenvalues and their frequency"""
 
-    wire_order: Wires | None = Field(None)
+    wire_order: Wires | None = None
     """The order of the wires in each basis state"""
 
-    bases: sa.BasisMap | None = Field(None)
+    bases: sa.BasisMap | None = None
     """Schema determining the basis each wire is measured in"""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def is_eigenvals(self):
@@ -168,19 +166,11 @@ class CountsResult(BaseModel):
         """Returns the total number of shots contained in this result"""
         return sum(self.counts.values())
 
-    @model_validator(mode="after")
-    def check_optional_fields(self) -> "CountsResult":
+    def __post_init__(self):
         if (self.wire_order is None) != (self.bases is None):
             raise ValueError(
                 "Both wire_order and basis_schema must be provided, or neither provided"
             )
-
-        return self
-
-    @model_validator(mode="after")
-    def check_format(self) -> "CountsResult":
-        # Pydantic can coerce things into the correct types above, but it can't tell if someone is mixing
-        # basis states and eigenvalues in the same histogram.
 
         # If wires are provided, then we should have only basis states
         if self.wire_order is not None:
@@ -200,8 +190,6 @@ class CountsResult(BaseModel):
                     eigval, (int, float)
                 ):  # not complex bc observables are hermitian
                     raise ValueError("Expected scalar type for eigenvalue")
-
-        return self
 
 
 class SampleMeasurement(MeasurementProcess):
@@ -323,7 +311,8 @@ class Truncation(ABC):
         return qp.math.reshape(state, target_shape)
 
 
-class FockTruncation(Truncation, BaseModel):
+@dataclass(frozen=True)
+class FockTruncation(Truncation):
     r"""Truncation in Fock space up to a desired photon count
 
     For each wire, a size should be provided indicating the dimension of that subsystem. If no size is provided
@@ -340,8 +329,6 @@ class FockTruncation(Truncation, BaseModel):
     dim_sizes: dict[Hashable, int]
     """Mapping from wires to their truncated system dimension"""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     def dim(self, wire):
         return self.dim_sizes.get(wire, 2)
 
@@ -351,24 +338,14 @@ class FockTruncation(Truncation, BaseModel):
         schema = sa.BasisMap({w: sa.ComputationalBasis.Discrete for w in wires})
         return cls(basis_schema=schema, dim_sizes=dim_sizes)
 
-    def __eq__(self, other):
-        if not isinstance(other, FockTruncation):
-            return False
 
-        return (
-            self.basis_schema == other.basis_schema
-            and self.dim_sizes == other.dim_sizes
-        )
-
-
-class StateResult(BaseModel):
+@dataclass(frozen=True)
+class StateResult:
     statevector: Sequence[complex]
 
     truncation: Truncation
 
     wire_order: Wires
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class StateMeasurement(MeasurementProcess):

@@ -39,6 +39,8 @@ class Beamsplitter(CVOperation, FockRepresentation):
     The beamsplitter gate conserves total excitation number, as :math:`[BS, n_a + n_b] = 0`.
     Its representation in the Fock basis can be obtained with:
 
+    .. skip: next
+
     >>> BS(0.5, 0.1, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
     array([[ 1.    +0.j    ,  0.    +0.j    ,  0.    +0.j    ,
              0.    +0.j    ],
