@@ -241,6 +241,8 @@
 
 - Added `jax`, `optax`, and `ty` to developer dependencies (#47) (#62)
 
+- Drops dependency on `pydantic` (#84)
+
 ### Contributors
 
 This release contains contributions from:

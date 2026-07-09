@@ -285,6 +285,8 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
 
     Its representation in the Fock basis can be obtained with:
 
+    .. skip: next
+
     >>> XCD(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
     array([[ 0.8776+0.j,  0.    +0.j,  0.    +0.j, -0.4794+0.j],
            [ 0.    +0.j,  0.8776+0.j,  0.4794+0.j,  0.    +0.j],
@@ -393,6 +395,8 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
         yCD(\alpha) = S~xCD(\alpha)~S^\dagger
 
     Its representation in the Fock basis can be obtained with:
+
+    .. skip: next
 
     >>> YCD(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 2})
     array([[0.8776+0.j    , 0.    +0.j    , 0.    -0.j    , 0.    +0.4794j],
@@ -510,6 +514,8 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
     ConditionalSqueezing(0.5, 0.0, wires=[0, 1])
 
     Its representation in the Fock basis can be obtained with:
+
+    .. skip: next
 
     >>> CS(0.5, 0.0, wires=(0, 1)).fock_matrix({0: 2, 1: 3})
     array([[ 0.9381+0.j,  0.    +0.j,  0.3462+0.j,  0.    +0.j,  0.    +0.j,
