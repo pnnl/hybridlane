@@ -334,7 +334,11 @@ class DefaultHybrid(Device):
         max_workers: int | None = None,
     ):
         super().__init__(wires=wires, shots=shots)
-        seed = np.random.randint(0, 2**32) if seed == "global" else seed
+
+        if seed == "global":
+            rng = np.random.default_rng()
+            seed = rng.integers(0, 2**32)
+
         if math.get_interface(seed) == "jax":
             self._prng_seed = self._prng_key = seed
             self._rng = np.random.default_rng(None)
