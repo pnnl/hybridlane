@@ -100,11 +100,11 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
 
     def get_basis(self, wire: WiresLike) -> ComputationalBasis:
         r"""Gets the basis a particular wire is measured in"""
-        return self._wire_map[wire]
+        return self._wire_map[wire]  # ty:ignore[invalid-argument-type]
 
     def get_type(self, wire: WiresLike) -> type:
         r"""Gets the primitive data type for a wire"""
-        return self._wire_map[wire].return_type
+        return self._wire_map[wire].return_type  # ty:ignore[invalid-argument-type]
 
     @property
     def wires(self) -> Wires:
@@ -136,7 +136,7 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
             if self.get_basis(w) != other.get_basis(w):
                 raise WireError(f"Incompatible schemas on wire {w}")
 
-        return BasisMap(self._wire_map | other._wire_map)
+        return BasisMap(self._wire_map | other._wire_map)  # ty:ignore[invalid-argument-type]
 
     def difference(self, other: "BasisMap") -> "BasisMap":
         wires = self.wires - other.wires
@@ -184,7 +184,7 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
         return self._wire_map == other._wire_map
 
     def __getitem__(self, wire: WiresLike) -> ComputationalBasis:
-        return self._wire_map[wire]
+        return self._wire_map[wire]  # ty:ignore[invalid-argument-type]
 
     def __iter__(self):
         return iter(self._wire_map)

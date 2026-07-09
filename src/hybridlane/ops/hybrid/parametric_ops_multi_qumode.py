@@ -83,14 +83,14 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
         super().__init__(theta, phi, wires=wires, id=id)
 
     def adjoint(self):
-        return ConditionalBeamsplitter(-self.data[0], self.data[1], self.wires)
+        return ConditionalBeamsplitter(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def pow(self, z: int | float):
-        return [ConditionalBeamsplitter(self.data[0] * z, self.data[1], self.wires)]
+        return [ConditionalBeamsplitter(self.data[0] * z, self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        theta = self.data[0] % (4 * math.pi)
-        phi = self.data[1] % math.pi
+        theta = self.data[0] % (4 * math.pi)  # ty:ignore[unsupported-operator]
+        phi = self.data[1] % math.pi  # ty:ignore[unsupported-operator]
 
         theta = concrete_or_error(
             None, theta, "Cannot simplify CBS when ``theta`` is a tracer"
@@ -106,7 +106,7 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         bs = hl.BS.compute_fock_matrix(wire_dims[1:], theta, phi)
         bsd = hl.math.conj(hl.math.transpose(bs))
         return hl.math.block_diag([bs, bsd])
@@ -204,13 +204,13 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
 
     def pow(self, z: int | float):
         r, phi = self.data
-        return [ConditionalTwoModeSqueezing(r * z, phi, self.wires)]
+        return [ConditionalTwoModeSqueezing(r * z, phi, self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return [ConditionalTwoModeSqueezing(-self.data[0], self.data[1], self.wires)]
+        return [ConditionalTwoModeSqueezing(-self.data[0], self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        r, phi = self.data[0], self.data[1] % (2 * math.pi)
+        r, phi = self.data[0], self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         r = concrete_or_error(None, r, "Cannot simplify CTMS when ``r`` is a tracer")
         if can_replace(r, 0):
@@ -224,7 +224,7 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         tms = hl.TMS.compute_fock_matrix(wire_dims[1:], r, phi)
         tmsd = hl.math.conj(hl.math.transpose(tms))
         return hl.math.block_diag([tms, tmsd])
@@ -307,10 +307,10 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
 
     def adjoint(self):
         lambda_ = self.parameters[0]
-        return ConditionalTwoModeSum(-lambda_, wires=self.wires)
+        return ConditionalTwoModeSum(-lambda_, wires=self.wires)  # ty:ignore[unsupported-operator]
 
     def pow(self, z: int | float):
-        return [ConditionalTwoModeSum(self.data[0] * z, self.wires)]
+        return [ConditionalTwoModeSum(self.data[0] * z, self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
         lambda_ = self.data[0]
@@ -329,7 +329,7 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], lam) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], lam) -> TensorLike:  # ty:ignore[invalid-method-override]
         tms = hl.SUM.compute_fock_matrix(wire_dims[1:], lam)
         tmsd = hl.math.conj(hl.math.transpose(tms))
         return hl.math.block_diag([tms, tmsd])

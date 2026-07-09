@@ -14,7 +14,7 @@ from scipy.sparse import coo_array, sparray
 from typing_extensions import overload
 
 if TYPE_CHECKING:
-    from torch import Tensor as TorchTensor
+    from torch import Tensor as TorchTensor  # ty:ignore[unresolved-import]
 
 
 @overload
@@ -75,7 +75,7 @@ def expand_matrix(
 
     shape = math.shape(mat)
     if not wires and shape == (1, 1):  # pyright: ignore[reportCallIssue]
-        return complex(mat[0, 0])
+        return complex(mat[0, 0])  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     if wires - wire_order:
         raise ValueError("The wire_order must contain every wire in wires.")
@@ -157,7 +157,7 @@ def _kron_with_batch(
     if batch_dim is None:
         return _kron(mat1, mat2, interface)
 
-    matrices = [_kron(m, mat2, interface) for m in mat1]
+    matrices = [_kron(m, mat2, interface) for m in mat1]  # ty:ignore[not-iterable]
     return math.stack(matrices, like=interface)
 
 
@@ -194,10 +194,10 @@ def permute_sparse_matrix(
     perm = tuple(wire_order.indices(wires))
     dims = tuple(wire_dims[wire] for wire in wires)
     P = build_sparse_permutation_matrix(dims, perm)
-    assert P.shape[-2:] == mat.shape[-2:], (
+    assert P.shape[-2:] == mat.shape[-2:], (  # ty:ignore[unresolved-attribute]
         "Permutation matrix must be the same shape as the input matrix."
     )
-    result = P @ mat @ P.T
+    result = P @ mat @ P.T  # ty:ignore[unresolved-attribute, unsupported-operator]
     return result.asformat(format)
 
 
@@ -306,7 +306,7 @@ def expand_vector(
 
     shape = math.shape(vec)
     if not wires and shape == (1,):  # pyright: ignore[reportCallIssue]
-        return complex(vec[0])
+        return complex(vec[0])  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     if wires - wire_order:
         raise ValueError("The wire_order must contain every wire in wires.")
@@ -408,5 +408,5 @@ def permute_sparse_vector(
     perm = tuple(wire_order.indices(wires))
     dims = tuple(wire_dims[wire] for wire in wires)
     P = build_sparse_permutation_matrix(dims, perm)
-    result = P @ vec
+    result = P @ vec  # ty:ignore[unsupported-operator]
     return result.asformat(format)

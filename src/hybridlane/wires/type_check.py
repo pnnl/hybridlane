@@ -126,7 +126,7 @@ def type_check(tape: QuantumScript) -> TypeCheckResult:
     return TypeCheckResult(ordered_wire_types, measurement_schemas)
 
 
-@type_check.register
+@type_check.register  # ty:ignore[no-matching-overload]
 def _type_check_qnode(
     qnode: qp.QNode,
 ) -> Callable[..., TypeCheckResult | list[TypeCheckResult]]:

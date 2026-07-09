@@ -69,7 +69,7 @@ class TestApplyOperation:
         if like == "jax":
             import jax
 
-            f = jax.jit(f, static_argnums=1)
+            f = jax.jit(f, static_argnums=1)  # ty:ignore[invalid-assignment]
 
         for is_batched in (False, True):
             shape = inner_shape if not is_batched else (batch_size, *inner_shape)
@@ -113,7 +113,7 @@ class TestApplyOperation:
         if like == "jax":
             import jax
 
-            f = jax.jit(f, static_argnums=1)
+            f = jax.jit(f, static_argnums=1)  # ty:ignore[invalid-assignment]
 
         for is_batched in (False, True):
             shape = (dim,) if not is_batched else (2, dim)
@@ -156,7 +156,7 @@ class TestApplyOperation:
         if like == "jax":
             import jax
 
-            f = jax.jit(f, static_argnums=1)
+            f = jax.jit(f, static_argnums=1)  # ty:ignore[invalid-assignment]
 
         for is_batched in (False, True):
             shape = inner_shape if not is_batched else (batch_size, *inner_shape)
@@ -198,7 +198,7 @@ class TestApplyOperation:
         if like == "jax":
             import jax
 
-            f = jax.jit(f)
+            f = jax.jit(f)  # ty:ignore[invalid-assignment]
 
         for val in (0, 1):
             result = f(state, val)

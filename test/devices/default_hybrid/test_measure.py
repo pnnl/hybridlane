@@ -57,7 +57,7 @@ class TestDiagonalize:
         ev, gates = diagonalize(obs, (0, 1), {0: 2, 1: 2})
 
         assert ev == pytest.approx([1, -1, -1, 1])
-        assert set(gates) == {qp.H(0), qp.H(1)}
+        assert set(gates) == {qp.H(0), qp.H(1)}  # ty:ignore[invalid-argument-type]
 
     def test_sprod(self):
         obs = 0.5 * hl.N(0)
@@ -127,7 +127,7 @@ class TestBuildFockMatrix:
         assert hl.math.shape(mat) == (5, 5)
 
         base_mat = hl.N(0).fock_matrix(wire_dims)
-        expected_mat = 0.5 * base_mat
+        expected_mat = 0.5 * base_mat  # ty:ignore[unsupported-operator]
         assert mat == pytest.approx(expected_mat)
 
     def test_sum(self, like):

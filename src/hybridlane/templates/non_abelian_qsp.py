@@ -236,7 +236,7 @@ class GKPState(ErrorOperation, Hybrid):
         self.hyperparameters["logical_state"] = logical_state
 
         if repetitions is None:
-            repetitions = int(qp.math.floor(0.32 / delta**2).item())
+            repetitions = int(qp.math.floor(0.32 / delta**2).item())  # ty:ignore[unsupported-operator]
 
         self.hyperparameters["repetitions"] = repetitions
 
@@ -321,7 +321,7 @@ class GaussianControlledRotation(ErrorOperation, Hybrid):
     def error(self) -> AlgorithmicError:
         _, a, delta = self.parameters
         # This is defined for GCR(2θ)
-        chi = np.pi * delta / (4 * qp.math.abs(a))
+        chi = np.pi * delta / (4 * qp.math.abs(a))  # ty:ignore[unsupported-operator]
         # eq. c44 of singh et al
         p_error = (5 * chi**6 - 5 * chi**8 / 96) / (1 - 29 * chi**8 / 768)
         return SpectralNormError(p_error)

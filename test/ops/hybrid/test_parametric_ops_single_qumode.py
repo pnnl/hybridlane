@@ -59,7 +59,7 @@ class TestConditionalRotation:
         import jax.numpy as jnp
 
         theta = jnp.array(math.pi / 2)
-        op = hl.ConditionalRotation(theta, wires=[0, 1])
+        op = hl.ConditionalRotation(theta, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hl.math.eye(8, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -88,7 +88,7 @@ class TestConditionalRotation:
         def f(theta):
             op = hl.CR(theta, wires=(0, 1))
             mat = op.fock_matrix({0: 2, 1: dim})
-            return (mat @ jnp.ones(2 * dim)).imag.reshape(2, dim)
+            return (mat @ jnp.ones(2 * dim)).imag.reshape(2, dim)  # ty:ignore[unsupported-operator]
 
         theta = jnp.array(math.pi / 4)
         n = jnp.arange(dim)
@@ -143,7 +143,7 @@ class TestSelectiveQubitRotation:
 
         theta = jnp.array(0.5)
         phi = jnp.array(0.3)
-        op = hl.SelectiveQubitRotation(theta, phi, 0, wires=[0, 1])
+        op = hl.SelectiveQubitRotation(theta, phi, 0, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hl.math.eye(8, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -156,7 +156,7 @@ class TestSelectiveQubitRotation:
 
         @jax.jit
         def f(x):
-            op = hl.SQR(*x, 1, wires=(0, 1))
+            op = hl.SQR(*x, 1, wires=(0, 1))  # ty:ignore[parameter-already-assigned]
             return op.fock_matrix({0: 2, 1: 4})
 
         x = jnp.array([0.123, 0])
@@ -175,7 +175,7 @@ class TestSelectiveQubitRotation:
         z = hl.math.asarray(z, like=state)
 
         def f(x, n):
-            op = hl.SQR(*x, n, wires=(0, 1))
+            op = hl.SQR(*x, n, wires=(0, 1))  # ty:ignore[parameter-already-assigned]
             mat = op.fock_matrix(dims)
             return hl.math.expectation_value(z, mat @ state).real
 
@@ -281,7 +281,7 @@ class TestJaynesCummings:
 
         theta = jnp.array(0.5)
         phi = jnp.array(0.3)
-        op = hl.JaynesCummings(theta, phi, wires=[0, 1])
+        op = hl.JaynesCummings(theta, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hl.math.eye(8, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -400,7 +400,7 @@ class TestAntiJaynesCummings:
 
         theta = jnp.array(0.5)
         phi = jnp.array(0.3)
-        op = hl.AntiJaynesCummings(theta, phi, wires=[0, 1])
+        op = hl.AntiJaynesCummings(theta, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hl.math.eye(8, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -499,7 +499,7 @@ class TestRabi:
 
         r = jnp.array(0.5)
         phi = jnp.array(0.3)
-        op = hl.Rabi(r, phi, wires=[0, 1])
+        op = hl.Rabi(r, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4})
         eye = hl.math.eye(8, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -524,7 +524,7 @@ class TestRabi:
 
         def f(x):
             op = hl.Rabi(*x, wires=(0, 1))
-            return op.fock_matrix({0: 2, 1: 4}).real
+            return op.fock_matrix({0: 2, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, 0])
         grad_fn = hl.math.jacobian(f)
@@ -577,7 +577,7 @@ class TestConditionalDisplacement:
 
         a = jnp.array(0.3)
         phi = jnp.array(0.5)
-        op = hl.ConditionalDisplacement(a, phi, wires=[0, 1])
+        op = hl.ConditionalDisplacement(a, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hl.math.eye(12, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -606,7 +606,7 @@ class TestConditionalDisplacement:
             op = hl.CD(*x, wires=(0, 1))
             mat = op.fock_matrix(dims)
             # extract coherent state |-alpha>
-            state = mat.reshape((2, 4, 2, 4))[1, :, 1, 0]
+            state = mat.reshape((2, 4, 2, 4))[1, :, 1, 0]  # ty:ignore[unresolved-attribute]
             x = hl.X(1).fock_matrix(dims)
             x = hl.math.asarray(x, like=state)
             return hl.math.expectation_value(x, state).real
@@ -675,7 +675,7 @@ class TestConditionalXDisplacement:
 
         a = jnp.array(0.3)
         phi = jnp.array(0.5)
-        op = hl.ConditionalXDisplacement(a, phi, wires=[0, 1])
+        op = hl.ConditionalXDisplacement(a, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hl.math.eye(12, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -700,7 +700,7 @@ class TestConditionalXDisplacement:
 
         def f(x):
             op = hl.XCD(*x, wires=(0, 1))
-            return op.fock_matrix({0: 2, 1: 4}).real
+            return op.fock_matrix({0: 2, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, -0.456])
         grad_fn = hl.math.jacobian(f)
@@ -756,7 +756,7 @@ class TestConditionalYDisplacement:
 
         a = jnp.array(0.3)
         phi = jnp.array(0.5)
-        op = hl.ConditionalYDisplacement(a, phi, wires=[0, 1])
+        op = hl.ConditionalYDisplacement(a, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hl.math.eye(12, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -781,7 +781,7 @@ class TestConditionalYDisplacement:
 
         def f(x):
             op = hl.YCD(*x, wires=(0, 1))
-            return op.fock_matrix({0: 2, 1: 4}).real
+            return op.fock_matrix({0: 2, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, -0.456])
         grad_fn = hl.math.jacobian(f)
@@ -837,7 +837,7 @@ class TestConditionalSqueezing:
 
         z = jnp.array(0.3)
         phi = jnp.array(0.5)
-        op = hl.ConditionalSqueezing(z, phi, wires=[0, 1])
+        op = hl.ConditionalSqueezing(z, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 8})
         eye = hl.math.eye(16, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -873,7 +873,7 @@ class TestConditionalSqueezing:
             obs = hl.math.asarray(obs, like="jax")
             mat = hl.CS(*x, wires=(0, 1)).fock_matrix(dims)
             # CS|1,0>
-            state = mat.reshape((2, 4, 2, 4))[1, :, 1, 0]
+            state = mat.reshape((2, 4, 2, 4))[1, :, 1, 0]  # ty:ignore[unresolved-attribute]
             return var(obs, state)
 
         x = jnp.array([0.123, 0])
@@ -935,7 +935,7 @@ class TestEchoedConditionalDisplacement:
 
         a = jnp.array(0.3)
         phi = jnp.array(0.5)
-        op = hl.EchoedConditionalDisplacement(a, phi, wires=[0, 1])
+        op = hl.EchoedConditionalDisplacement(a, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 6})
         eye = hl.math.eye(12, like="jax")
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
@@ -959,7 +959,7 @@ class TestEchoedConditionalDisplacement:
 
         def f(x):
             op = hl.ECD(*x, wires=(0, 1))
-            return op.fock_matrix({0: 2, 1: 4}).real
+            return op.fock_matrix({0: 2, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, -0.456])
         grad_fn = hl.math.jacobian(f)

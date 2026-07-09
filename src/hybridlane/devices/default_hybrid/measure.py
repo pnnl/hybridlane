@@ -206,7 +206,7 @@ def build_fock_matrix(
             mats = [build_fock_matrix(t, wire_order, wire_dims) for t in terms]
             return reduce(math.add, mats)
         case SProd(scalar=s, base=base):
-            return s * build_fock_matrix(base, wire_order, wire_dims)
+            return s * build_fock_matrix(base, wire_order, wire_dims)  # ty:ignore[unsupported-operator]
         case Pow(base=base, z=p):
             mat = build_fock_matrix(base, wire_order, wire_dims)
             return math.linalg.matrix_power(mat, p)
@@ -239,7 +239,7 @@ def diagonalizing_gates(
     if mp.obs is not None:
         eigvals, gates = diagonalize(mp.obs, wire_order, wire_dims, return_evs=True)
 
-        for op in gates:
+        for op in gates:  # ty:ignore[not-iterable]
             state = apply_operation(op, state, is_state_batched)
 
     flat = flatten_state(state, is_state_batched)
@@ -247,7 +247,7 @@ def diagonalizing_gates(
         flat,
         wire_order=wire_order,
         wire_dims=wire_dims,  # ty:ignore[invalid-argument-type]
-        eigvals=eigvals,
+        eigvals=eigvals,  # ty:ignore[invalid-argument-type]
     )
 
 
@@ -259,13 +259,13 @@ def einsum(mp: StateMeasurement, state: TensorLike, is_state_batched: bool):
 
     match mp:
         case ExpectationMP(obs=obs):
-            mat = build_fock_matrix(obs, wire_order, wire_dims)
+            mat = build_fock_matrix(obs, wire_order, wire_dims)  # ty:ignore[invalid-argument-type]
             state = flatten_state(state, is_state_batched)
             return math.real(math.expectation_value(mat, state))
         case VarianceMP(obs=obs):
             # fixme: there's a more efficient way to do this reusing intermediate
             # products of O|psi>
-            mat = build_fock_matrix(obs, wire_order, wire_dims)
+            mat = build_fock_matrix(obs, wire_order, wire_dims)  # ty:ignore[invalid-argument-type]
             mat2 = math.linalg.matrix_power(mat, 2)
             state = flatten_state(state, is_state_batched)
             return math.real(

@@ -109,7 +109,7 @@ class TestDisplacement:
         dim = 10
 
         d_mat = hl.D.compute_fock_matrix((dim,), alpha_r, alpha_phi)
-        d_on_vacuum = d_mat[:, 0]  # D|0>
+        d_on_vacuum = d_mat[:, 0]  # D|0>  # ty:ignore[invalid-argument-type, not-subscriptable]
 
         n = hl.math.arange(dim)
         expected = (
@@ -132,8 +132,8 @@ class TestDisplacement:
         alpha = alpha_r * hl.math.exp(1j * alpha_phi)
         dim = 10
 
-        op = hl.Displacement(alpha_r, alpha_phi, wires=0)
-        d_on_vacuum = op.fock_matrix({0: dim})[:, 0]
+        op = hl.Displacement(alpha_r, alpha_phi, wires=0)  # ty:ignore[invalid-argument-type]
+        d_on_vacuum = op.fock_matrix({0: dim})[:, 0]  # ty:ignore[invalid-argument-type, not-subscriptable]
 
         n = jnp.arange(dim)
         expected = (
@@ -161,7 +161,7 @@ class TestDisplacement:
         def f(x):
             op = hl.D(*x, wires=0)
             mat = op.fock_matrix(dims)
-            state = mat[:, 0]  # extract coherent state
+            state = mat[:, 0]  # extract coherent state  # ty:ignore[invalid-argument-type, not-subscriptable]
             x = hl.X(0).fock_matrix(dims)
             x = hl.math.asarray(x, like=state)
             return hl.math.expectation_value(x, state).real
@@ -251,7 +251,7 @@ class TestRotation:
     @pytest.mark.jax
     def test_fock_matrix_jax(self):
         theta = jnp.array(math.pi / 2)
-        op = hl.Rotation(theta, wires=0)
+        op = hl.Rotation(theta, wires=0)  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 4})
         expected = hl.math.diag(jnp.array([1, -1j, -1, 1j]))
         assert hl.math.get_interface(matrix) == "jax"
@@ -275,7 +275,7 @@ class TestRotation:
         def f(theta):
             op = hl.R(theta, 0)
             mat = op.fock_matrix({0: dim})
-            return (mat @ jnp.ones(dim)).real
+            return (mat @ jnp.ones(dim)).real  # ty:ignore[unsupported-operator]
 
         theta = jnp.array(math.pi / 4)
         n = jnp.arange(dim)
@@ -363,7 +363,7 @@ class TestSqueezing:
         obs = hl.X.compute_fock_matrix((dim,))
         vacuum = hl.math.eye(dim)[:, 0]
         mat = hl.S.compute_fock_matrix((dim,), 1, 0)
-        state = mat[:, 0]  # S|0>
+        state = mat[:, 0]  # S|0>  # ty:ignore[invalid-argument-type, not-subscriptable]
         var_x = var(obs, state)
         assert var_x < var(obs, vacuum)
 
@@ -404,7 +404,7 @@ class TestSqueezing:
             obs = hl.X.compute_fock_matrix((dim,))
             obs = hl.math.asarray(obs, like="jax")
             mat = hl.S.compute_fock_matrix((dim,), *x)
-            state = mat[:, 0]  # S|0>
+            state = mat[:, 0]  # S|0>  # ty:ignore[invalid-argument-type, not-subscriptable]
             return var(obs, state)
 
         # Evaluating Var(x) results in:
@@ -525,7 +525,7 @@ class TestKerr:
         import jax.numpy as jnp
 
         kappa = jnp.array(math.pi / 4)
-        op = hl.Kerr(kappa, wires=0)
+        op = hl.Kerr(kappa, wires=0)  # ty:ignore[invalid-argument-type]
         dim = 6
         matrix = op.fock_matrix({0: dim})
         n = hl.math.arange(dim, like=kappa)
@@ -554,7 +554,7 @@ class TestKerr:
         def f(x):
             op = hl.K(x, wires=0)
             mat = op.fock_matrix({0: 4})
-            return (mat @ jnp.ones(4)).real
+            return (mat @ jnp.ones(4)).real  # ty:ignore[unsupported-operator]
 
         x = jnp.array(0.123)
         grad_fn = hl.math.jacobian(f)
@@ -609,7 +609,7 @@ class TestCubicPhase:
 
         dim = 6
         r = jnp.array(0.1)
-        op = hl.CubicPhase(r, wires=0)
+        op = hl.CubicPhase(r, wires=0)  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: dim})
         eye = hl.math.eye(dim, like=r)
         assert hl.math.get_interface(matrix) == "jax"
@@ -635,7 +635,7 @@ class TestCubicPhase:
         # todo: don't have a good understanding of this gate to build a solid test
         def f(x):
             op = hl.C(x, wires=0)
-            return op.fock_matrix({0: 4}).real
+            return op.fock_matrix({0: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array(0.123)
         grad_fn = hl.math.jacobian(f)

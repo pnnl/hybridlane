@@ -33,7 +33,7 @@ class TestPermuteDenseMatrix:
         mat = permute_dense_matrix(csnap, wires, wires, wire_dims)
 
         assert math.get_interface(mat) == "jax"
-        assert jnp.allclose(mat, csnap)
+        assert jnp.allclose(mat, csnap)  # ty:ignore[invalid-argument-type]
 
     def test_different_wires(self):
         # Construct an operator over wire dimensions (2, 4)
@@ -102,13 +102,13 @@ class TestExpandMatrix:
         snap = jnp.diag(jnp.exp(1j * jnp.arange(4)))
         expected_mat = math.block_diag([snap, snap])
         wire_dims = {0: 4, 1: 2}
-        mat = math.expand_matrix(snap, (0,), wire_dims=wire_dims, wire_order=(1, 0))
+        mat = math.expand_matrix(snap, (0,), wire_dims=wire_dims, wire_order=(1, 0))  # ty:ignore[no-matching-overload]
         assert math.get_interface(mat) == "jax"
         assert math.allclose(mat, expected_mat)
 
     @pytest.mark.torch
     def test_expand_before_torch(self):
-        import torch
+        import torch  # ty:ignore[unresolved-import]
 
         snap = torch.diag(torch.exp(1j * torch.arange(4)))
         expected_mat = math.block_diag([snap, snap])
@@ -186,13 +186,13 @@ class TestExpandVector:
 
         vec = jnp.arange(8)
         expected_vec = jnp.asarray([0, 4, 2, 6, 1, 5, 3, 7])
-        expanded_vec = math.expand_vector(vec, (0, 1, 2), wire_order=(2, 1, 0))
+        expanded_vec = math.expand_vector(vec, (0, 1, 2), wire_order=(2, 1, 0))  # ty:ignore[no-matching-overload]
         assert math.get_interface(expanded_vec) == "jax"
         assert math.allclose(expanded_vec, expected_vec)
 
     @pytest.mark.torch
     def test_reverse_torch(self):
-        import torch
+        import torch  # ty:ignore[unresolved-import]
 
         vec = torch.arange(8)
         expected_vec = torch.asarray([0, 4, 2, 6, 1, 5, 3, 7])

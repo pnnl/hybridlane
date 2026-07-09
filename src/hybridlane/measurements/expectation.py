@@ -55,7 +55,7 @@ class ExpectationMP(SampleMeasurement, StateMeasurement):
                 self.obs, bases=None, eigvals=self._eigvals
             ).process_samples(
                 samples,
-                wire_order=self.obs.wires,
+                wire_order=self.obs.wires,  # ty:ignore[unresolved-attribute]
                 shot_range=shot_range,
                 bin_size=bin_size,
             )

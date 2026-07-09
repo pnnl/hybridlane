@@ -80,7 +80,7 @@ class Fourier(CVOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         n = hl.math.arange(wire_dims[0])
         return hl.math.diag(hl.math.exp(-1j * math.pi / 2 * n))
 
@@ -211,7 +211,7 @@ class ModeSwap(CVOperation, FockRepresentation):
         super().__init__(wires=wires, id=id)
 
     @staticmethod
-    def _heisenberg_rep(_):
+    def _heisenberg_rep(_):  # ty:ignore[invalid-method-override]
         return np.array(
             [
                 [1, 0, 0, 0, 0],
@@ -238,7 +238,7 @@ class ModeSwap(CVOperation, FockRepresentation):
             return [ModeSwap(self.wires)]
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         dim0, dim1 = wire_dims
         mat = hl.math.zeros((dim0 * dim1, dim0 * dim1), dtype=complex)
         m = hl.math.arange(dim0)[:, None]
@@ -310,7 +310,7 @@ class CreationOp(CV, Operator, FockRepresentation):
         return AnnihilationOp(self.wires)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         return hl.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=-1)
 
 
@@ -365,7 +365,7 @@ class AnnihilationOp(CV, Operator, FockRepresentation):
         return CreationOp(self.wires)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         return hl.math.diag([math.sqrt(i) for i in range(1, wire_dims[0])], k=1)
 
 

@@ -20,7 +20,7 @@ class TestBasisMap:
             "a": ComputationalBasis.Discrete,
             "b": ComputationalBasis.Position,
         }
-        schema = BasisMap(wire_map)
+        schema = BasisMap(wire_map)  # ty:ignore[invalid-argument-type]
         assert schema.get_basis("a") == ComputationalBasis.Discrete
         assert schema.get_basis("b") == ComputationalBasis.Position
 
@@ -29,7 +29,7 @@ class TestBasisMap:
             "a": ComputationalBasis.Discrete,
             ("b", "c"): ComputationalBasis.Position,
         }
-        schema = BasisMap(wire_map)
+        schema = BasisMap(wire_map)  # ty:ignore[invalid-argument-type]
         assert schema.get_basis("a") == ComputationalBasis.Discrete
         assert schema.get_basis("b") == ComputationalBasis.Position
         assert schema.get_basis("c") == ComputationalBasis.Position
@@ -105,14 +105,14 @@ class TestCountsResult:
         counts = {(0, 1): 10, (1, 0): 20}
         wire_order = Wires(["a", "b"])
         basis_schema = BasisMap({wire_order: ComputationalBasis.Discrete})
-        result = CountsResult(counts=counts, wire_order=wire_order, bases=basis_schema)
+        result = CountsResult(counts=counts, wire_order=wire_order, bases=basis_schema)  # ty:ignore[invalid-argument-type]
         assert result.is_basis_states
         assert not result.is_eigenvals
         assert result.shots == 30
 
     def test_init_eigvals(self):
         counts = {1.0: 15, -1.0: 25}
-        result = CountsResult(counts=counts)
+        result = CountsResult(counts=counts)  # ty:ignore[invalid-argument-type]
         assert not result.is_basis_states
         assert result.is_eigenvals
         assert result.shots == 40

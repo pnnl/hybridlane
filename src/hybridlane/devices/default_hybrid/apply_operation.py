@@ -113,7 +113,7 @@ def apply_qubit_conditioned(op: ops.QubitConditioned, state: TensorLike, **kwarg
     if len(op.control_wires) != 1:
         raise NotImplementedError("Only single control wire is supported for now")
 
-    return apply_qcond(op.base, state, op.control_wires[0], **kwargs)
+    return apply_qcond(op.base, state, op.control_wires[0], **kwargs)  # ty:ignore[invalid-argument-type]
 
 
 @apply_operation.register
@@ -208,7 +208,7 @@ def apply_rotation(
     **kwargs,
 ):
     dim = math.shape(state)[op.wires[0] + is_state_batched]
-    diag = math.exp(-1j * op.parameters[0] * math.arange(dim, like=state))
+    diag = math.exp(-1j * op.parameters[0] * math.arange(dim, like=state))  # ty:ignore[unsupported-operator]
     return apply_diag_operation(diag, state, op.wires, is_state_batched)
 
 
@@ -221,7 +221,7 @@ def apply_kerr(
     **kwargs,
 ):
     dim = math.shape(state)[op.wires[0] + is_state_batched]
-    diag = math.exp(-1j * op.parameters[0] * math.arange(dim, like=state) ** 2)
+    diag = math.exp(-1j * op.parameters[0] * math.arange(dim, like=state) ** 2)  # ty:ignore[unsupported-operator]
     return apply_diag_operation(diag, state, op.wires, is_state_batched)
 
 
@@ -236,7 +236,7 @@ def apply_snap(
     axis = cast(int, op.wires[0] + is_state_batched)
     slices = list(math.unstack(state, axis=axis))
     slices[op.hyperparameters["n"]] = math.multiply(
-        slices[op.hyperparameters["n"]], math.exp(1j * op.parameters[0])
+        slices[op.hyperparameters["n"]], math.exp(1j * op.parameters[0])  # ty:ignore[unsupported-operator]
     )
     return math.stack(slices, axis=axis)
 
@@ -263,7 +263,7 @@ def apply_conditional_rotation(
     **kwargs,
 ):
     cond_wire, wires = op.wires[0], op.wires[1:]
-    sub_op = ops.R(op.parameters[0] / 2, wires=wires)
+    sub_op = ops.R(op.parameters[0] / 2, wires=wires)  # ty:ignore[unsupported-operator]
     return apply_qcond(sub_op, state, cond_wire, is_state_batched)
 
 
@@ -339,7 +339,7 @@ def apply_operation_einsum(
     is_state_batched: bool = False,
 ) -> TensorLike:
     # Implicit casting like in pennylane's qubit version
-    mat = mat + 0j
+    mat = mat + 0j  # ty:ignore[unsupported-operator]
     n = cast(int, math.ndim(state) - is_state_batched)
     state_shape = cast(tuple[int, ...], math.shape(state))[-n:]
 
@@ -375,7 +375,7 @@ def apply_diag_operation(
     axis = cast(int, op_wires[0] + is_state_batched)
 
     slices = []
-    for d, s in zip(diag, math.unstack(state, axis=axis)):
+    for d, s in zip(diag, math.unstack(state, axis=axis)):  # ty:ignore[invalid-argument-type, not-iterable]
         slices.append(math.multiply(s, d))
 
     return math.stack(slices, axis=axis)

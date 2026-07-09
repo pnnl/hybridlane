@@ -6,7 +6,7 @@ import functools
 import math
 import warnings
 
-import bosonic_qiskit as bq
+import bosonic_qiskit as bq  # ty:ignore[unresolved-import]
 import numpy as np
 import pennylane as qp
 from pennylane.exceptions import DeviceError
@@ -16,8 +16,8 @@ from pennylane.ops.cv import CVOperation
 from pennylane.tape import QuantumScript
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
-from qiskit.primitives import BitArray
-from qiskit.quantum_info import Statevector
+from qiskit.primitives import BitArray  # ty:ignore[unresolved-import]
+from qiskit.quantum_info import Statevector  # ty:ignore[unresolved-import]
 from scipy import sparse as sp
 from scipy.linalg import expm, fractional_matrix_power
 from scipy.sparse import SparseEfficiencyWarning, csc_array
@@ -88,9 +88,9 @@ def simulate(
             results.append(analytic_measurement(m, state, regmapper, hbar=hbar))
 
     if len(tape.measurements) == 1:
-        return results[0]
+        return results[0]  # ty:ignore[invalid-return-type]
 
-    return tuple(results)
+    return tuple(results)  # ty:ignore[invalid-return-type]
 
 
 @functools.singledispatch
@@ -114,7 +114,7 @@ def analytic_expval(
     *,
     hbar: float,
 ) -> np.ndarray:
-    obs = get_observable_matrix(mp.obs, regmapper, hbar=hbar)
+    obs = get_observable_matrix(mp.obs, regmapper, hbar=hbar)  # ty:ignore[invalid-argument-type]
     return hl.math.expectation_value(obs, state.data)
 
 
@@ -126,7 +126,7 @@ def analytic_var(
     *,
     hbar: float,
 ) -> np.ndarray:
-    obs = get_observable_matrix(mp.obs, regmapper, hbar=hbar)
+    obs = get_observable_matrix(mp.obs, regmapper, hbar=hbar)  # ty:ignore[invalid-argument-type]
     exp = hl.math.expectation_value(obs, state.data)
     exp2 = hl.math.expectation_value(obs @ obs, state.data)
     var = exp2 - exp**2
@@ -143,7 +143,7 @@ def analytic_probs(
     with qp.QueuingManager.stop_recording():
         return ProbabilityMP(wire_order).process_state(
             state.data, wire_order=bq_wires, wire_dims=wire_dims
-        )
+        )  # ty:ignore[invalid-return-type]
 
 
 @analytic_measurement.register
@@ -156,7 +156,7 @@ def analytic_state(
     with qp.QueuingManager.stop_recording():
         return StateMP(wire_order).process_state(
             state.data, wire_order=bq_wires, wire_dims=wire_dims
-        )
+        )  # ty:ignore[invalid-return-type]
 
 
 @analytic_measurement.register
@@ -165,7 +165,7 @@ def analytic_dm(
 ) -> np.ndarray:
     bq_wires = regmapper.wire_order[::-1]  # inverted for qiskit ordering
     wire_dims = {w: regmapper.truncation.dim(w) for w in bq_wires}
-    return mp.process_state(state.data, wire_order=bq_wires, wire_dims=wire_dims)
+    return mp.process_state(state.data, wire_order=bq_wires, wire_dims=wire_dims)  # ty:ignore[invalid-return-type]
 
 
 def get_sparse_observable_matrix(
@@ -200,7 +200,7 @@ def get_sparse_observable_matrix(
             return np.cos(phi) * get_x(cutoffs[0]) + np.sin(phi) * get_p(cutoffs[0])
 
         case hl.FockStateProjector(parameters=(fock_states,)):
-            mats = [cvops.get_projector(n, c) for n, c in zip(fock_states, cutoffs)]
+            mats = [cvops.get_projector(n, c) for n, c in zip(fock_states, cutoffs)]  # ty:ignore[invalid-argument-type, not-iterable]
             return functools.reduce(sp.kron, mats).asformat("csc")
 
         case _:
@@ -224,7 +224,7 @@ def get_observable_matrix(
     # Handle symbolic observable expressions by traversing the expression tree
     match obs:
         case Sum(operands=terms):
-            return sum(get_observable_matrix(o, regmapper, hbar=hbar) for o in terms)
+            return sum(get_observable_matrix(o, regmapper, hbar=hbar) for o in terms)  # ty:ignore[invalid-return-type]
         case SProd(base=op, scalar=scalar):
             return scalar * get_observable_matrix(op, regmapper, hbar=hbar)
         case Exp(base=op, scalar=scalar):
@@ -232,7 +232,7 @@ def get_observable_matrix(
         case Pow(base=op, scalar=pow):
             mat = get_observable_matrix(op, regmapper, hbar=hbar)
             try:
-                return np.linalg.matrix_power(mat, pow)
+                return np.linalg.matrix_power(mat, pow)  # ty:ignore[no-matching-overload]
             except TypeError:  # non-integer power
                 return fractional_matrix_power(mat, pow)
         case Prod(operands=ops):
@@ -264,7 +264,7 @@ def get_observable_matrix(
     mat = hl.math.expand_matrix(
         composite_matrix, obs_wires, wire_order=statevector_wires, wire_dims=wire_dims
     )
-    return mat.todense()
+    return mat.todense()  # ty:ignore[unresolved-attribute]
 
 
 def make_cv_circuit(
@@ -280,7 +280,7 @@ def make_cv_circuit(
 
     regmapper = RegisterMapping(res, truncation)
     for wire, dim in regmapper.truncation.dim_sizes.items():
-        if not (qubits := math.log2(dim)).is_integer():
+        if not (qubits := math.log2(dim)).is_integer():  # ty:ignore[unresolved-attribute]
             raise DeviceError(
                 f"Only Fock powers of 2 are currently supported on this device, got {dim} on wire {wire} (log2: {qubits})"
             )
@@ -334,20 +334,20 @@ def _(op: CVOperation, qc: bq.CVCircuit, regmapper: RegisterMapping):
     match op:
         # These gates take complex parameters or differ from bosonic qiskit
         case hl.Displacement(parameters=(r, phi)):
-            arg = r * np.exp(1j * phi)
+            arg = r * np.exp(1j * phi)  # ty:ignore[unsupported-operator]
             getattr(qc, method)(arg, *qumodes)
         case hl.Squeezing(parameters=(r, theta)):
-            arg = -r * np.exp(-1j * 2 * theta)
+            arg = -r * np.exp(-1j * 2 * theta)  # ty:ignore[unsupported-operator]
             getattr(qc, method)(arg, *qumodes)
         case hl.Rotation(parameters=(theta,)):
-            getattr(qc, method)(-theta, *qumodes)
+            getattr(qc, method)(-theta, *qumodes)  # ty:ignore[unsupported-operator]
         case hl.Beamsplitter(parameters=(theta, phi)):
-            new_theta = theta / 2
-            new_phi = phi - np.pi / 2
+            new_theta = theta / 2  # ty:ignore[unsupported-operator]
+            new_phi = phi - np.pi / 2  # ty:ignore[unsupported-operator]
             z = new_theta * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
         case hl.TwoModeSqueezing(parameters=(r, phi)):
-            new_phi = phi + np.pi / 2
+            new_phi = phi + np.pi / 2  # ty:ignore[unsupported-operator]
             z = r * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
         case hl.SNAP(parameters=parameters, hyperparameters={"n": n}):
@@ -358,39 +358,39 @@ def _(op: CVOperation, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
 @apply_gate.register
 def _(op: Hybrid, qc: bq.CVCircuit, regmapper: RegisterMapping):
-    if (method := hybrid_gate_map.get(op.name)) is None:
+    if (method := hybrid_gate_map.get(op.name)) is None:  # ty:ignore[unresolved-attribute]
         raise DeviceError(
-            f"Unsupported hybrid operation {op.name}. This likely means the operation is not "
+            f"Unsupported hybrid operation {op.name}. This likely means the operation is not "  # ty:ignore[unresolved-attribute]
             "supported by bosonic qiskit or we forgot to add it to the hybrid_gate_map."
         )
 
     wire_types = op.wire_types()
 
-    qumodes = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qumode()]
-    qubits = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qubit()]
+    qumodes = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qumode()]  # ty:ignore[unresolved-attribute]
+    qubits = [regmapper.get(w) for w in op.wires if wire_types[w] == sa.Qubit()]  # ty:ignore[unresolved-attribute]
 
     match op:
         case hl.ConditionalRotation(parameters=(theta,)):
-            getattr(qc, method)(-theta / 2, *qumodes, *qubits)
+            getattr(qc, method)(-theta / 2, *qumodes, *qubits)  # ty:ignore[unsupported-operator]
         case hl.ConditionalDisplacement(parameters=(r, phi)):
-            arg = r * np.exp(1j * phi)
+            arg = r * np.exp(1j * phi)  # ty:ignore[unsupported-operator]
             getattr(qc, method)(arg, *qumodes, *qubits)
         case hl.ConditionalSqueezing(parameters=(r, theta)):
-            arg = -r * np.exp(-1j * 2 * theta)
+            arg = -r * np.exp(-1j * 2 * theta)  # ty:ignore[unsupported-operator]
             getattr(qc, method)(arg, *qumodes, *qubits)
         case hl.SQR(parameters=parameters, hyperparameters={"n": n}):
             getattr(qc, method)(*parameters, n, *qumodes, *qubits)
         case hl.ConditionalBeamsplitter(parameters=(theta, phi)):
-            new_theta = theta / 2
-            new_phi = phi - np.pi / 2
+            new_theta = theta / 2  # ty:ignore[unsupported-operator]
+            new_phi = phi - np.pi / 2  # ty:ignore[unsupported-operator]
             z = new_theta * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
         case hl.ConditionalTwoModeSqueezing(parameters=(r, phi)):
-            new_phi = phi + np.pi / 2
+            new_phi = phi + np.pi / 2  # ty:ignore[unsupported-operator]
             z = r * np.exp(1j * new_phi)
             getattr(qc, method)(z, *qumodes)
         case _:
-            getattr(qc, method)(*op.parameters, *qumodes, *qubits)
+            getattr(qc, method)(*op.parameters, *qumodes, *qubits)  # ty:ignore[unresolved-attribute]
 
 
 @apply_gate.register
@@ -404,14 +404,14 @@ def _(op: qp.FockStateVector, qc: bq.CVCircuit, regmapper: RegisterMapping):
     # is the Fock cutoff and M is the number of wires. Since it doesn't appear like that
     # gets validated, it could be a tensor of shape (n_1, ..., n_m)
     state = op.parameters[0]
-    state = pad_statevector_to_truncation(state, regmapper, op.wires)
+    state = pad_statevector_to_truncation(state, regmapper, op.wires)  # ty:ignore[invalid-argument-type]
     ket = qp.math.flatten(state)
 
     # Since qiskit takes backwards wire ordering compared to pennylane, let's just flip
     # the order of the qubits instead of the statevector 🧠
     qubits = []
     for w in reversed(op.wires):
-        qubits.extend(regmapper.get(w))
+        qubits.extend(regmapper.get(w))  # ty:ignore[invalid-argument-type]
 
     qc.initialize(ket, qubits=qubits)
 
@@ -419,7 +419,7 @@ def _(op: qp.FockStateVector, qc: bq.CVCircuit, regmapper: RegisterMapping):
 @apply_gate.register
 def _(op: qp.CoherentState, qc: bq.CVCircuit, regmapper: RegisterMapping):
     r, phi = op.parameters
-    alpha = r * np.exp(1j * phi)
+    alpha = r * np.exp(1j * phi)  # ty:ignore[unsupported-operator]
     state = coherent_state(alpha, regmapper.truncation.dim(op.wires[0]))
     qumode = regmapper.get(op.wires[0])
     qc.cv_initialize(state, qumode)
@@ -428,11 +428,11 @@ def _(op: qp.CoherentState, qc: bq.CVCircuit, regmapper: RegisterMapping):
 @apply_gate.register
 def _(op: qp.CatState, qc: bq.CVCircuit, regmapper: RegisterMapping):
     a, phi, p = op.parameters
-    alpha = a * np.exp(1j * phi)
+    alpha = a * np.exp(1j * phi)  # ty:ignore[unsupported-operator]
     state_plus = coherent_state(alpha, regmapper.truncation.dim(op.wires[0]))
     state_minus = coherent_state(-alpha, regmapper.truncation.dim(op.wires[0]))
-    norm = np.sqrt(2 * (1 + np.cos(p * np.pi) * np.exp(-2 * a**2)))
-    state = (state_plus + np.exp(1j * p * np.pi) * state_minus) / norm
+    norm = np.sqrt(2 * (1 + np.cos(p * np.pi) * np.exp(-2 * a**2)))  # ty:ignore[unsupported-operator]
+    state = (state_plus + np.exp(1j * p * np.pi) * state_minus) / norm  # ty:ignore[unsupported-operator]
     qumode = regmapper.get(op.wires[0])
     qc.cv_initialize(state, qumode)
 
@@ -443,7 +443,7 @@ def _(op: qp.StatePrep, qc: bq.CVCircuit, regmapper: RegisterMapping):
 
     # StatePrep can allow for sparse statevectors
     if sp.issparse(state):
-        state = state.todense()
+        state = state.todense()  # ty:ignore[unresolved-attribute]
 
     # Flip the qubit order to match qiskit little endian convention instead of having to
     # permute the statevector ourselves 🧠
@@ -499,8 +499,8 @@ def sampled_measurement(
     regmapper: RegisterMapping,
     shots: int,
 ) -> SampleResult:
-    import qiskit as qk
-    from qiskit_aer.primitives import SamplerV2 as Sampler
+    import qiskit as qk  # ty:ignore[unresolved-import]
+    from qiskit_aer.primitives import SamplerV2 as Sampler  # ty:ignore[unresolved-import]
 
     # If we're sampling an observable then we need to diagonalize it
     if m.obs is not None and not m.samples_computational_basis:

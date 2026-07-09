@@ -65,7 +65,7 @@ class SampleMP(SampleMeasurement):
         if self.obs is None:
             return samples
 
-        eigvals = self._sample_observable(self.obs, samples)
+        eigvals = self._sample_observable(self.obs, samples)  # ty:ignore[invalid-argument-type]
         return eigvals
 
     def process_counts(self, counts: CountsResult) -> CountsResult:
@@ -93,11 +93,11 @@ class SampleMP(SampleMeasurement):
 
         # For a scalar observable c * O, eigenvalues are just scaled too
         if isinstance(obs, SProd):
-            return obs.scalar * self._sample_observable(obs.base, result)
+            return obs.scalar * self._sample_observable(obs.base, result)  # ty:ignore[unsupported-operator]
 
         # For an observable O^d, its eigenvalues are also raised to the d-th power
         elif isinstance(obs, Pow):
-            return self._sample_observable(obs.base, result) ** obs.scalar
+            return self._sample_observable(obs.base, result) ** obs.scalar  # ty:ignore[unsupported-operator]
 
         # For an observable that is a tensor product O = PQ, we calculate the eigenvalues
         # for P and Q separately, then element-wise multiply them to obtain the eigenvalues
@@ -138,9 +138,9 @@ class SampleMP(SampleMeasurement):
 
             match basis:
                 case ComputationalBasis.Discrete:
-                    eigvals = obs.fock_spectrum(*ordered_tensors)
+                    eigvals = obs.fock_spectrum(*ordered_tensors)  # ty:ignore[unresolved-attribute]
                 case ComputationalBasis.Position:
-                    eigvals = obs.position_spectrum(*ordered_tensors)
+                    eigvals = obs.position_spectrum(*ordered_tensors)  # ty:ignore[unresolved-attribute]
                 case _:
                     raise ValueError(
                         f"Unknown how to calculate spectrum for basis {basis}"
@@ -168,7 +168,7 @@ class SampleMP(SampleMeasurement):
                     wires=None,
                     eigvals=self._eigvals,
                 ).process_samples(
-                    new_samples,
+                    new_samples,  # ty:ignore[invalid-argument-type]
                     wire_order=obs.wires,
                 )
 

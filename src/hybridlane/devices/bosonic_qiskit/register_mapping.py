@@ -5,10 +5,10 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from typing import Hashable
 
-import bosonic_qiskit as bq
-import qiskit as qk
+import bosonic_qiskit as bq  # ty:ignore[unresolved-import]
+import qiskit as qk  # ty:ignore[unresolved-import]
 from pennylane.wires import Wires
-from qiskit.circuit import Qubit
+from qiskit.circuit import Qubit  # ty:ignore[unresolved-import]
 
 from ... import wires as sa
 from ...measurements import FockTruncation

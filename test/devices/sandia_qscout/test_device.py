@@ -26,7 +26,7 @@ def test_package_works_without_jaqalpaq(monkeypatch):
     import hybridlane  # noqa: F401
 
 
-missing_jaqalpaq = importlib.util.find_spec("jaqalpaq") is None
+missing_jaqalpaq = importlib.util.find_spec("jaqalpaq") is None  # ty:ignore[possibly-missing-submodule]
 
 
 @pytest.mark.usefixtures("enable_graph_decomp")
@@ -324,7 +324,7 @@ class TestDecomposition:
             return hl.expval(qp.Z("q"))
 
         specs = qp.specs(circuit, level="device")(1.0)
-        gate_count = specs.resources.gate_types
+        gate_count = specs.resources.gate_types  # ty:ignore[unresolved-attribute]
 
         # The D gates should be replaced by CD gates on an ancilla qubit
         assert gate_count.get("Displacement", 0) == 0

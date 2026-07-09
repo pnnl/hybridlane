@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
+name: Lint
+permissions:
+    contents: read
+
+on:
+    pull_request:
+        branches:
+            - main # This workflow will run for PRs targeting the main branch
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Install the latest version of uv
+              uses: astral-sh/setup-uv@v8.3.2
+              with:
+                  enable-cache: true
+
+            - name: Install dependencies with uv
+              run: |
+                  uv sync --all-extras --frozen
+
+            - name: Ruff
+              run: |
+                  uv run ruff check src tests
+
+            - name: Ty
+              run: |
+                  uv run ruff check src tests
+
+            - name: Reuse
+              run: |
+                  uvx reuse lint

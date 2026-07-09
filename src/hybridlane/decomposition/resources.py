@@ -68,7 +68,7 @@ def qubit_conditioned_resource_rep(
     known_custom_gates = custom_qubit_controlled_op_to_base()
     if known_custom_gate := known_custom_gates.get(base_class):
         num_control_wires = (
-            num_control_wires + base_class.num_wires - known_custom_gate.num_wires
+            num_control_wires + base_class.num_wires - known_custom_gate.num_wires  # ty:ignore[unsupported-operator]
         )
         base_class = known_custom_gate
     elif base_class is qp.MultiRZ:  # special exception
@@ -120,4 +120,4 @@ new_name_prop = property(
     doc=_old_prop.__doc__,
 )
 
-CompressedResourceOp.name = new_name_prop
+CompressedResourceOp.name = new_name_prop  # ty:ignore[invalid-assignment]

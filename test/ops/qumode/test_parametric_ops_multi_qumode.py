@@ -59,7 +59,7 @@ class TestTwoModeSum:
         import jax.numpy as jnp
 
         lam = jnp.array(0.3)
-        op = hl.TwoModeSum(lam, wires=[0, 1])
+        op = hl.TwoModeSum(lam, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 4, 1: 4})
         eye = hl.math.eye(16, like="jax")
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
@@ -84,7 +84,7 @@ class TestTwoModeSum:
         # todo: don't have a good understanding of this gate to build a solid test
         def f(x):
             op = hl.SUM(x, wires=[0, 1])
-            return op.fock_matrix({0: 4, 1: 4}).real
+            return op.fock_matrix({0: 4, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array(0.123)
         grad_fn = hl.math.jacobian(f)
@@ -191,8 +191,8 @@ class TestBeamsplitter:
                 if n_a + n_b <= n_cut
             ]
         )
-        assert mat[hl.math.ix_(inner, inner)] == pytest.approx(
-            mat2[hl.math.ix_(inner, inner)], abs=1e-10
+        assert mat[hl.math.ix_(inner, inner)] == pytest.approx(  # ty:ignore[not-subscriptable]
+            mat2[hl.math.ix_(inner, inner)], abs=1e-10  # ty:ignore[not-subscriptable]
         )
 
     def test_fock_matrix_commutes(self):
@@ -203,7 +203,7 @@ class TestBeamsplitter:
         matrix = op.fock_matrix(dims)
         n_a = hl.N(0).fock_matrix(dims, wire_order=(0, 1))
         n_b = hl.N(1).fock_matrix(dims, wire_order=(0, 1))
-        commutator = matrix @ (n_a + n_b) - (n_a + n_b) @ matrix
+        commutator = matrix @ (n_a + n_b) - (n_a + n_b) @ matrix  # ty:ignore[unsupported-operator]
         assert commutator == pytest.approx(0, abs=1e-6)
 
     def test_action_on_fock_operators(self):
@@ -252,7 +252,7 @@ class TestBeamsplitter:
 
         theta = jnp.array(math.pi / 4)
         phi = jnp.array(0.0)
-        op = hl.Beamsplitter(theta, phi, wires=[0, 1])
+        op = hl.Beamsplitter(theta, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 4, 1: 4})
         eye = hl.math.eye(16, like="jax")
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
@@ -407,7 +407,7 @@ class TestTwoModeSqueezing:
         # todo: don't have a good understanding of this gate to build a solid test
         def f(x):
             op = hl.TMS(*x, wires=(0, 1))
-            return op.fock_matrix({0: 4, 1: 4}).real
+            return op.fock_matrix({0: 4, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, 0.456])
         grad_fn = hl.math.jacobian(f)

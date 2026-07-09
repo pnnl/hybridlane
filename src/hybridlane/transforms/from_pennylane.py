@@ -119,26 +119,26 @@ def _(op: qp.Displacement):
 @convert_operator.register
 def _(op: qp.Rotation):
     # i -> -i
-    return hl.Rotation(-op.data[0], wires=op.wires)
+    return hl.Rotation(-op.data[0], wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.Squeezing):
     # we use re(i2t), they use re(ip), so t = p/2
     r, phi = op.parameters
-    return hl.Squeezing(r, phi / 2, wires=op.wires)
+    return hl.Squeezing(r, phi / 2, wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.Kerr):
     # i -> -i
-    return hl.Kerr(-op.data[0], wires=op.wires)
+    return hl.Kerr(-op.data[0], wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.CubicPhase):
     # ir(x^3)/3 -> -irx^3
-    return hl.CubicPhase(-op.data[0] / 3, wires=op.wires)
+    return hl.CubicPhase(-op.data[0] / 3, wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
@@ -147,14 +147,14 @@ def _(op: qp.Beamsplitter):
     # θ' = 2θ
     # ϕ' = -(ϕ + π/2)
     theta, phi = op.data
-    return hl.Beamsplitter(2 * theta, -(phi + math.pi / 2), wires=op.wires)
+    return hl.Beamsplitter(2 * theta, -(phi + math.pi / 2), wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.TwoModeSqueezing):
     # r -> -r
     r, phi = op.data
-    return hl.TwoModeSqueezing(-r, phi, wires=op.wires)
+    return hl.TwoModeSqueezing(-r, phi, wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @singledispatch
@@ -169,7 +169,7 @@ def _(obs: SProd) -> SProd:
 
 @convert_observable.register
 def _(obs: ScalarSymbolicOp) -> ScalarSymbolicOp:
-    return obs.__class__(convert_observable(obs.base), obs.scalar)
+    return obs.__class__(convert_observable(obs.base), obs.scalar)  # ty:ignore[invalid-argument-type]
 
 
 @convert_observable.register
@@ -262,7 +262,7 @@ def _(
     if mp.obs:
         return hl_mp.SampleMP(obs=convert_observable(mp.obs))
 
-    sa_res: TypeCheckResult = cache["sa_res"]
+    sa_res: TypeCheckResult = cache["sa_res"]  # ty:ignore[not-subscriptable]
     schema = BasisMap(
         {q: ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
     )

@@ -168,7 +168,7 @@ class TestQuadOperator:
         import jax.numpy as jnp
 
         dims = {0: 4}
-        coherent_state = hl.D(*jnp.array([0.123, 0]), wires=0).fock_matrix(dims)[:, 0]
+        coherent_state = hl.D(*jnp.array([0.123, 0]), wires=0).fock_matrix(dims)[:, 0]  # ty:ignore[invalid-argument-type, not-subscriptable]
 
         def f(x):
             mat = hl.QuadOperator(x, wires=0).fock_matrix(dims)

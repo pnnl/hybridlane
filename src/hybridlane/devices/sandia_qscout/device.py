@@ -56,7 +56,7 @@ def accepted_sample_measurement(m: MeasurementProcess) -> bool:
         return False
 
     if m.obs is not None:
-        return is_sampled_observable_supported(m.obs)
+        return is_sampled_observable_supported(m.obs)  # ty:ignore[invalid-argument-type]
 
     return True
 
@@ -278,7 +278,7 @@ def get_compiler(
     pipeline += combine_global_phases
 
     # Finally, validate the circuit
-    pipeline += get_validator(max_qubits or QscoutIonTrap._max_qubits, enable_com_modes)
+    pipeline += get_validator(max_qubits or QscoutIonTrap._max_qubits, enable_com_modes)  # ty:ignore[unresolved-attribute]
     return pipeline
 
 
@@ -289,7 +289,7 @@ def get_validator(
     physical_wires = _get_allowed_device_wires(max_qubits, enable_com_modes)
 
     return (
-        validate_device_wires(wires=physical_wires, name=QscoutIonTrap.name)
+        validate_device_wires(wires=physical_wires, name=QscoutIonTrap.name)  # ty:ignore[unresolved-attribute]
         + validate_measurements(
             analytic_measurements=lambda *_: False,
             sample_measurements=accepted_sample_measurement,
@@ -425,7 +425,7 @@ def _construct_csp(
     hw_qubits: Wires,
     hw_qumodes: Wires,
 ):
-    from constraint import AllDifferentConstraint, Problem
+    from constraint import AllDifferentConstraint, Problem  # ty:ignore[unresolved-import]
 
     # We'll solve the layout (note: not routing) as a constraint satisfaction problem.
     # The inputs are virtual wires, and our output is hardware wires. Each gate

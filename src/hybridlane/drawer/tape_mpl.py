@@ -114,7 +114,7 @@ def _draw_icons(
     show_all_wires=False,
     wire_icon_colors: dict[Any, str] | None = None,
 ):
-    type_res = cast(sa.TypeCheckResult, sa.type_check(tape))
+    type_res = cast(sa.TypeCheckResult, sa.type_check(tape))  # ty:ignore[redundant-cast]
     _, wire_map = convert_wire_order(
         tape, wire_order=wire_order, show_all_wires=show_all_wires
     )

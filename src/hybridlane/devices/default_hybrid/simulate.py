@@ -94,12 +94,12 @@ def measure_final_state(
         )
 
         if len(results) == 1:
-            return results[0]
+            return results[0]  # ty:ignore[invalid-return-type]
 
-        return results
+        return results  # ty:ignore[invalid-return-type]
 
     results = measure_with_shots(
-        tape.measurements,
+        tape.measurements,  # ty:ignore[invalid-argument-type]
         state,
         tape.shots,
         is_state_batched,
@@ -109,9 +109,9 @@ def measure_final_state(
     )
 
     if len(tape.measurements) == 1:
-        return results[0]
+        return results[0]  # ty:ignore[invalid-return-type]
 
-    return results
+    return results  # ty:ignore[invalid-return-type]
 
 
 @debug_logger

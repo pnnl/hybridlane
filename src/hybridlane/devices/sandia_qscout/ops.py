@@ -92,9 +92,9 @@ class SidebandProbe(HybridOperation):
     ):
         super().__init__(duration_us, phase, sign, detuning, wires=wires, id=id)
 
-    def pow(self, n: int | float):
+    def pow(self, n: int | float):  # ty:ignore[invalid-method-override]
         duration, *params = self.data
-        return [SidebandProbe(duration * n, *params, wires=self.wires)]
+        return [SidebandProbe(duration * n, *params, wires=self.wires)]  # ty:ignore[unsupported-operator]
 
     @property
     def resource_params(self):
@@ -162,7 +162,7 @@ class R(Operation):
         super().__init__(theta, phi, wires=wires, id=id)
 
     def adjoint(self):
-        return R(-self.data[0], self.data[1], wires=self.wires)
+        return R(-self.data[0], self.data[1], wires=self.wires)  # ty:ignore[unsupported-operator]
 
     def pow(self, z):
         return [R(z * self.data[0], self.data[1], wires=self.wires)]
@@ -172,7 +172,7 @@ class R(Operation):
         return {}
 
     def simplify(self):
-        theta, phi = self.data[0] % (4 * math.pi), self.data[1] % math.pi
+        theta, phi = self.data[0] % (4 * math.pi), self.data[1] % math.pi  # ty:ignore[unsupported-operator]
 
         theta = concrete_or_error(
             None, theta, "Cannot simplify R when ``theta`` is a tracer"
@@ -188,7 +188,7 @@ class R(Operation):
             return qp.RY(theta, wires=self.wires)
 
         elif can_replace(phi, -math.pi):
-            return qp.RX(-theta, wires=self.wires)
+            return qp.RX(-theta, wires=self.wires)  # ty:ignore[unsupported-operator]
 
         elif can_replace(phi, -math.pi / 2):
             return qp.RY(theta, wires=self.wires)

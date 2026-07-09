@@ -303,7 +303,7 @@ class TestFiniteCircuits:
             return hl.expval(hl.N(0))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         alpha = hl.math.array(3.0, like=like)
         lam = alpha**2
@@ -328,7 +328,7 @@ class TestFiniteCircuits:
             return hl.expval(qp.Z(0) @ hl.N(1)), hl.expval(qp.Z(0)), hl.expval(hl.N(1))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         alpha = hl.math.array(3.0, like=like)
         lam = alpha**2
@@ -397,7 +397,7 @@ class TestFiniteCircuits:
             return hl.var(hl.N(0))
 
         if like == "jax":
-            circuit = jax.jit(circuit, static_argnums=0)
+            circuit = jax.jit(circuit, static_argnums=0)  # ty:ignore[invalid-assignment]
 
         for n in range(fock_levels):
             var = circuit(n)
@@ -417,7 +417,7 @@ class TestFiniteCircuits:
             return hl.expval(qp.X(0) @ qp.X(1)), hl.expval(qp.Z(0) @ qp.Z(1))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         expvals = circuit()
         assert hl.math.get_deep_interface(expvals) == like
@@ -437,7 +437,7 @@ class TestFiniteCircuits:
             return hl.expval(qp.Z(0) + 0.1 * hl.N(1))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         alpha = hl.math.array(3.0, like=like)
         lam = alpha**2

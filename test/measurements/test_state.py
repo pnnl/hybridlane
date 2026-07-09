@@ -32,7 +32,7 @@ class TestState:
         if like == "jax":
             import jax
 
-            f = jax.jit(f)
+            f = jax.jit(f)  # ty:ignore[invalid-assignment]
 
         # Make a 2 qubit state
         state = hl.math.ones(4, like=like)
@@ -73,7 +73,7 @@ class TestDensityMatrix:
         if like == "jax":
             import jax
 
-            f = jax.jit(f)
+            f = jax.jit(f)  # ty:ignore[invalid-assignment]
 
         state = hl.math.array([1, 0, 1, 0], like=like) / hl.math.sqrt(2)
         expected = hl.math.array([[0.5, 0.5], [0.5, 0.5]], like=like)
@@ -91,7 +91,7 @@ class TestDensityMatrix:
         if like == "jax":
             import jax
 
-            f = jax.jit(f)
+            f = jax.jit(f)  # ty:ignore[invalid-assignment]
 
         state = hl.math.array([1, 0, 1, 0], like=like) / hl.math.sqrt(2)
         rho01 = hl.math.outer(state, state)
@@ -113,7 +113,7 @@ class TestDensityMatrix:
         if like == "jax":
             import jax
 
-            f = jax.jit(f)
+            f = jax.jit(f)  # ty:ignore[invalid-assignment]
 
         # Make a 2 qubit density matrix
         rho = hl.math.ones((4, 4), like=like) / 4
@@ -133,7 +133,7 @@ class TestDensityMatrix:
         if like == "jax":
             import jax
 
-            f = jax.jit(f)
+            f = jax.jit(f)  # ty:ignore[invalid-assignment]
 
         # Make a multi-qubit and qumode density matrix. This starting state is the
         # uniform superposition over all states, so tracing out wires 1 and 2 will leave

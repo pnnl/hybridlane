@@ -73,13 +73,13 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
 
     def adjoint(self):
         theta = self.parameters[0]
-        return ConditionalRotation(-theta, wires=self.wires)
+        return ConditionalRotation(-theta, wires=self.wires)  # ty:ignore[unsupported-operator]
 
     def pow(self, z: int | float):
-        return [ConditionalRotation(self.data[0] * z, self.wires)]
+        return [ConditionalRotation(self.data[0] * z, self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        theta = self.data[0] % (4 * math.pi)
+        theta = self.data[0] % (4 * math.pi)  # ty:ignore[unsupported-operator]
 
         theta = concrete_or_error(
             None, theta, "Cannot simplify CR when ``theta`` is a tracer"
@@ -95,7 +95,7 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], theta) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta) -> TensorLike:  # ty:ignore[invalid-method-override]
         r = hl.R.compute_fock_matrix(wire_dims[1:], theta / 2)
         rd = hl.math.conj(hl.math.transpose(r))
         return hl.math.block_diag([r, rd])
@@ -181,13 +181,13 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
 
     def pow(self, z: int | float):
         a, phi = self.data
-        return [ConditionalDisplacement(a * z, phi, self.wires)]
+        return [ConditionalDisplacement(a * z, phi, self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return ConditionalDisplacement(-self.data[0], self.data[1], self.wires)
+        return ConditionalDisplacement(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         a = concrete_or_error(None, a, "Cannot simplify CD when ``a`` is a tracer")
         if can_replace(a, 0):
@@ -201,7 +201,7 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         d = hl.D.compute_fock_matrix(wire_dims[1:], a, phi)
         dd = hl.math.conj(hl.math.transpose(d))
         return hl.math.block_diag([d, dd])
@@ -312,13 +312,13 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
 
     def pow(self, z: int | float):
         a, phi = self.data
-        return [ConditionalXDisplacement(a * z, phi, self.wires)]
+        return [ConditionalXDisplacement(a * z, phi, self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return ConditionalXDisplacement(-self.data[0], self.data[1], self.wires)
+        return ConditionalXDisplacement(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         a = concrete_or_error(None, a, "Cannot simplify xCD when ``a`` is a tracer")
         if can_replace(a, 0):
@@ -332,13 +332,13 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         cd = CD.compute_fock_matrix(wire_dims, a, phi)
         dims = {i: dim for i, dim in enumerate(wire_dims)}
         h = hl.math.expand_matrix(
             qp.H.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
         )
-        return h @ cd @ h
+        return h @ cd @ h  # ty:ignore[unsupported-operator]
 
 
 @qp.register_resources({ConditionalDisplacement: 1, qp.H: 2})
@@ -423,13 +423,13 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
 
     def pow(self, z: int | float):
         a, phi = self.data
-        return [ConditionalYDisplacement(a * z, phi, self.wires)]
+        return [ConditionalYDisplacement(a * z, phi, self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return ConditionalYDisplacement(-self.data[0], self.data[1], self.wires)
+        return ConditionalYDisplacement(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         a = concrete_or_error(None, a, "Cannot simplify yCD when ``a`` is a tracer")
         if can_replace(a, 0):
@@ -443,13 +443,13 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         xcd = XCD.compute_fock_matrix(wire_dims, a, phi)
         dims = {i: dim for i, dim in enumerate(wire_dims)}
         s = hl.math.expand_matrix(
             qp.S.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
         )
-        return s @ xcd @ hl.math.conj(hl.math.transpose(s))
+        return s @ xcd @ hl.math.conj(hl.math.transpose(s))  # ty:ignore[unsupported-operator]
 
 
 def _ycd_resources():
@@ -560,15 +560,15 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
     ):
         super().__init__(z, phi, wires=wires, id=id)
 
-    def pow(self, n: int | float):
+    def pow(self, n: int | float):  # ty:ignore[invalid-method-override]
         z, theta = self.data
-        return [ConditionalSqueezing(z * n, theta, self.wires)]
+        return [ConditionalSqueezing(z * n, theta, self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return ConditionalSqueezing(-self.data[0], self.data[1], self.wires)
+        return ConditionalSqueezing(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        z, theta = self.data[0], self.data[1] % math.pi
+        z, theta = self.data[0], self.data[1] % math.pi  # ty:ignore[unsupported-operator]
 
         z = concrete_or_error(None, z, "Cannot simplify CS when ``z`` is a tracer")
         if can_replace(z, 0):
@@ -582,7 +582,7 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], z, theta) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], z, theta) -> TensorLike:  # ty:ignore[invalid-method-override]
         s = hl.S.compute_fock_matrix(wire_dims[1:], z, theta)
         sd = hl.math.dag(s)
         return hl.math.block_diag([s, sd])
@@ -683,12 +683,12 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     def adjoint(self):
         theta, phi = self.parameters
         n = self.hyperparameters["n"]
-        return SelectiveQubitRotation(-theta, phi, n, self.wires)
+        return SelectiveQubitRotation(-theta, phi, n, self.wires)  # ty:ignore[unsupported-operator]
 
     def simplify(self):
         theta, phi = self.data
-        theta = theta % (4 * math.pi)
-        phi = phi % (2 * math.pi)
+        theta = theta % (4 * math.pi)  # ty:ignore[unsupported-operator]
+        phi = phi % (2 * math.pi)  # ty:ignore[unsupported-operator]
         n = self.hyperparameters["n"]
 
         theta = concrete_or_error(
@@ -702,7 +702,7 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     def pow(self, z: int | float):
         return [
             SelectiveQubitRotation(
-                self.data[0] * z, self.data[1], self.hyperparameters["n"], self.wires
+                self.data[0] * z, self.data[1], self.hyperparameters["n"], self.wires  # ty:ignore[unsupported-operator]
             )
         ]
 
@@ -719,7 +719,7 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi, n) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi, n) -> TensorLike:  # ty:ignore[invalid-method-override]
         def r(theta, phi):
             sigma = (
                 hl.math.cos(phi) * qp.X.compute_matrix()
@@ -818,7 +818,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
 
     def simplify(self):
         theta = self.data[0]
-        phi = self.data[1] % (2 * math.pi)
+        phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         theta = concrete_or_error(
             None, theta, "Cannot simplify JC when ``theta`` is a tracer"
@@ -829,10 +829,10 @@ class JaynesCummings(HybridOperation, FockRepresentation):
         return JaynesCummings(theta, phi, self.wires)
 
     def pow(self, z: int | float):
-        return [JaynesCummings(self.data[0] * z, self.data[1], self.wires)]
+        return [JaynesCummings(self.data[0] * z, self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return JaynesCummings(-self.data[0], self.data[1], self.wires)
+        return JaynesCummings(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -840,7 +840,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         ad = hl.Ad.compute_fock_matrix(wire_dims[1:])
         ad = hl.math.asarray(ad, like=theta)
         sigma_minus = hl.math.asarray([[0, 1], [0, 0]], like=theta)
@@ -943,7 +943,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
 
     def simplify(self):
         theta = self.data[0]
-        phi = self.data[1] % (2 * math.pi)
+        phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         theta = concrete_or_error(
             None, theta, "Cannot simplify AJC when ``theta`` is a tracer"
@@ -954,10 +954,10 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
         return AntiJaynesCummings(theta, phi, self.wires)
 
     def pow(self, z: int | float):
-        return [AntiJaynesCummings(self.data[0] * z, self.data[1], self.wires)]
+        return [AntiJaynesCummings(self.data[0] * z, self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return AntiJaynesCummings(-self.data[0], self.data[1], self.wires)
+        return AntiJaynesCummings(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -965,7 +965,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         ad = hl.Ad.compute_fock_matrix(wire_dims[1:])
         ad = hl.math.asarray(ad, like=theta)
         sigma_plus = hl.math.asarray([[0, 0], [1, 0]], like=theta)
@@ -1053,7 +1053,7 @@ class Rabi(HybridOperation, FockRepresentation):
 
     def simplify(self):
         r = self.data[0]
-        phi = self.data[1] % (2 * math.pi)
+        phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         r = concrete_or_error(None, r, "Cannot simplify RB when ``r`` is a tracer")
         if can_replace(r, 0):
@@ -1062,10 +1062,10 @@ class Rabi(HybridOperation, FockRepresentation):
         return Rabi(r, phi, self.wires)
 
     def pow(self, z: int | float):
-        return [Rabi(self.data[0] * z, self.data[1], self.wires)]
+        return [Rabi(self.data[0] * z, self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return Rabi(-self.data[0], self.data[1], self.wires)
+        return Rabi(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def label(self, decimals=None, base_label=None, cache=None):
         return super().label(
@@ -1073,7 +1073,7 @@ class Rabi(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         ad = hl.Ad.compute_fock_matrix(wire_dims[1:])
         ad = hl.math.asarray(ad, like=r)
         x = qp.X.compute_matrix()
@@ -1156,13 +1156,13 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
 
     def pow(self, z: int | float):
         a, phi = self.data
-        return [EchoedConditionalDisplacement(a * z, phi, self.wires)]
+        return [EchoedConditionalDisplacement(a * z, phi, self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return [EchoedConditionalDisplacement(-self.data[0], self.data[1], self.wires)]
+        return [EchoedConditionalDisplacement(-self.data[0], self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        a, phi = self.data[0], self.data[1] % (2 * math.pi)
+        a, phi = self.data[0], self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         a = concrete_or_error(None, a, "Cannot simplify ECD when ``a`` is a tracer")
         if can_replace(a, 0):
@@ -1176,7 +1176,7 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         dims = {i: d for i, d in enumerate(wire_dims)}
         cd = CD.compute_fock_matrix(wire_dims, a / 2, phi)
         x = qp.X.compute_matrix()

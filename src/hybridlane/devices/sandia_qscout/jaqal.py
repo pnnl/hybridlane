@@ -25,7 +25,7 @@ from ... import wires as sa
 from . import ops as native_ops
 
 if TYPE_CHECKING:
-    from jaqalpaq.qsyntax import qsyntax
+    from jaqalpaq.qsyntax import qsyntax  # ty:ignore[unresolved-import]
 
 QUBIT_BOSON_MODULE = "Calibration_PulseDefinitions.QubitBosonPulses"
 
@@ -62,7 +62,7 @@ class Qumode:
 
         manifold = int(match.group(1))
         index = int(match.group(2))
-        return cls(manifold=manifold, index=index)
+        return cls(manifold=manifold, index=index)  # ty:ignore[invalid-argument-type]
 
 
 # Mappings from the names of gates to Jaqal
@@ -102,7 +102,7 @@ BOSON_GATES = {
 
 
 def get_qubit_gate_defs():
-    from jaqalpaq.core.usepulses import UsePulsesStatement
+    from jaqalpaq.core.usepulses import UsePulsesStatement  # ty:ignore[unresolved-import]
 
     stmt = UsePulsesStatement("qscout.v1.std", all)
     return stmt.load_pulses()
@@ -110,7 +110,7 @@ def get_qubit_gate_defs():
 
 # put in function so that it is not executed on import
 def get_boson_gate_defs():
-    from jaqalpaq.core import GateDefinition, Parameter, ParamType
+    from jaqalpaq.core import GateDefinition, Parameter, ParamType  # ty:ignore[unresolved-import]
 
     return {
         "prepare_all": GateDefinition("prepare_all", []),
@@ -221,13 +221,13 @@ def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
 def batch_to_jaqal(
     batch: Sequence[QuantumScript], precision: int = 20
 ) -> LiteralString:
-    from jaqalpaq.core import Circuit
-    from jaqalpaq.core.usepulses import UsePulsesStatement
-    from jaqalpaq.generator import generate_jaqal_program
-    from jaqalpaq.qsyntax import circuit as jaqal_circuit
+    from jaqalpaq.core import Circuit  # ty:ignore[unresolved-import]
+    from jaqalpaq.core.usepulses import UsePulsesStatement  # ty:ignore[unresolved-import]
+    from jaqalpaq.generator import generate_jaqal_program  # ty:ignore[unresolved-import]
+    from jaqalpaq.qsyntax import circuit as jaqal_circuit  # ty:ignore[unresolved-import]
 
     if TYPE_CHECKING:
-        from jaqalpaq.qsyntax import qsyntax  # noqa: F401
+        from jaqalpaq.qsyntax import qsyntax  # noqa: F401  # ty:ignore[unresolved-import]
 
     # Since jaqal requires a top-level register declaration, we need
     # to find out the required number of qubits for all the tapes
@@ -281,7 +281,7 @@ def _(op: native_ops.R, Q, q):
     gate_id = QUBIT_GATES[op.name]
     angle, axis_angle = convert_params(op.parameters)
     qubit = q[op.wires[0]]
-    getattr(Q, gate_id)(qubit, axis_angle, angle)
+    getattr(Q, gate_id)(qubit, axis_angle, angle)  # ty:ignore[invalid-argument-type]
 
 
 @gate_to_ir.register

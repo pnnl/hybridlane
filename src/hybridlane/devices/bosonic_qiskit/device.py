@@ -52,7 +52,7 @@ def accepted_analytic_measurement(m: MeasurementProcess) -> bool:
         return False
 
     if m.obs is not None:
-        return is_analytic_observable_supported(m.obs)
+        return is_analytic_observable_supported(m.obs)  # ty:ignore[invalid-argument-type]
 
     return True
 
@@ -62,7 +62,7 @@ def accepted_sample_measurement(m: MeasurementProcess) -> bool:
         return False
 
     if m.obs is not None:
-        return is_sampled_observable_supported(m.obs)
+        return is_sampled_observable_supported(m.obs)  # ty:ignore[invalid-argument-type]
 
     # If we're directly sampling the basis states, it has to be in Fock space
     for wire in m.schema.wires:
@@ -194,7 +194,7 @@ class BosonicQiskitDevice(Device):
         )
 
         return tuple(
-            simulate(tape, truncation, hbar=hbar, fast_transpilation=fast_transpilation)
+            simulate(tape, truncation, hbar=hbar, fast_transpilation=fast_transpilation)  # ty:ignore[invalid-argument-type]
             for tape, truncation in zip(circuits, truncations)
         )
 
@@ -275,5 +275,5 @@ def _infer_truncation(
     qumodes = {w: max_fock_level for w in sa_result.qumodes}
     qubits = {w: 2 for w in sa_result.qubits}
 
-    truncation = FockTruncation.all_fock_space(sa_result.wire_order, qumodes | qubits)
+    truncation = FockTruncation.all_fock_space(sa_result.wire_order, qumodes | qubits)  # ty:ignore[invalid-argument-type]
     return truncation

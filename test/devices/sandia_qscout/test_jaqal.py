@@ -13,7 +13,7 @@ import pytest
 
 jaqalpaq = pytest.importorskip("jaqalpaq")
 
-from jaqalpaq.parser import parse_jaqal_string  # noqa: E402
+from jaqalpaq.parser import parse_jaqal_string  # noqa: E402  # ty:ignore[unresolved-import]
 
 import hybridlane as hl  # noqa: E402
 from hybridlane.devices.sandia_qscout import to_jaqal  # noqa: E402
@@ -34,10 +34,10 @@ def programs_equal(actual_ir, expected_ir):
     qb_module = ModuleType(QUBIT_BOSON_MODULE)
     jaqal_gates_obj = mock.Mock()
     jaqal_gates_obj.ALL_GATES = gates
-    qb_module.jaqal_gates = jaqal_gates_obj
+    qb_module.jaqal_gates = jaqal_gates_obj  # ty:ignore[unresolved-attribute]
     calibration_module_name = QUBIT_BOSON_MODULE.split(".")[0]
     calibration_module = ModuleType(calibration_module_name)
-    calibration_module.QubitBosonPulses = qb_module
+    calibration_module.QubitBosonPulses = qb_module  # ty:ignore[unresolved-attribute]
     with mock.patch.dict(
         sys.modules,
         {

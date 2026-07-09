@@ -78,7 +78,7 @@ def vacuum_state(
     wire_order: WiresLike | None = None,
     like: str | None = None,
 ) -> TensorLike:
-    state_dim = tuple(wire_dims[cast(int, wire)] for wire in wire_order)
+    state_dim = tuple(wire_dims[cast(int, wire)] for wire in wire_order)  # ty:ignore[not-iterable]
     state = math.zeros(state_dim, dtype=complex)
     state[tuple(0 for _ in state_dim)] = 1.0
     state = math.asarray(state, like=like)
@@ -138,7 +138,7 @@ def _(op: StatePrepBase, wire_dims: tuple[int, ...]) -> TensorLike:
 @state_vector.register
 def _(op: qp.CoherentState, wire_dims: tuple[int, ...]) -> TensorLike:
     a, phi = op.parameters
-    alpha = a * math.exp(1j * phi)
+    alpha = a * math.exp(1j * phi)  # ty:ignore[unsupported-operator]
     return coherent_state(alpha, wire_dims[0])
 
 
@@ -250,8 +250,8 @@ def factorial(x: TensorLike) -> TensorLike:
     import autoray as ar
 
     if math.get_interface(x) == "torch":
-        import torch
+        import torch  # ty:ignore[unresolved-import]
 
-        return torch.exp(torch.lgamma(x + 1))
+        return torch.exp(torch.lgamma(x + 1))  # ty:ignore[unsupported-operator]
 
     return ar.do("scipy.special.factorial", x)

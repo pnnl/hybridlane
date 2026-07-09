@@ -42,12 +42,12 @@ def create_qubit_conditioned_op(op: Operator | Callable, control: WiresLike):
     decomps = base_to_custom_conditioned_op()
     if cond_op := decomps.get(key):
         qp.QueuingManager.remove(op)
-        return cond_op(*op.data, control_wires + op.wires)
+        return cond_op(*op.data, control_wires + op.wires)  # ty:ignore[unresolved-attribute]
 
     # Special case because parameter convention change
     if isinstance(op, hl.Rotation) and len(control_wires) == 1:
         qp.QueuingManager.remove(op)
-        return hl.ConditionalRotation(2 * op.data[0], control_wires + op.wires)
+        return hl.ConditionalRotation(2 * op.data[0], control_wires + op.wires)  # ty:ignore[unsupported-operator]
 
     if isinstance(op, (qp.GlobalPhase, qp.RZ, qp.IsingZZ, qp.MultiRZ)):
         qp.QueuingManager.remove(op)
@@ -100,7 +100,7 @@ def _handle_z_rotations(
     param = op.data[0]
     if isinstance(op, qp.GlobalPhase):
         wires = control_wires
-        param = 2 * param
+        param = 2 * param  # ty:ignore[unsupported-operator]
     else:
         wires = control_wires + op.wires
 
@@ -141,7 +141,7 @@ class QubitConditioned(SymbolicOp):
         id=None,
     ):
         control_wires = Wires(control_wires)
-        return cls._primitive.bind(base, *control_wires)
+        return cls._primitive.bind(base, *control_wires)  # ty:ignore[unresolved-attribute]
 
     def __init__(self, base: Operator, control_wires: WiresLike, id: str | None = None):
         """
@@ -224,7 +224,7 @@ class QubitConditioned(SymbolicOp):
             return self.compute_decomposition(*self.data, self.wires)
 
         if (decomp := _decompose_custom_op(self)) is None:
-            raise qp.decomposition.DecompositionUndefinedError(
+            raise qp.decomposition.DecompositionUndefinedError(  # ty:ignore[unresolved-attribute]
                 f"Decomposition not defined for {self}"
             )
 
@@ -270,7 +270,7 @@ def _decompose_custom_op(op: QubitConditioned) -> list[Operator] | None:
         return [qp.Identity(op.control_wires + op.base.wires)]
 
     if isinstance(op.base, qp.GlobalPhase):
-        return [qp.MultiRZ(2 * op.base.data[0], wires=op.control_wires)]
+        return [qp.MultiRZ(2 * op.base.data[0], wires=op.control_wires)]  # ty:ignore[unsupported-operator]
 
     # We can always use CNOTs to take a single Z in the generator and extend it to arbitrary qubits
     if len(op.control_wires) >= 2:
@@ -284,7 +284,7 @@ def _decompose_custom_op(op: QubitConditioned) -> list[Operator] | None:
     if isinstance(op.base, hl.Rotation):
         return [
             hl.ConditionalRotation(
-                2 * op.base.data[0], op.control_wires + op.base.wires
+                2 * op.base.data[0], op.control_wires + op.base.wires  # ty:ignore[unsupported-operator]
             )
         ]
 

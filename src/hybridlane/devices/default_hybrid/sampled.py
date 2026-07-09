@@ -52,14 +52,14 @@ def measure_with_shots(
         prng_key, key = jax_random_split(prng_key)
         results.extend(
             measurement_func(
-                mp,
+                mp,  # ty:ignore[invalid-argument-type]
                 state,
                 shots,
                 is_state_batched,
                 rng=rng,
                 prng_key=key,
                 wire_map=wire_map,
-            )  # ty:ignore[invalid-argument-type]
+            )
         )
 
     return results
@@ -175,7 +175,7 @@ def sample_state(
     if not is_state_batched:
         indices = math.squeeze(indices, axis=0)
 
-    return indices
+    return indices  # ty:ignore[invalid-return-type]
 
 
 def _sample_indices_jax(
@@ -213,10 +213,10 @@ def _sample_indices_numpy(
     probs: TensorLike, shots: Shots, shape: tuple[int, ...], rng: Any
 ) -> np.ndarray:
     rng = np.random.default_rng(rng)
-    indices = math.arange(probs.shape[-1])
+    indices = math.arange(probs.shape[-1])  # ty:ignore[unresolved-attribute]
 
     result = []
-    for prob in probs:
+    for prob in probs:  # ty:ignore[not-iterable]
         selected = rng.choice(indices, size=shots.total_shots, p=prob)
         basis_states = math.unravel_index(selected, shape)
         result.append(math.stack(basis_states, axis=-1))

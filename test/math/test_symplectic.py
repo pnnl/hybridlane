@@ -54,7 +54,7 @@ class TestRotation:
     def test_grad(self):
         def loss(t):
             M = rotation(t)
-            return M @ jnp.array([1, 1, 0])  # pure x quadrature
+            return M @ jnp.array([1, 1, 0])  # pure x quadrature  # ty:ignore[unsupported-operator]
 
         t = jnp.array(0.5)
         grad_fn = jax.jacobian(loss)
@@ -72,11 +72,11 @@ class TestSymplecticForm:
     def test_antisymmetric(self):
         for n in [1, 2, 3]:
             omega = symplectic_form(n)
-            assert omega.T == pytest.approx(-omega, abs=1e-12)
+            assert omega.T == pytest.approx(-omega, abs=1e-12)  # ty:ignore[unresolved-attribute, unsupported-operator]
 
     def test_shape(self):
         for n in [1, 2, 3]:
-            assert symplectic_form(n).shape == (2 * n, 2 * n)
+            assert symplectic_form(n).shape == (2 * n, 2 * n)  # ty:ignore[unresolved-attribute]
 
     @pytest.mark.all_interfaces
     def test_interface(self, like):
@@ -118,8 +118,8 @@ class TestIsSymplectic:
                 results = is_symplectic(mats)
 
                 assert hl.math.shape(results) == (batch_size,)
-                assert not hl.math.any(results[:-1])
-                assert results[-1]  # last one is symplectic
+                assert not hl.math.any(results[:-1])  # ty:ignore[not-subscriptable]
+                assert results[-1]  # last one is symplectic  # ty:ignore[not-subscriptable]
 
 
 @pytest.mark.unit

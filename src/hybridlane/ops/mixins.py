@@ -102,17 +102,17 @@ class Hybrid:
                 "Gate is improperly defined. It must specify either num_qumodes or type_signature."
             )
 
-        if len(self.wires) < 2:
+        if len(self.wires) < 2:  # ty:ignore[unresolved-attribute]
             raise ValueError("Expected a hybrid gate acting on at least 2 objects")
 
         type_signature = self.type_signature
         if self.num_qumodes is not None:
-            qubits = len(self.wires) - self.num_qumodes
+            qubits = len(self.wires) - self.num_qumodes  # ty:ignore[unresolved-attribute]
             type_signature = [hl.wires.Qubit()] * qubits + [
                 hl.wires.Qumode()
             ] * self.num_qumodes
 
-        return {w: s for w, s in zip(self.wires, type_signature)}
+        return {w: s for w, s in zip(self.wires, type_signature)}  # ty:ignore[invalid-argument-type, not-iterable, unresolved-attribute]
 
 
 class HybridOperation(Hybrid, Operation):
@@ -267,13 +267,13 @@ class FockRepresentation:
 
         Developers of new gates should prefer to implement ``compute_fock_matrix``.
         """
-        canonical_wire_dims = tuple(wire_dims[w] for w in self.wires)
+        canonical_wire_dims = tuple(wire_dims[w] for w in self.wires)  # ty:ignore[unresolved-attribute]
         matrix = self.compute_fock_matrix(
-            canonical_wire_dims, *self.parameters, **self.hyperparameters
+            canonical_wire_dims, *self.parameters, **self.hyperparameters  # ty:ignore[unresolved-attribute]
         )
-        if wire_order is None or self.wires == Wires(wire_order):
+        if wire_order is None or self.wires == Wires(wire_order):  # ty:ignore[unresolved-attribute]
             return matrix
 
         return hl.math.expand_matrix(
-            matrix, self.wires, wire_order=wire_order, wire_dims=wire_dims
+            matrix, self.wires, wire_order=wire_order, wire_dims=wire_dims  # ty:ignore[unresolved-attribute]
         )

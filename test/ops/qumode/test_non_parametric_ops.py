@@ -90,7 +90,7 @@ class TestModeSwap:
 
         actual_state = state
         for op in decomp:
-            actual_state = op.fock_matrix(dims, wire_order=(0, 1)) @ actual_state
+            actual_state = op.fock_matrix(dims, wire_order=(0, 1)) @ actual_state  # ty:ignore[unresolved-attribute]
 
         assert actual_state == pytest.approx(expected_state)
 

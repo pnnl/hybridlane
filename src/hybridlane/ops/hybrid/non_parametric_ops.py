@@ -66,7 +66,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
     def adjoint(self):
         return hl.ConditionalRotation(-math.pi, self.wires)
 
-    def pow(self, z: int | float) -> list[Operation]:
+    def pow(self, z: int | float) -> list[Operation]:  # ty:ignore[invalid-method-override]
         z_mod4 = z % 4
 
         if np.allclose(z_mod4, 0):
@@ -80,7 +80,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
         )
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         f = hl.Fourier.compute_fock_matrix(wire_dims[1:])
         fd = hl.math.conj(hl.math.transpose(f))
         return hl.math.block_diag([f, fd])

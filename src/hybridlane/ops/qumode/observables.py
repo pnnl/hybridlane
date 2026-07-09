@@ -48,7 +48,7 @@ class QuadX(qp.QuadX, Spectral, FockRepresentation):
         return hl.wires.ComputationalBasis.Position
 
     @staticmethod
-    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
+    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:  # ty:ignore[invalid-method-override]
         return []
 
     def position_spectrum(self, *basis_states) -> Sequence[float]:
@@ -59,7 +59,7 @@ class QuadX(qp.QuadX, Spectral, FockRepresentation):
         return f"x̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         # Standard units
         lam = 1 / math.sqrt(2)
         a = hl.CreationOp.compute_fock_matrix(wire_dims)
@@ -108,7 +108,7 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
         return hl.wires.ComputationalBasis.Position
 
     @staticmethod
-    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
+    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:  # ty:ignore[invalid-method-override]
         return [Rotation(math.pi / 2, wires=wires)]  # rotate p -> x
 
     @staticmethod
@@ -124,7 +124,7 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
         return f"p̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         # Standard units
         lam = 1 / math.sqrt(2)
         a = hl.CreationOp.compute_fock_matrix(wire_dims)
@@ -188,7 +188,7 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
         return f"x̂_ϕ({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         x = QuadX.compute_fock_matrix(wire_dims)
         x = hl.math.asarray(x, like=phi)
         p = QuadP.compute_fock_matrix(wire_dims)
@@ -231,7 +231,7 @@ class NumberOperator(qp.NumberOperator, Spectral, FockRepresentation):
         return hl.wires.ComputationalBasis.Discrete
 
     @staticmethod
-    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
+    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:  # ty:ignore[invalid-method-override]
         return []
 
     def fock_spectrum(self, *basis_states) -> Sequence[float]:
@@ -242,7 +242,7 @@ class NumberOperator(qp.NumberOperator, Spectral, FockRepresentation):
         return f"n̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         return hl.math.diag(hl.math.arange(wire_dims[0]))
 
 
@@ -326,7 +326,7 @@ class FockStateProjector(qp.FockStateProjector, Spectral, FockRepresentation):
         return row_matches + 0
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], n) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], n) -> TensorLike:  # ty:ignore[invalid-method-override]
         n = hl.math.asarray(n)
 
         if n.ndim == 0:

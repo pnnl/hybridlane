@@ -16,7 +16,7 @@ def jax_unstack(arr, axis=0):
 
 
 def torch_unstack(arr, axis=0):
-    import torch
+    import torch  # ty:ignore[unresolved-import]
 
     return torch.unbind(arr, dim=axis)
 
