@@ -47,9 +47,7 @@ class TestSampleState:
 
     def test_output_shape_batched(self, like):
         """Two batch elements, single wire dim 4, 5 shots => (2, 5, 1)."""
-        state = hl.math.array(
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like
-        )
+        state = hl.math.array([[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like)
         result = sample_state(state, Shots(5), is_state_batched=True, **_rng(like))
         assert result.shape == (2, 5, 1)  # ty:ignore[unresolved-attribute]
 
@@ -79,9 +77,7 @@ class TestSampleState:
 
     def test_batched_deterministic(self, like):
         """Batched state: element 0 always samples 0, element 1 always samples 2."""
-        state = hl.math.array(
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like
-        )
+        state = hl.math.array([[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like)
         result = sample_state(state, Shots(8), is_state_batched=True, **_rng(like))
         assert hl.math.all(result[0, :, 0] == 0)  # ty:ignore[invalid-argument-type, not-subscriptable]
         assert hl.math.all(result[1, :, 0] == 2)  # ty:ignore[invalid-argument-type, not-subscriptable]

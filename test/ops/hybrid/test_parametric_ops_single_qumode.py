@@ -169,9 +169,7 @@ class TestSelectiveQubitRotation:
         dims = {0: 2, 1: 4}
         # |1,1>
         state = hl.math.kron(jnp.array([0.0, 1.0]), jnp.array([0.0, 1.0, 0.0, 0.0]))
-        z = hl.math.expand_matrix(
-            qp.Z(0).matrix(), (0,), wire_order=(0, 1), wire_dims=dims
-        )
+        z = hl.math.expand_matrix(qp.Z(0).matrix(), (0,), wire_order=(0, 1), wire_dims=dims)
         z = hl.math.asarray(z, like=state)
 
         def f(x, n):
@@ -252,9 +250,7 @@ class TestJaynesCummings:
         expected_qubit_state = hl.math.asarray([1, 0])
         expected_state = hl.math.kron(expected_qubit_state, expected_qumode_state)
 
-        assert hl.math.fidelity_statevector(
-            evolved_state, expected_state
-        ) == pytest.approx(1)
+        assert hl.math.fidelity_statevector(evolved_state, expected_state) == pytest.approx(1)
 
         # Evolve again to obtain the original state
         evolved_state = matrix @ evolved_state
@@ -386,9 +382,7 @@ class TestAntiJaynesCummings:
         expected_qubit_state = hl.math.asarray([0, 1])
         expected_state = hl.math.kron(expected_qubit_state, expected_qumode_state)
 
-        assert hl.math.fidelity_statevector(
-            evolved_state, expected_state
-        ) == pytest.approx(1)
+        assert hl.math.fidelity_statevector(evolved_state, expected_state) == pytest.approx(1)
 
         # Evolve again to obtain the original state
         evolved_state = matrix @ evolved_state
@@ -427,9 +421,7 @@ class TestAntiJaynesCummings:
         # |0,0>
         state = hl.math.kron(jnp.array([1.0, 0.0]), jnp.array([1.0, 0.0, 0.0, 0.0]))
         n = hl.N(1).fock_matrix(wire_dims=dims, wire_order=(0, 1))
-        z = hl.math.expand_matrix(
-            qp.Z(0).matrix(), (0,), wire_order=(0, 1), wire_dims=dims
-        )
+        z = hl.math.expand_matrix(qp.Z(0).matrix(), (0,), wire_order=(0, 1), wire_dims=dims)
         z = hl.math.asarray(z, like=state)
         obs = n - z
 

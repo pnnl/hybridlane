@@ -30,9 +30,7 @@ class TestDevice:
     @pytest.mark.unit
     @pytest.mark.parametrize("allow_com", (True, False))
     def test_com_modes(self, allow_com):
-        dev = qp.device(
-            "sandiaqscout.hybrid", enable_com_modes=allow_com, use_virtual_wires=False
-        )
+        dev = qp.device("sandiaqscout.hybrid", enable_com_modes=allow_com, use_virtual_wires=False)
 
         qubits = dev._max_qubits
 
@@ -221,9 +219,7 @@ class TestLayout:
 @pytest.mark.integration
 class TestDecomposition:
     def test_fockstate_and_conditionaldisplacement(self):
-        dev = qp.device(
-            "sandiaqscout.hybrid", optimize=True, use_virtual_wires=False, n_qubits=3
-        )
+        dev = qp.device("sandiaqscout.hybrid", optimize=True, use_virtual_wires=False, n_qubits=3)
 
         @qp.set_shots(20)
         @qp.qnode(dev)
@@ -257,9 +253,7 @@ class TestDecomposition:
         assert op_counts[qp.IsingXX] == 1
 
     def test_no_beamsplitter_decomposition(self):
-        dev = qp.device(
-            "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
-        )
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False)
 
         @qp.set_shots(20)
         @qp.qnode(dev)
@@ -272,17 +266,13 @@ class TestDecomposition:
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
         with (
-            pytest.warns(
-                DecompositionWarning, match="unable to find a decomposition for"
-            ),
+            pytest.warns(DecompositionWarning, match="unable to find a decomposition for"),
             pytest.raises(DeviceError),
         ):
             construct_tape(circuit, level="device")()
 
     def test_no_squeezing_decomposition(self):
-        dev = qp.device(
-            "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
-        )
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False)
 
         @qp.set_shots(20)
         @qp.qnode(dev)
@@ -295,9 +285,7 @@ class TestDecomposition:
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
         with (
-            pytest.warns(
-                DecompositionWarning, match="unable to find a decomposition for"
-            ),
+            pytest.warns(DecompositionWarning, match="unable to find a decomposition for"),
             pytest.raises(DeviceError),
         ):
             construct_tape(circuit, level="device")()

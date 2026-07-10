@@ -121,9 +121,7 @@ class TestCountsResult:
 @pytest.mark.unit
 class TestFockTruncation:
     def test_shape(self):
-        schema = BasisMap(
-            {"a": ComputationalBasis.Discrete, "b": ComputationalBasis.Position}
-        )
+        schema = BasisMap({"a": ComputationalBasis.Discrete, "b": ComputationalBasis.Position})
         truncation = FockTruncation(basis_schema=schema, dim_sizes={"a": 2, "b": 10})
         shape = truncation.shape(Wires(["a", "b"]))
         assert shape == (2, 10)

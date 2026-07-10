@@ -38,9 +38,7 @@ def test_fock_operator(like):
     assert hl.math.get_interface(mat) == like
     assert mat == pytest.approx(op.fock_matrix(wire_dims))
 
-    with pytest.raises(
-        ValueError, match="`wire_dims` must be specified for the fock_matrix"
-    ):
+    with pytest.raises(ValueError, match="`wire_dims` must be specified for the fock_matrix"):
         hl.fock_matrix(op)
 
 
@@ -84,9 +82,7 @@ def test_callable(like):
         *params, wires=wire_order
     )
     assert hl.math.get_interface(mat) == like
-    assert mat == pytest.approx(
-        hl.ECD(*params, wires=wire_order).fock_matrix(wire_dims)
-    )
+    assert mat == pytest.approx(hl.ECD(*params, wires=wire_order).fock_matrix(wire_dims))
 
     def test_fn(params):
         qp.X(0)
@@ -96,9 +92,7 @@ def test_callable(like):
         return hl.expval(hl.N(1))
 
     # Have to provide a wire order with a callable
-    with pytest.raises(
-        ValueError, match="`wire_order` must be specified for callables"
-    ):
+    with pytest.raises(ValueError, match="`wire_order` must be specified for callables"):
         hl.fock_matrix(test_fn, wire_dims={0: 2, 1: 4})(params[:1])
 
 
@@ -180,14 +174,8 @@ def test_quantum_fn_wire_dims():
     params = hl.math.array([0.123])
     tape = make_qscript(test_fn)(params)
 
-    with pytest.raises(
-        TransformError, match="Quantum function has a qumode but no dimension"
-    ):
-        hl.fock_matrix(
-            tape, wire_dims={0: 2}, wire_order=(0, 1)
-        )  # no dimension for qumode 1
+    with pytest.raises(TransformError, match="Quantum function has a qumode but no dimension"):
+        hl.fock_matrix(tape, wire_dims={0: 2}, wire_order=(0, 1))  # no dimension for qumode 1
 
     with pytest.raises(TransformError, match="Wire 0 is of type"):
-        hl.fock_matrix(
-            tape, wire_dims={0: 3, 1: 3}, wire_order=(0, 1)
-        )  # incorrect qubit dimension
+        hl.fock_matrix(tape, wire_dims={0: 3, 1: 3}, wire_order=(0, 1))  # incorrect qubit dimension

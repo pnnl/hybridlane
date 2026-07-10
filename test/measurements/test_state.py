@@ -47,9 +47,7 @@ class TestState:
         # Now try to process to a 2 qubit state
         mp = StateMP(wires=Wires([0, 1]))
         with pytest.raises(ValueError):
-            mp.process_state(
-                state, wire_order=Wires([0, 1, 2]), wire_dims={0: 2, 1: 2, 2: 2}
-            )
+            mp.process_state(state, wire_order=Wires([0, 1, 2]), wire_dims={0: 2, 1: 2, 2: 2})
 
 
 class TestDensityMatrix:
@@ -66,9 +64,7 @@ class TestDensityMatrix:
         mp = hl.density_matrix(wires=0)
 
         def f(state):
-            return mp.process_state(
-                state, wire_order=Wires([0, 1]), wire_dims={0: 2, 1: 2}
-            )
+            return mp.process_state(state, wire_order=Wires([0, 1]), wire_dims={0: 2, 1: 2})
 
         if like == "jax":
             import jax
@@ -84,9 +80,7 @@ class TestDensityMatrix:
         mp = hl.density_matrix(wires=(0, 1, 2))
 
         def f(state):
-            return mp.process_state(
-                state, wire_order=Wires([0, 1]), wire_dims={0: 2, 1: 2, 2: 3}
-            )
+            return mp.process_state(state, wire_order=Wires([0, 1]), wire_dims={0: 2, 1: 2, 2: 3})
 
         if like == "jax":
             import jax
@@ -95,9 +89,7 @@ class TestDensityMatrix:
 
         state = hl.math.array([1, 0, 1, 0], like=like) / hl.math.sqrt(2)
         rho01 = hl.math.outer(state, state)
-        expected = hl.math.kron(
-            rho01, hl.math.diag(hl.math.array([1, 0, 0], like=like))
-        )
+        expected = hl.math.kron(rho01, hl.math.diag(hl.math.array([1, 0, 0], like=like)))
         assert f(state) == pytest.approx(expected)
 
     @pytest.mark.all_interfaces

@@ -15,6 +15,7 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - uses: astral-sh/setup-uv@v8.3.2
+            - run: uv sync --all-extras --locked
             - run: uvx ruff check --output-format github src test
             - run: uvx ruff format --check --output-format github src test
             - run: uvx ty check --output-format github src test

@@ -50,6 +50,8 @@ def type_check(tape: QuantumScript) -> TypeCheckResult:
 
     It can be applied to a QNode similar to ``qp.specs``:
 
+    .. skip: start "output format is different on python 3.11"
+
     .. code-block:: python
 
         dev = qp.device("default.hybrid", fock_level=8)
@@ -73,6 +75,8 @@ def type_check(tape: QuantumScript) -> TypeCheckResult:
     >>> res = hl.type_check(qs)
     >>> print(res.wire_types)
     OrderedDict({0: Qubit(), 1: Qumode()})
+
+    .. skip: end
 
     **Details**
 
