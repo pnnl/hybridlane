@@ -57,3 +57,16 @@ jobs:
                   enable-cache: true
             - run: uv sync --all-extras --locked
             - run: uv run pytest -m "bq or qscout or docs"
+
+    pytest:
+        name: Pytest
+        needs:
+            - pytest-core
+            - pytest-extras
+        if: always()
+        runs-on: ubuntu-latest
+        steps:
+            # Fails if any dependents fail: https://github.com/actions/runner/issues/1251
+            - run: |
+                  echo ${{ join(needs.*.result, ',') }}
+                  exit ${{ contains(join(needs.*.result, ','), 'failure') && '1' || '0' }}
