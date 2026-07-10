@@ -7,6 +7,7 @@ markers = [
     "integration: marks tests as integration tests (select with '-m \"integration\"')",
     "docs: marks tests that check documentation (select with '-m \"docs\"')",
     "bq: marks tests that use Bosonic Qiskit (select with '-m \"bq\"')",
+    "qscout: marks tests that use QSCOUT/jaqalpaq (select with '-m \"qscout\"')",
     "torch: marks tests that use PyTorch (select with '-m \"torch\"')",
     "jax: marks tests that use JAX (select with '-m \"jax\"')",
     "all_interfaces: marks tests that should be run for all interfaces (select with '-m \"all_interfaces\"')",

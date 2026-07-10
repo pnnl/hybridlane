@@ -1,10 +1,15 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 
-from hybridlane import decomposition, math, ops, transforms, wires  # noqa: F401
-from hybridlane.drawer import draw_mpl  # noqa: F401
-from hybridlane.io import to_openqasm  # noqa: F401
-from hybridlane.measurements import (  # noqa: F401
+r"""hybridlane is a library for programming CV-DV quantum circuits with PennyLane."""
+
+
+# ruff: noqa: F401
+
+from hybridlane import decomposition, math, ops, transforms, wires
+from hybridlane.drawer import draw_mpl
+from hybridlane.io import to_openqasm
+from hybridlane.measurements import (
     density_matrix,
     expval,
     sample,
@@ -13,9 +18,9 @@ from hybridlane.measurements import (  # noqa: F401
     # probs, # fixme: uncomment when probs is supported
 )
 from hybridlane.ops import *  # noqa: F403
-from hybridlane.templates import FockState, GKPState, SqueezedCatState  # noqa: F401
-from hybridlane.transforms import from_pennylane  # noqa: F401
-from hybridlane.wires import (  # noqa: F401
+from hybridlane.templates import FockState, GKPState, SqueezedCatState
+from hybridlane.transforms import from_pennylane
+from hybridlane.wires import (
     Qubit,
     Qudit,
     Qumode,
@@ -24,4 +29,4 @@ from hybridlane.wires import (  # noqa: F401
     type_check,
 )
 
-from ._version import __version__  # noqa: F401
+from ._version import __version__

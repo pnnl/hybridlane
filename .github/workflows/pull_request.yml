@@ -1,0 +1,58 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
+name: Pull request
+permissions:
+    contents: read
+
+on:
+    pull_request:
+        branches:
+            - main # This workflow will run for PRs targeting the main branch
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: astral-sh/setup-uv@v8
+            - run: uvx ruff check --output-format github src test
+            - run: uvx ruff format --check --output-format github src test
+            - run: uvx ty check --output-format github src test
+            - run: uvx reuse lint
+
+    pytest-core:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                python-version:
+                    - "3.11"
+                    - "3.12"
+                    - "3.13"
+                    - "3.14"
+        steps:
+            - uses: actions/checkout@v4
+            - uses: astral-sh/setup-uv@v8
+              with:
+                  python-version: ${{ matrix.python-version }}
+                  enable-cache: true
+            - run: uv sync --locked
+            - run: uv run pytest -m "not (bq or qscout or docs)"
+
+    pytest-extras:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                python-version:
+                    - "3.11"
+                    - "3.12"
+                    - "3.13"
+        steps:
+            - uses: actions/checkout@v4
+            - uses: astral-sh/setup-uv@v8
+              with:
+                  python-version: ${{ matrix.python-version }}
+                  enable-cache: true
+            - run: uv sync --all-extras --locked
+            - run: uv run pytest -m "bq or qscout or docs"

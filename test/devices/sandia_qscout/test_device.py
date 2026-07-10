@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 
-import importlib
 import math
 import sys
 from collections import Counter
@@ -26,11 +25,7 @@ def test_package_works_without_jaqalpaq(monkeypatch):
     import hybridlane  # noqa: F401
 
 
-missing_jaqalpaq = importlib.util.find_spec("jaqalpaq") is None  # ty:ignore[possibly-missing-submodule]
-
-
 @pytest.mark.usefixtures("enable_graph_decomp")
-@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDevice:
     @pytest.mark.unit
     @pytest.mark.parametrize("allow_com", (True, False))
@@ -172,7 +167,6 @@ class TestDevice:
 
 
 @pytest.mark.usefixtures("enable_graph_decomp")
-@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestLayout:
     @pytest.mark.integration
     def test_qumode_assignment(self):
@@ -225,7 +219,6 @@ class TestLayout:
 
 @pytest.mark.usefixtures("enable_graph_decomp")
 @pytest.mark.integration
-@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDecomposition:
     def test_fockstate_and_conditionaldisplacement(self):
         dev = qp.device(

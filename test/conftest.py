@@ -60,6 +60,12 @@ def pytest_collection_modifyitems(config, items):
             if "bq" in item.keywords:
                 item.add_marker(skip_bq)
 
+    if importlib.util.find_spec("jaqalpaq") is None:
+        skip_qscout = pytest.mark.skip(reason="jaqalpaq not installed")
+        for item in items:
+            if "qscout" in item.keywords:
+                item.add_marker(skip_qscout)
+
 
 def pytest_generate_tests(metafunc):
     # Hook to parametrize tests over deep learning interfaces
