@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Module containing type-checking implementation"""
+
 import functools
 from collections import OrderedDict
-from collections.abc import Callable, Sequence
-from typing import Hashable, cast
+from collections.abc import Callable, Hashable, Sequence
+from typing import cast
 
 import pennylane as qp
 from pennylane.allocation import Allocate, Deallocate
@@ -48,6 +50,8 @@ def type_check(tape: QuantumScript) -> TypeCheckResult:
 
     It can be applied to a QNode similar to ``qp.specs``:
 
+    .. skip: start "output format is different on python 3.11"
+
     .. code-block:: python
 
         dev = qp.device("default.hybrid", fock_level=8)
@@ -71,6 +75,8 @@ def type_check(tape: QuantumScript) -> TypeCheckResult:
     >>> res = hl.type_check(qs)
     >>> print(res.wire_types)
     OrderedDict({0: Qubit(), 1: Qumode()})
+
+    .. skip: end
 
     **Details**
 
@@ -126,7 +132,7 @@ def type_check(tape: QuantumScript) -> TypeCheckResult:
     return TypeCheckResult(ordered_wire_types, measurement_schemas)
 
 
-@type_check.register
+@type_check.register  # ty:ignore[no-matching-overload]
 def _type_check_qnode(
     qnode: qp.QNode,
 ) -> Callable[..., TypeCheckResult | list[TypeCheckResult]]:
@@ -144,6 +150,16 @@ def _type_check_qnode(
 
 @functools.singledispatch
 def infer_wires(obj, context: Context) -> Context:
+    r"""Infers the wires of an object with prior context
+
+    Args:
+        obj: The object to infer wires for. This can be an operation, or sequence of operations
+
+        context: Optional prior context for wire types.
+
+    Returns:
+        An updated version of ``context`` with any new inferences added.
+    """
     if isinstance(obj, Sequence):
         return _infer_wires_from_ops(obj, context)
 
@@ -268,9 +284,17 @@ def _infer_wire_types_from_basis_map(map: BasisMap, context) -> Context:
     return context | new_context
 
 
-# todo: maybe incorporate the attributes.diagonal_in_fock_basis and attributes.diagonal_in_position_basis?
+# todo: maybe incorporate the attributes.diagonal_in_fock_basis and
+# attributes.diagonal_in_position_basis?
 @functools.singledispatch
 def infer_measurement_bases(obs: Operator, context) -> BasisMap:
+    r"""Infers the measurement bases for an observable
+
+    Args:
+        obs: The observable to infer measurement bases for
+
+        context: Optional prior context for wire types.
+    """
     inferred_types = infer_wires(obs, context)
 
     if all(inferred_types.get(w, None) != Qumode() for w in obs.wires):
@@ -284,9 +308,7 @@ def infer_measurement_bases(obs: Operator, context) -> BasisMap:
 
 @infer_measurement_bases.register
 def _(obs: CompositeOp, context) -> BasisMap:
-    return BasisMap.all_wires(
-        [infer_measurement_bases(o, context) for o in obs.operands]
-    )
+    return BasisMap.all_wires([infer_measurement_bases(o, context) for o in obs.operands])
 
 
 @infer_measurement_bases.register
@@ -295,7 +317,7 @@ def _(obs: SymbolicOp, context) -> BasisMap:
 
 
 @infer_measurement_bases.register
-def _(obs: Spectral, context) -> BasisMap:
+def _(obs: Spectral, _) -> BasisMap:
     return BasisMap({cast(Operator, obs).wires: obs.natural_basis})
 
 
@@ -320,7 +342,8 @@ def infer_bases_from_tensors(tensors: dict[Hashable, TensorLike]) -> BasisMap:
         tensors: A mapping from wires to tensors
 
     Raises:
-        :py:class:`ValueError`: if any of the tensors don't have an ``int``, ``float``, or ``complex`` like datatype
+        :py:class:`ValueError`: if any of the tensors don't have an ``int``, ``float``, or
+            ``complex`` like datatype
     """
     wire_map = {}
     for wire, tensor in tensors.items():
@@ -363,7 +386,10 @@ def _helpful_error_message(
         case Operator():
             msg = f"Operation {obj} is incompatible with previous circuit operations.\n"
         case MeasurementProcess():
-            msg = f"Measurement {obj} is incompatible with previous circuit operations or measurements.\n"
+            msg = (
+                f"Measurement {obj} is incompatible with previous circuit operations or "
+                "measurements.\n"
+            )
 
     for wire, (before, after) in before_after.items():
         msg += f" - Wire {wire} was previously inferred as {before}, but is now inferred as {after}"

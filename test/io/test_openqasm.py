@@ -107,7 +107,7 @@ class TestCircuits:
                 qp.expval(qp.PauliZ(0)),
             )
 
-        qasm = hl.to_openqasm(circuit, precision=5, strict=strict)()
+        qasm = hl.to_openqasm(circuit, precision=5, strict=strict)()  # ty:ignore[missing-argument]
 
         # Beamsplitter gets converted
         assert "cv_bs(3.14159, -1.57080) m[0], m[1];" in qasm

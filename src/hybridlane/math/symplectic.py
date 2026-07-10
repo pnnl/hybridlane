@@ -43,9 +43,9 @@ from pennylane.typing import TensorLike
 # ---------------------------------------------------------------------------
 
 __all__ = [
+    "is_symplectic",
     "rotation",
     "symplectic_form",
-    "is_symplectic",
     "to_fock_space",
     "to_phase_space",
 ]
@@ -77,7 +77,6 @@ def rotation(theta: TensorLike, include_constant: bool = True) -> TensorLike:
         ``theta``.
 
     Examples:
-
     >>> rotation(np.pi / 2)
     array([[ 1.,  0.,  0.],
            [ 0.,  0.,  1.],
@@ -87,7 +86,6 @@ def rotation(theta: TensorLike, include_constant: bool = True) -> TensorLike:
     array([[ 0.,  1.],
            [-1.,  0.]])
     """
-
     # see box IV.2 of liu2026hybrid
     c = math.cos(theta)
     s = math.sin(theta)
@@ -132,7 +130,6 @@ def symplectic_form(n_modes: int, like: str | None = None) -> TensorLike:
         The :math:`2n \times 2n` symplectic form matrix.
 
     Examples:
-
     >>> symplectic_form(1)
     array([[ 0.,  1.],
            [-1.,  0.]])
@@ -143,14 +140,13 @@ def symplectic_form(n_modes: int, like: str | None = None) -> TensorLike:
            [ 0.,  0.,  0.,  1.],
            [ 0.,  0., -1.,  0.]])
     """
-
     # eq. 49 of https://www.ams.org/notices/200705/fea-mezzadri-web.pdf
     identity = math.eye(n_modes, like=like, dtype="int32")
     e2 = math.asarray([[0, 1], [-1, 0]], like=like, dtype="int32")
     return math.cast(math.kron(identity, e2), dtype="float64")
 
 
-def is_symplectic(S: TensorLike, rtol=1e-5, atol=1e-8) -> bool:
+def is_symplectic(S: TensorLike, rtol=1e-5, atol=1e-8) -> bool:  # noqa: N803
     r"""Test whether a matrix is symplectic.
 
     A matrix :math:`S` is symplectic if its :math:`2n \times 2n` quadrature
@@ -169,14 +165,17 @@ def is_symplectic(S: TensorLike, rtol=1e-5, atol=1e-8) -> bool:
 
     Args:
         S: A square matrix of shape ``(2n, 2n)`` or ``(2n+1, 2n+1)`` with an optional
-        batch dimension.
+            batch dimension.
+
+        atol: Absolute tolerance for the symplecticity condition.
+
+        rtol: Relative tolerance for the symplecticity condition.
 
     Returns:
         ``True`` if the symplecticity condition holds to machine precision,
-        ``False`` otherwise.
+            ``False`` otherwise.
 
     Examples:
-
     >>> is_symplectic(np.eye(3))
     np.True_
 
@@ -191,19 +190,16 @@ def is_symplectic(S: TensorLike, rtol=1e-5, atol=1e-8) -> bool:
     has_constant = bool(n % 2)
 
     batch_size = math.get_batch_size(S, (n, n), n**2)
-    if batch_size is not None:
-        transpose_axes = (0, 2, 1)
-    else:
-        transpose_axes = (1, 0)
+    transpose_axes = (0, 2, 1) if batch_size is not None else (1, 0)
 
-    S = math.asarray(S)
+    S = math.asarray(S)  # noqa: N806
     omega = symplectic_form(n_modes, like=math.get_interface(S))
-    Sc = S[..., 1:, 1:] if has_constant else S
+    Sc = S[..., 1:, 1:] if has_constant else S  # noqa: N806
     residual = math.transpose(Sc, axes=transpose_axes) @ omega @ Sc - omega
     return math.all(math.isclose(residual, 0, rtol=rtol, atol=atol), axis=(-1, -2))
 
 
-def to_fock_space(S: TensorLike) -> TensorLike:
+def to_fock_space(S: TensorLike) -> TensorLike:  # noqa: N803
     r"""Convert a symplectic matrix from the phase-space to the Fock-space basis.
 
     Given a symplectic matrix :math:`S` acting on the extended phase-space
@@ -219,7 +215,6 @@ def to_fock_space(S: TensorLike) -> TensorLike:
         is complex-valued.
 
     Examples:
-
     The symplectic representation of the displacment gate in phase space mapping
     :math:`x \mapsto x + \sqrt{2}\alpha`:
 
@@ -245,12 +240,12 @@ def to_fock_space(S: TensorLike) -> TensorLike:
     n = shape[-1]
     n_modes = n // 2
 
-    T, Tinv = _fock_conversion_matrices(n_modes, like=math.get_interface(S))
-    S_c = math.cast(S, "complex128")
-    return T @ S_c @ Tinv
+    t, t_inv = _fock_conversion_matrices(n_modes, like=math.get_interface(S))
+    s_c = math.cast(S, "complex128")
+    return t @ s_c @ t_inv
 
 
-def to_phase_space(S: TensorLike):
+def to_phase_space(S: TensorLike):  # noqa: N803
     r"""Convert a symplectic matrix from the Fock-space to the phase-space basis.
 
     Inverse of :func:`to_fock_space`.  Given a symplectic matrix :math:`S`
@@ -267,7 +262,6 @@ def to_phase_space(S: TensorLike):
         The equivalent real-valued symplectic matrix in the phase-space basis.
 
     Examples:
-
     >>> S = hl.D(0.5, 0, wires=0).heisenberg_tr((0,))
     >>> S
     array([[1.    , 0.    , 0.    ],
@@ -284,19 +278,19 @@ def to_phase_space(S: TensorLike):
     n = shape[-1]
     n_modes = n // 2
 
-    T, Tinv = _fock_conversion_matrices(n_modes, like=math.get_interface(S))
-    S_c = math.cast(S, "complex128")
-    return math.real(Tinv @ S_c @ T)
+    t, t_inv = _fock_conversion_matrices(n_modes, like=math.get_interface(S))
+    s_c = math.cast(S, "complex128")
+    return math.real(t_inv @ s_c @ t)
 
 
 def _fock_conversion_matrices(
     n_modes: int, like: str | None = None
 ) -> tuple[TensorLike, TensorLike]:
     lam = 1.0 / cmath.sqrt(2)
-    T2 = math.asarray([[1 + 0j, 1j], [1 + 0j, -1j]], like=like) * lam
-    Tinv2 = math.asarray([[1 + 0j, 1 + 0j], [-1j, 1j]], like=like) * lam
-    blocks_T = [math.eye(1, like=like)] + [T2] * n_modes
-    blocks_Tinv = [math.eye(1, like=like)] + [Tinv2] * n_modes
-    T = math.block_diag(blocks_T)
-    Tinv = math.block_diag(blocks_Tinv)
-    return T, Tinv
+    t_2 = math.asarray([[1 + 0j, 1j], [1 + 0j, -1j]], like=like) * lam
+    t_inv2 = math.asarray([[1 + 0j, 1 + 0j], [-1j, 1j]], like=like) * lam
+    blocks_t = [math.eye(1, like=like)] + [t_2] * n_modes
+    blocks_t_inv = [math.eye(1, like=like)] + [t_inv2] * n_modes
+    t = math.block_diag(blocks_t)
+    t_inv = math.block_diag(blocks_t_inv)
+    return t, t_inv

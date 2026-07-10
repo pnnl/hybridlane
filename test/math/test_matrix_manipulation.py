@@ -7,7 +7,7 @@ import pytest
 import scipy.sparse as sp
 
 from hybridlane import math
-from hybridlane.math.matrix_manipulation import permute_dense_matrix
+from hybridlane.math.matrix_manipulation import _permute_dense_matrix
 
 
 @pytest.mark.unit
@@ -18,7 +18,7 @@ class TestPermuteDenseMatrix:
         csnap = math.block_diag([snap, snap.conj().T])
         wires = qp.wires.Wires((0, 1))
         wire_dims = {0: 2, 1: 4}
-        mat = permute_dense_matrix(csnap, wires, wires, wire_dims)
+        mat = _permute_dense_matrix(csnap, wires, wires, wire_dims)
 
         assert math.allclose(mat, csnap)
 
@@ -30,10 +30,10 @@ class TestPermuteDenseMatrix:
         csnap = math.block_diag([snap, snap.conj().T])
         wires = qp.wires.Wires((0, 1))
         wire_dims = {0: 2, 1: 4}
-        mat = permute_dense_matrix(csnap, wires, wires, wire_dims)
+        mat = _permute_dense_matrix(csnap, wires, wires, wire_dims)
 
         assert math.get_interface(mat) == "jax"
-        assert jnp.allclose(mat, csnap)
+        assert jnp.allclose(mat, csnap)  # ty:ignore[invalid-argument-type]
 
     def test_different_wires(self):
         # Construct an operator over wire dimensions (2, 4)
@@ -54,7 +54,7 @@ class TestPermuteDenseMatrix:
         wires = qp.wires.Wires((0, 1))
         wire_order = qp.wires.Wires((1, 0))
         wire_dims = {0: 2, 1: 4}
-        mat = permute_dense_matrix(csnap, wires, wire_order, wire_dims)
+        mat = _permute_dense_matrix(csnap, wires, wire_order, wire_dims)
 
         assert math.allclose(mat, expected_mat)
 
@@ -80,7 +80,7 @@ class TestPermuteDenseMatrix:
         wires = qp.wires.Wires((0, 1))
         wire_order = qp.wires.Wires((1, 0))
         wire_dims = {0: 2, 1: 4}
-        mat = permute_dense_matrix(csnap, wires, wire_order, wire_dims)
+        mat = _permute_dense_matrix(csnap, wires, wire_order, wire_dims)
 
         assert math.get_interface(mat) == "jax"
         assert math.allclose(mat, expected_mat)
@@ -102,13 +102,13 @@ class TestExpandMatrix:
         snap = jnp.diag(jnp.exp(1j * jnp.arange(4)))
         expected_mat = math.block_diag([snap, snap])
         wire_dims = {0: 4, 1: 2}
-        mat = math.expand_matrix(snap, (0,), wire_dims=wire_dims, wire_order=(1, 0))
+        mat = math.expand_matrix(snap, (0,), wire_dims=wire_dims, wire_order=(1, 0))  # ty:ignore[no-matching-overload]
         assert math.get_interface(mat) == "jax"
         assert math.allclose(mat, expected_mat)
 
     @pytest.mark.torch
     def test_expand_before_torch(self):
-        import torch
+        import torch  # ty:ignore[unresolved-import]
 
         snap = torch.diag(torch.exp(1j * torch.arange(4)))
         expected_mat = math.block_diag([snap, snap])
@@ -124,9 +124,7 @@ class TestExpandMatrix:
         expected_diags[1::2] = snap
         expected_mat = math.diag(expected_diags)
         wire_dims = {0: 4, 1: 2}
-        mat = math.expand_matrix(
-            math.diag(snap), (0,), wire_dims=wire_dims, wire_order=(0, 1)
-        )
+        mat = math.expand_matrix(math.diag(snap), (0,), wire_dims=wire_dims, wire_order=(0, 1))
         assert math.allclose(mat, expected_mat)
 
     def test_permutations(self):
@@ -186,13 +184,13 @@ class TestExpandVector:
 
         vec = jnp.arange(8)
         expected_vec = jnp.asarray([0, 4, 2, 6, 1, 5, 3, 7])
-        expanded_vec = math.expand_vector(vec, (0, 1, 2), wire_order=(2, 1, 0))
+        expanded_vec = math.expand_vector(vec, (0, 1, 2), wire_order=(2, 1, 0))  # ty:ignore[no-matching-overload]
         assert math.get_interface(expanded_vec) == "jax"
         assert math.allclose(expanded_vec, expected_vec)
 
     @pytest.mark.torch
     def test_reverse_torch(self):
-        import torch
+        import torch  # ty:ignore[unresolved-import]
 
         vec = torch.arange(8)
         expected_vec = torch.asarray([0, 4, 2, 6, 1, 5, 3, 7])
@@ -224,9 +222,7 @@ class TestExpandVector:
         state = math.asarray([0, 0, 0, 1])
         expected_state = math.kron(null_state, state)
         wire_dims = {0: 2, 1: 4}
-        expanded_state = math.expand_vector(
-            state, (1,), wire_dims=wire_dims, wire_order=(0, 1)
-        )
+        expanded_state = math.expand_vector(state, (1,), wire_dims=wire_dims, wire_order=(0, 1))
         assert math.allclose(expanded_state, expected_state)
 
     def test_expand_before_sparse(self):
@@ -234,9 +230,7 @@ class TestExpandVector:
         state = sp.csr_array([0, 0, 0, 1])
         expected_state = sp.kron(null_state, state)
         wire_dims = {0: 2, 1: 4}
-        expanded_state = math.expand_vector(
-            state, (1,), wire_dims=wire_dims, wire_order=(0, 1)
-        )
+        expanded_state = math.expand_vector(state, (1,), wire_dims=wire_dims, wire_order=(0, 1))
         assert math.allclose(expanded_state, expected_state)
 
     @pytest.mark.jax
@@ -245,9 +239,7 @@ class TestExpandVector:
         state = math.asarray([0, 0, 0, 1], like="jax")
         expected_state = math.kron(null_state, state)
         wire_dims = {0: 2, 1: 4}
-        expanded_state = math.expand_vector(
-            state, (1,), wire_dims=wire_dims, wire_order=(0, 1)
-        )
+        expanded_state = math.expand_vector(state, (1,), wire_dims=wire_dims, wire_order=(0, 1))
         assert math.allclose(expanded_state, expected_state)
 
     def test_expand_after(self):
@@ -255,7 +247,5 @@ class TestExpandVector:
         state = math.asarray([0, 0, 0, 1])
         expected_state = math.kron(state, null_state)
         wire_dims = {0: 4, 1: 2}
-        expanded_state = math.expand_vector(
-            state, (0,), wire_dims=wire_dims, wire_order=(0, 1)
-        )
+        expanded_state = math.expand_vector(state, (0,), wire_dims=wire_dims, wire_order=(0, 1))
         assert math.allclose(expanded_state, expected_state)

@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Custom decomposition rules for symbolic operations."""
 
 from textwrap import dedent
 
 __all__ = [
-    "merge_qubit_conditioned",
-    "flip_pow_qcond",
     "ctrl_from_qcond",
+    "flip_pow_qcond",
     "make_qcond_decomp",
+    "merge_qubit_conditioned",
 ]
 
 import pennylane as qp
@@ -15,27 +16,28 @@ from pennylane.decomposition import DecompositionRule
 from pennylane.decomposition.resources import adjoint_resource_rep, pow_resource_rep
 
 import hybridlane as hl
-from hybridlane.decomposition.resources import qubit_conditioned_resource_rep
+
+from .resources import qubit_conditioned_resource_rep
 
 # Qubit-conditioned operator decompositions
 
 
 def _merge_qcond_resources(base_class, base_params, num_control_wires):
     return qubit_conditioned_resource_rep(
-        base_params["base_class"],
+        base_class,
         base_params["base_params"],
         num_control_wires + base_params["num_control_wires"],
     )
 
 
 @qp.register_resources(_merge_qcond_resources)
-def merge_qubit_conditioned(*params, wires, base, control_wires, **_):
-    """Flattens a nested Qubit-conditioned operator"""
+def merge_qubit_conditioned(*params, wires, base, control_wires, **_):  # noqa: ARG001
+    """Flattens a nested Qubit-conditioned operator."""
     base_op = base.base._unflatten(*base.base._flatten())
     hl.qcond(base_op, control_wires + base.control_wires)
 
 
-def _flip_pow_qcond_resources(base_class, base_params, z):
+def _flip_pow_qcond_resources(base_class, base_params, z):  # noqa: ARG001
     target_class, target_params = base_params["base_class"], base_params["base_params"]
     return {
         qubit_conditioned_resource_rep(
@@ -47,7 +49,15 @@ def _flip_pow_qcond_resources(base_class, base_params, z):
 
 
 @qp.register_resources(_flip_pow_qcond_resources)
-def flip_pow_qcond(*params, wires, z, base, **_):
+def flip_pow_qcond(*params, wires, z, base, **_):  # noqa: ARG001
+    r"""Flips the exponent of a qubit-conditioned operator.
+
+    This implements the identity
+
+    .. math::
+
+        (CU)^z = C(U^z)
+    """
     # Base is QubitConditioned
     base_op = base.base._unflatten(*base.base._flatten())
     control_wires = base.control_wires
@@ -55,13 +65,9 @@ def flip_pow_qcond(*params, wires, z, base, **_):
 
 
 def _ctrl_from_qcond_resources(base_class, base_params, num_control_wires, **_):
-    qcond_rep = qubit_conditioned_resource_rep(
-        base_class, base_params, num_control_wires
-    )
+    qcond_rep = qubit_conditioned_resource_rep(base_class, base_params, num_control_wires)
     pow_qcond_rep = pow_resource_rep(qcond_rep.op_type, qcond_rep.params, 0.5)
-    adj_pow_qcond_rep = adjoint_resource_rep(
-        pow_qcond_rep.op_type, pow_qcond_rep.params
-    )
+    adj_pow_qcond_rep = adjoint_resource_rep(pow_qcond_rep.op_type, pow_qcond_rep.params)
 
     return {pow_resource_rep(base_class, base_params, 0.5): 1, adj_pow_qcond_rep: 1}
 
@@ -72,8 +78,8 @@ def _ctrl_from_qcond_resources(base_class, base_params, num_control_wires, **_):
     )
 )
 @qp.register_resources(_ctrl_from_qcond_resources)
-def ctrl_from_qcond(*params, wires, base, control_wires, **_):
-    r"""Synthesizes a qubit-controlled gate using the qubit-conditioned gate
+def ctrl_from_qcond(*params, wires, base, control_wires, **_):  # noqa: ARG001
+    r"""Synthesizes a qubit-controlled gate using the qubit-conditioned gate.
 
     This implements the identity
 
@@ -87,6 +93,8 @@ def ctrl_from_qcond(*params, wires, base, control_wires, **_):
 
 
 def make_qcond_decomp(base_decomposition: DecompositionRule) -> DecompositionRule:
+    r"""Creates a decomposition rule for a qubit-conditioned operator from a base rule."""
+
     def _condition_fn(base_params, **_):
         return base_decomposition.is_applicable(**base_params)
 

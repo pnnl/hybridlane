@@ -1,8 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D107, D102
+r"""Fock state template"""
 
 import math
-from typing import cast
+from typing import ClassVar, cast
 
 import pennylane as qp
 from pennylane.ops import Operation
@@ -38,9 +40,10 @@ class FockState(Operation, Hybrid):
     The final :math:`X` gate is applied if :math:`n` is odd to uncompute the qubit.
 
     This also provides a decomposition for PennyLane's
-    :class:`~pennylane.ops.cv.FockState` that uses an ancilla qubit to prepare the Fock state on the qumode, requiring dynamic qubit allocation.
+    :class:`~pennylane.ops.cv.FockState` that uses an ancilla qubit to prepare the Fock state on
+    the qumode, requiring dynamic qubit allocation.
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -51,7 +54,7 @@ class FockState(Operation, Hybrid):
     num_qumodes = 1
     grad_method = None
 
-    resource_keys = {"fock_level"}
+    resource_keys: ClassVar = {"fock_level"}
 
     def __init__(self, n: int, wires: WiresLike = None, id: str | None = None):
         super().__init__(n, wires=wires, id=id)
@@ -89,9 +92,7 @@ def _fock_state_with_ancilla_qubit_resources(fock_level):
     return {qp.resource_rep(FockState, fock_level=fock_level): 1}
 
 
-@qp.register_resources(
-    _fock_state_with_ancilla_qubit_resources, work_wires={"zeroed": 1}
-)
+@qp.register_resources(_fock_state_with_ancilla_qubit_resources, work_wires={"zeroed": 1})
 def _qp_fockstate_with_ancilla_qubit(n, wires):
     with qp.allocate(1, "zero", restored=True) as ancilla:
         FockState(n, wires=[ancilla[0], wires[0]])

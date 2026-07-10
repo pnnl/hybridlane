@@ -1,5 +1,9 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Decomposition rules for qubit conditioned operations."""
+
+import itertools
+
 import pennylane as qp
 from pennylane.operation import Operation
 
@@ -9,21 +13,20 @@ from ....decomposition.resources import qubit_conditioned_resource_rep
 
 
 def to_native_qcond(control_wires: int):
-    """Decomposition rule for qcond of gates that have a native equivalent defined in hl.qcond"""
+    """Decomposition rule for qcond of gates that have a native equivalent defined in hl.qcond
+
+    For example, this can generate a rule to convert a qCond(Displacement) to a CD gate.
+    """
 
     def _condition_fn(num_control_wires, **_):
         return num_control_wires == control_wires
 
     def _resource_fn(base_class, base_params, num_control_wires):
-        return {
-            qubit_conditioned_resource_rep(
-                base_class, base_params, num_control_wires
-            ): 1
-        }
+        return {qubit_conditioned_resource_rep(base_class, base_params, num_control_wires): 1}
 
     @qp.register_condition(_condition_fn)
     @qp.register_resources(_resource_fn, name="to_native_qcond")
-    def _impl(*params, wires, base, control_wires, **_):
+    def _impl(*params, wires, base, control_wires, **_):  # noqa: ARG001
         base_op = base._unflatten(*base._flatten())
         hl.qcond(base_op, control_wires)
 
@@ -37,11 +40,17 @@ def _decompose_multiqcond_native_resources(base_class, base_params, num_control_
     }
 
 
+# todo: this might not be the best name
 @qp.register_resources(_decompose_multiqcond_native_resources)
-def decompose_multiqcond_native(*params, wires, base, control_wires, **_):
+def decompose_multiqcond_native(*params, wires, base, control_wires, **_):  # noqa: ARG001
+    r"""Decompose a multi-qubit conditioned operation using CNOTs
+
+    This can decompose a multi-qubit conditioned operation into one conditioned only on a single
+    qubit using CNOT gates to synthesize the other control wires.
+    """
     control_wires = control_wires + base.wires[0]
 
-    ct = list(zip(control_wires[:-1], control_wires[1:]))
+    ct = list(itertools.pairwise(control_wires))
     for c, t in ct:
         qp.CNOT(wires=[c, t])
 
@@ -60,10 +69,11 @@ def _decompose_multi_qcond_resources(base_class, base_params, num_control_wires)
 
 @qp.register_condition(lambda num_control_wires, **_: num_control_wires > 1)
 @qp.register_resources(_decompose_multi_qcond_resources)
-def decompose_multi_qcond(*params, wires, base, control_wires, **_):
+def decompose_multi_qcond(*params, wires, base, control_wires, **_):  # noqa: ARG001
+    r"""Decomposition rule for multi-qubit conditioned operations using CNOT gates"""
     base_op = base._unflatten(*base._flatten())
 
-    ct = list(zip(control_wires[:-1], control_wires[1:]))
+    ct = list(itertools.pairwise(control_wires))
     for c, t in ct:
         qp.CNOT(wires=[c, t])
 
@@ -83,11 +93,7 @@ def make_gate_with_ancilla_qubit(base_class: type[Operation]):
     """
 
     def _resource_fn(**base_params):
-        return {
-            qubit_conditioned_resource_rep(
-                base_class, base_params, num_control_wires=1
-            ): 1
-        }
+        return {qubit_conditioned_resource_rep(base_class, base_params, num_control_wires=1): 1}
 
     @qp.register_resources(
         _resource_fn,

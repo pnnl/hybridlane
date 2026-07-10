@@ -1,7 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 
+r"""Modified drawer for matplotlib"""
+
 import warnings
+from typing import ClassVar
 
 import matplotlib.colors as mc
 import numpy as np
@@ -14,19 +17,32 @@ from ..wires import Qubit, Qudit, Qumode, WireType
 
 
 class HybridMPLDrawer(MPLDrawer):
+    r"""Modified drawer for matplotlib that supports hybrid circuits.
+
+    This implementation adds support for drawing wire type icons and conditional gate indicators.
+    """
+
     _icon_width = 0.5
     _icon_face_alpha = 0.3
     _qumode_padding = 0.05
 
-    _instances = []
+    _instances: ClassVar = []
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # noqa: D107
         super().__init__(*args, **kwargs)
 
         # Store instances so we can retrieve them in _draw_icons
         self._instances.append(self)
 
     def wire_icons(self, icons: list[WireType], colors: list | None = None):
+        r"""Draw the icons for the given wire types on the left side of the circuit
+
+        Args:
+            icons: The wire types for each wire to draw icons for
+
+            colors: Optional color overrides for each icon. If not provided, the default
+                colors are used.
+        """
         # Shift the left side over to make room for the icons
         left = self._ax.get_xlim()[0]
         left -= self._icon_width + 0.25  # extra padding
@@ -35,7 +51,7 @@ class HybridMPLDrawer(MPLDrawer):
         icon_x = left + self._icon_width / 2 + 0.25
 
         colors = colors or [plt.rcParams["lines.color"]] * len(icons)
-        for wire, (icon, color) in enumerate(zip(icons, colors)):
+        for wire, (icon, color) in enumerate(zip(icons, colors, strict=True)):
             options = {"color": color}
 
             match icon:
@@ -58,7 +74,7 @@ class HybridMPLDrawer(MPLDrawer):
         color = options.get("color", plt.rcParams["lines.color"])
 
         # Draw containing box
-        bg_color = icon_face_color(color, self._icon_face_alpha)
+        bg_color = _icon_face_color(color, self._icon_face_alpha)
         rect = patches.Rectangle(
             (x - w / 2, y - h / 2),
             width=w,
@@ -73,9 +89,7 @@ class HybridMPLDrawer(MPLDrawer):
         w -= 2 * self._qumode_padding
         h -= 2 * self._qumode_padding
 
-        poly = Polynomial.fit(
-            [x, x + w / 2, x - w / 2], [y + h / 2, y - h / 2, y - h / 2], 2
-        )
+        poly = Polynomial.fit([x, x + w / 2, x - w / 2], [y + h / 2, y - h / 2, y - h / 2], 2)
 
         # Plot the parabola using black line color
         x_vals = np.linspace(x - w / 2, x + w / 2, num=15)
@@ -99,7 +113,7 @@ class HybridMPLDrawer(MPLDrawer):
         color = options.get("color", plt.rcParams["lines.color"])
 
         # Draw containing circle
-        bg_color = icon_face_color(color, self._icon_face_alpha)
+        bg_color = _icon_face_color(color, self._icon_face_alpha)
         rect = patches.Circle(
             (x, y),
             radius=r,
@@ -115,6 +129,11 @@ class HybridMPLDrawer(MPLDrawer):
         plt.plot([x - w / 2, x + w / 2], [y + r / 3, y + r / 3], color=color)
 
     def z_conditional(self, layer, wires, wires_target=None, options=None):
+        r"""Draws a vertical line with diamonds on each control wire.
+
+        This is used to indicate qubit-conditioned gates, where the conditioning qubit is
+        in the Z basis.
+        """
         if options is None:
             options = {}
 
@@ -129,9 +148,10 @@ class HybridMPLDrawer(MPLDrawer):
             min_target, max_target = min(wires_target), max(wires_target)
             if any(min_target < w < max_target for w in wires_ctrl):
                 warnings.warn(
-                    "Some conditional indicators are hidden behind an operator. Consider re-ordering "
-                    "your circuit wires to ensure all control indicators are visible.",
+                    "Some conditional indicators are hidden behind an operator. Consider "
+                    "re-ordering your circuit wires to ensure all control indicators are visible.",
                     UserWarning,
+                    stacklevel=2,
                 )
 
         line = plt.Line2D((layer, layer), (min_wire, max_wire), **options)
@@ -164,7 +184,7 @@ def _circle_width(r, y):
     return 2 * np.sqrt(r**2 - y**2)
 
 
-def icon_face_color(color, alpha):
+def _icon_face_color(color, alpha):
     color = _adjust_alpha(color, alpha)
     color = _blend(color, "white")
     return tuple(color)

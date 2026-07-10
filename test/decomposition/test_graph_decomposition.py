@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 import warnings
+from typing import ClassVar
 
 import numpy as np
 import pennylane as qp
@@ -22,12 +23,10 @@ class Evo(Operation, Hybrid):
     num_qumodes = 1
     num_params = 1
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, t: float, omega_r=1, omega_q=-1, chi=0.1, wires=None, id=None):
-        self.hyperparameters.update(
-            {"omega_r": omega_r, "omega_q": omega_q, "chi": chi}
-        )
+        self.hyperparameters.update({"omega_r": omega_r, "omega_q": omega_q, "chi": chi})
         super().__init__(t, wires=wires, id=id)
 
 
@@ -50,7 +49,7 @@ class TestApplications:
         omega_r = 1
         omega_q = -1
         chi = 0.1
-        U = Evo(1, omega_r, omega_q, chi, ("q", "m"))
+        U = Evo(1, omega_r, omega_q, chi, ("q", "m"))  # noqa: N806
 
         dev = qp.device("bosonicqiskit.hybrid", max_fock_level=8)
 
@@ -107,9 +106,7 @@ class TestGateDecompositions:
         expval_with_snap = circuit()
 
         sqr_circuit = (
-            qp.transforms.decompose(
-                gate_set={hl.Displacement, hl.SQR}, num_work_wires=1
-            )
+            qp.transforms.decompose(gate_set={hl.Displacement, hl.SQR}, num_work_wires=1)
             + resolve_dynamic_wires(min_int=1, allow_resets=False)
         )(circuit)
         expval_with_sqr = sqr_circuit()

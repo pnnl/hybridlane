@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Module containing the mapping of hybridlane gates to bosonic qiskit methods."""
 
-# For entries that list `None`, they are listed for completeness. We should force the user to compile
-# their circuit to the basis defined by gates that have methods listed. However, some of these gates
-# don't have decompositions, which will be an issue.
+# For entries that list `None`, they are listed for completeness. We should force the user
+# to compile their circuit to the basis defined by gates that have methods listed. However, some
+# of these gates don't have decompositions, which will be an issue.
 
 # This is a mapping from the pennylane class -> qiskit method name
 dv_gate_map: dict[str, str] = {
@@ -83,13 +84,8 @@ state_prep_routines = {
     "StatePrep",
 }
 
-supported_operations = (
-    set(
-        k
-        for k, v in (
-            dv_gate_map | cv_gate_map | hybrid_gate_map | misc_gate_map
-        ).items()
-        if v is not None
-    )
-    | state_prep_routines
-)
+supported_operations = {
+    k
+    for k, v in (dv_gate_map | cv_gate_map | hybrid_gate_map | misc_gate_map).items()
+    if v is not None
+} | state_prep_routines

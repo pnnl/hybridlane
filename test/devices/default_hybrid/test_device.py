@@ -64,9 +64,7 @@ class TestWireDims:
             hl.D(0.123, 0, "b")
             return hl.expval(hl.N("b"))
 
-        qnode = qp.QNode(
-            circuit, qp.device("default.hybrid", wire_dims={"a": 2, "b": 8})
-        )
+        qnode = qp.QNode(circuit, qp.device("default.hybrid", wire_dims={"a": 2, "b": 8}))
         tape = qp.workflow.construct_tape(qnode)()
         config = qp.workflow.construct_execution_config(qnode, resolve=True)()  # ty:ignore[missing-argument]
         assert config.device_options["wire_dims"] == {"a": 2, "b": 8}
@@ -153,9 +151,7 @@ class TestMeasurementSupport:
                 ]
             )
 
-        assert is_sampled_mp_supported(
-            hl.sample(schema=BasisMap({0: ComputationalBasis.Discrete}))
-        )
+        assert is_sampled_mp_supported(hl.sample(schema=BasisMap({0: ComputationalBasis.Discrete})))
 
         assert not is_sampled_mp_supported(hl.state())
         assert not is_sampled_mp_supported(
@@ -171,32 +167,28 @@ class TestMeasurementSupport:
 
     def test_supports_sampled_observable(self):
         assert all(
-            map(
-                lambda op: is_sampled_observable_supported(op, is_expval=True),
-                [
-                    hl.N(0),
-                    0.5 * hl.N(0),
-                    hl.N(1) ** 2,
-                    0.123 * hl.N(0) + 0.456 * hl.N(1),
-                    qp.Z(0) @ hl.N(1),
-                    qp.X(0) @ qp.Z(1),
-                    hl.FockStateProjector(2, wires=0),
-                    qp.measure(0),
-                    qp.Hermitian(np.array([[0, 1], [1, 0]]), wires=0),
-                ],
-            )
+            is_sampled_observable_supported(op, is_expval=True)
+            for op in [
+                hl.N(0),
+                0.5 * hl.N(0),
+                hl.N(1) ** 2,
+                0.123 * hl.N(0) + 0.456 * hl.N(1),
+                qp.Z(0) @ hl.N(1),
+                qp.X(0) @ qp.Z(1),
+                hl.FockStateProjector(2, wires=0),
+                qp.measure(0),
+                qp.Hermitian(np.array([[0, 1], [1, 0]]), wires=0),
+            ]
         )
 
         assert not any(
-            map(
-                lambda op: is_sampled_observable_supported(op, is_expval=True),
-                [
-                    hl.X(0),
-                    hl.N(0) @ hl.X(0),
-                    hl.X(0) ** 2 + hl.P(0) ** 2,
-                    qp.Z(0) @ hl.X(1),
-                ],
-            )
+            is_sampled_observable_supported(op, is_expval=True)
+            for op in [
+                hl.X(0),
+                hl.N(0) @ hl.X(0),
+                hl.X(0) ** 2 + hl.P(0) ** 2,
+                qp.Z(0) @ hl.X(1),
+            ]
         )
 
     # todo: remove in v0.9.0
@@ -237,7 +229,7 @@ class TestMeasurementSupport:
             hl.D(0.123, 0, wires=0)
             return hl.sample(hl.N(0))
 
-        with pytest.raises(DeviceError, match="`jax.jit` does not support"):
+        with pytest.raises(DeviceError, match=r"`jax.jit` does not support"):
             circuit()
 
 
@@ -258,16 +250,13 @@ class TestExecute:
             return hl.expval(hl.X(0))
 
         assert circuit() == pytest.approx(0)
-        assert not dev._prng_key == prng_key  # check that the key was updated
+        assert dev._prng_key != prng_key  # check that the key was updated
 
     def test_with_np_rng(self):
         dev = qp.device("default.hybrid", fock_level=8, seed=42)
 
         assert isinstance(dev._rng, np.random.Generator)
-        assert (
-            dev._rng.bit_generator.state
-            == np.random.default_rng(42).bit_generator.state
-        )
+        assert dev._rng.bit_generator.state == np.random.default_rng(42).bit_generator.state
 
         @qp.qnode(dev)
         def circuit():
@@ -276,8 +265,7 @@ class TestExecute:
 
         assert circuit() == pytest.approx(0)
         assert (
-            dev._rng.bit_generator.state
-            == np.random.default_rng(42).bit_generator.state
+            dev._rng.bit_generator.state == np.random.default_rng(42).bit_generator.state
         )  # not updated because the circuit has no randomness
 
     def test_with_max_workers(self):

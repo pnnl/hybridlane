@@ -28,7 +28,7 @@ def get_default_style():
     This only works if drawing a circuit at the device level, after the circuit wires
     have been mapped to the hardware wires of the ``QscoutIonTrap`` device.
     """
-    wire_order = _get_allowed_device_wires(QscoutIonTrap._max_qubits, True)
+    wire_order = _get_allowed_device_wires(QscoutIonTrap._max_qubits, True)  # ty:ignore[unresolved-attribute]
 
     # Color the qumodes rainbow like the slides
     icon_colors = {}

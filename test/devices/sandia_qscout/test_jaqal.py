@@ -34,10 +34,10 @@ def programs_equal(actual_ir, expected_ir):
     qb_module = ModuleType(QUBIT_BOSON_MODULE)
     jaqal_gates_obj = mock.Mock()
     jaqal_gates_obj.ALL_GATES = gates
-    qb_module.jaqal_gates = jaqal_gates_obj
+    qb_module.jaqal_gates = jaqal_gates_obj  # ty:ignore[unresolved-attribute]
     calibration_module_name = QUBIT_BOSON_MODULE.split(".")[0]
     calibration_module = ModuleType(calibration_module_name)
-    calibration_module.QubitBosonPulses = qb_module
+    calibration_module.QubitBosonPulses = qb_module  # ty:ignore[unresolved-attribute]
     with mock.patch.dict(
         sys.modules,
         {
@@ -71,13 +71,13 @@ class TestToJaqal:
             register q[2]
 
             subcircuit {
-               	Rz q[0] 3.142
-               	Ry q[0] 3.142
-               	XX q[0] q[1] 1.571
-               	Rx q[1] 11.00
-               	Rz q[0] 7.854
-               	Ry q[0] 1.571
-               	Rz q[0] 1.571
+                Rz q[0] 3.142
+                Ry q[0] 3.142
+                XX q[0] q[1] 1.571
+                Rx q[1] 11.00
+                Rz q[0] 7.854
+                Ry q[0] 1.571
+                Rz q[0] 1.571
             }
             """
         ).strip()
@@ -102,8 +102,8 @@ class TestToJaqal:
             register q[1]
 
             subcircuit {
-               	JC q[0] 1 1 0.0 0.5
-               	AJC q[0] 1 1 0.0 0.5
+                JC q[0] 1 1 0.0 0.5
+                AJC q[0] 1 1 0.0 0.5
             }
             """
         ).strip()
@@ -126,11 +126,11 @@ class TestToJaqal:
             register q[2]
 
             subcircuit {
-               	xCD q[1] 1 1 4.0 0.0
-               	Rz q[1] 11.00
-               	xCD q[1] 1 1 0.0 0.09818
-               	yCD q[1] 1 1 -0.09818 -0.0
-               	Sz q[1]
+                xCD q[1] 1 1 4.0 0.0
+                Rz q[1] 11.00
+                xCD q[1] 1 1 0.0 0.09818
+                yCD q[1] 1 1 -0.09818 -0.0
+                Sz q[1]
             }
             """
         )
@@ -155,10 +155,10 @@ class TestToJaqal:
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
             register q[2]
             subcircuit {
-               	xCD q[0] 1 1 1.0 0.0
-               	zCD q[1] 1 1 0.0 1.0
-               	xCD q[0] 1 1 -1.0 -0.0
-               	zCD q[1] 1 1 -0.0 -1.0
+                xCD q[0] 1 1 1.0 0.0
+                zCD q[1] 1 1 0.0 1.0
+                xCD q[0] 1 1 -1.0 -0.0
+                zCD q[1] 1 1 -0.0 -1.0
             }
             """
         ).strip()

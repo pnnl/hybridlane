@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
+r"""Utility functions for working with tracers and concrete values."""
+
 from collections.abc import Callable
 
 import pennylane as qp
@@ -40,4 +44,5 @@ def concrete_or_error(
 
 
 def can_replace(x: TensorLike, y: TensorLike) -> bool:
+    r"""Returns True if ``x`` can safely be replaced with ``y`` in a computation."""
     return not qp.math.requires_grad(x) and qp.math.allclose(x, y)

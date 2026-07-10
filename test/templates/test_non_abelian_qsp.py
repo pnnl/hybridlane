@@ -14,27 +14,25 @@ from hybridlane.templates.non_abelian_qsp import GKPState, SqueezedCatState
 
 # The distribution p(n) for cat states
 def cat_state_probs(alpha, ns, odd: bool):
-    alpha_sq = np.abs(alpha) ** 2
+    alpha_sq = np.abs(alpha) ** 2  # ty:ignore[unresolved-attribute]
     log_factorial = gammaln(ns + 1)
-    log_P_coh = -alpha_sq + (ns * np.log(alpha_sq)) - log_factorial
-    log_norm = np.log(2) - np.log(1 + np.exp(-2 * alpha_sq))
-    log_Pn = log_norm + log_P_coh
-    log_Pn[ns % 2 != int(odd)] = -np.inf
-    return np.exp(log_Pn)
+    log_p_coh = -alpha_sq + (ns * np.log(alpha_sq)) - log_factorial  # ty:ignore[unresolved-attribute]
+    log_norm = np.log(2) - np.log(1 + np.exp(-2 * alpha_sq))  # ty:ignore[unresolved-attribute]
+    log_pn = log_norm + log_p_coh
+    log_pn[ns % 2 != int(odd)] = -np.inf  # ty:ignore[unresolved-attribute]
+    return np.exp(log_pn)  # ty:ignore[unresolved-attribute]
 
 
 class TestSqueezedCatState:
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "alpha,parity", list(itertools.product([3, 4, 5, 6], ("even", "odd")))
-    )
+    @pytest.mark.parametrize("alpha,parity", list(itertools.product([3, 4, 5, 6], ("even", "odd"))))
     def test_parity(self, alpha, parity):
         fock_level = 128
         dev = qp.device("default.hybrid", fock_level=fock_level)
 
         @qp.qnode(dev)
         def circuit(alpha):
-            SqueezedCatState(alpha, np.pi / 2, parity=parity, wires=["q", "m"])
+            SqueezedCatState(alpha, np.pi / 2, parity=parity, wires=["q", "m"])  # ty:ignore[unresolved-attribute]
 
             qp.H("a")
             hl.ConditionalParity(["a", "m"])
@@ -54,18 +52,18 @@ class TestSqueezedCatState:
 
         @qp.qnode(dev)
         def circuit(alpha):
-            SqueezedCatState(alpha, np.pi / 2, parity=parity, wires=["q", "m"])
+            SqueezedCatState(alpha, np.pi / 2, parity=parity, wires=["q", "m"])  # ty:ignore[unresolved-attribute]
             return hl.expval(qp.Z("q")), hl.expval(hl.N("m"))
 
         expval_z, expval_n = circuit(alpha)
         fidelity = (1 + expval_z) / 2
-        expected = 1 - np.pi**2 / (64 * alpha**2)  # eq. 393
+        expected = 1 - np.pi**2 / (64 * alpha**2)  # eq. 393  # ty:ignore[unresolved-attribute]
         assert fidelity >= expected
 
-        n = np.arange(256)
+        n = np.arange(256)  # ty:ignore[unresolved-attribute]
         p_n = cat_state_probs(alpha, n, parity == "odd")
         expected_mean = (n * p_n).sum()
-        assert np.allclose(expval_n, expected_mean, rtol=1e-2)
+        assert np.allclose(expval_n, expected_mean, rtol=1e-2)  # ty:ignore[unresolved-attribute]
 
 
 class TestGKPState:
@@ -88,10 +86,10 @@ class TestGKPState:
             GKPState(delta, logical_state=codeword, wires=["q", "m"])
 
             # SBS stabilizer measurement, fig. 9
-            alpha = np.sqrt(np.pi / 8)
+            alpha = np.sqrt(np.pi / 8)  # ty:ignore[unresolved-attribute]
             lam = -alpha * delta**2
             hl.YCD(lam, 0, wires=["q", "m"])
-            hl.XCD(2 * alpha, np.pi / 2, wires=["q", "m"])
+            hl.XCD(2 * alpha, np.pi / 2, wires=["q", "m"])  # ty:ignore[unresolved-attribute]
             hl.YCD(lam, 0, wires=["q", "m"])
             return hl.expval(qp.Z("q"))
 
@@ -110,4 +108,4 @@ class TestGKPState:
             return hl.expval(qp.Z("q"))
 
         errors_dict = qp.resource.algo_error(circuit)(codeword, 0.34)
-        assert errors_dict["SpectralNormError"].error > 0
+        assert errors_dict["SpectralNormError"].error > 0  # ty:ignore[invalid-argument-type]

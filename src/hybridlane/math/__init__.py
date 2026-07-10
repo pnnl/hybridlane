@@ -7,7 +7,7 @@ from pennylane import math as pl_math
 
 from . import (
     array_manipulation,  # noqa: F401
-    symplectic,  # noqa: F401
+    symplectic,
 )
 from .matrix_manipulation import expand_matrix, expand_vector
 from .quantum import reduce_dm, reduce_statevector
@@ -29,7 +29,7 @@ def __getattr__(name):
 
 def __dir__():
     # Include the functions from pennylane math library in the dir() output
-    our_stuff = set(list(globals().keys())) - {"pl_math", "ar", "array_manipulation"}
+    our_stuff = set(globals().keys()) - {"pl_math", "ar", "array_manipulation"}
     return list(our_stuff | set(pl_math.__dir__()))
 
 
@@ -45,4 +45,5 @@ __all__ = [
     "to_fock_space",
     "to_phase_space",
     "concrete_or_error",
-] + pl_math.__all__
+    *pl_math.__all__,
+]

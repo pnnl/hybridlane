@@ -1,11 +1,13 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Base measurement types"""
+
 import copy
 import functools
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Hashable, Self
+from typing import Any, Self
 
 import pennylane as qp
 from pennylane.measurements import (
@@ -44,19 +46,23 @@ class SampleResult:
 
     @classmethod
     def from_basis_states(cls, basis_states: dict[Any, TensorLike]) -> Self:
+        r"""Constructs a SampleResult from a mapping of wires to basis states"""
         bases = sa.infer_bases_from_tensors(basis_states)
         return cls(data=basis_states, bases=bases)
 
     @functools.cached_property
     def shape(self) -> tuple[int, ...]:
+        r"""Returns the shape of the underlying sample arrays"""
         return hl.math.shape(next(iter(self.data.values())))
 
     @property
     def ndim(self) -> int:
+        r"""Returns the number of dimensions of the underlying sample arrays"""
         return len(self.shape)
 
     @property
     def batch_size(self) -> int | None:
+        r"""Returns the batch size of the underlying sample arrays"""
         if self.ndim == 1:
             return None
 
@@ -64,9 +70,11 @@ class SampleResult:
 
     @property
     def shots(self) -> int:
+        r"""Returns the number of shots in the underlying sample arrays"""
         return self.shape[-1]
 
     def concatenate(self, other: Self) -> "SampleResult":
+        r"""Concatenates two SampleResults along the shot dimension"""
         if self.bases != other.bases:
             raise ValueError("Schemas of each result must match")
 
@@ -74,22 +82,21 @@ class SampleResult:
             raise ValueError("Results must have the same outer dimension")
 
         new_tensors = {}
-        for w in self.data.keys():
+        for w in self.data:
             new_tensors[w] = qp.math.concatenate([self.data[w], other.data[w]], axis=-1)
 
         return SampleResult(data=new_tensors, bases=self.bases)
 
     def slice(self, indices: slice):
+        r"""Slices the underlying sample arrays along the shot dimension"""
         new_tensors = {}
-        for w in self.data.keys():
+        for w in self.data:
             new_tensors[w] = self.data[w][..., indices]  # ty:ignore[not-subscriptable, invalid-argument-type]
 
         return SampleResult(data=new_tensors, bases=self.bases)
 
     @staticmethod
-    def validate_sample_tensors(
-        schema: sa.BasisMap, tensors: dict[Hashable, TensorLike]
-    ):
+    def validate_sample_tensors(schema: sa.BasisMap, tensors: dict[Hashable, TensorLike]):
         r"""Validates the tensors with several checks
 
         This function tests:
@@ -98,6 +105,8 @@ class SampleResult:
             - All wire data has the same shape
 
         Args:
+            schema: The schema to check against
+
             tensors: The set of wire-tensor pairs to check
 
         Raises:
@@ -186,17 +195,16 @@ class CountsResult:
         # Should have only scalar eigenvalues
         else:
             for eigval in self.counts:
-                if not isinstance(
-                    eigval, (int, float)
-                ):  # not complex bc observables are hermitian
+                if not isinstance(eigval, (int, float)):  # not complex bc observables are hermitian
                     raise ValueError("Expected scalar type for eigenvalue")
 
 
 class SampleMeasurement(MeasurementProcess):
     r"""Interface for all finite-sampling measurements
 
-    Any subclass should override ``process_samples`` if it can compute its measurement result from the samples,
-    and it should override ``process_counts`` if it can compute using an aggregated histogram.
+    Any subclass should override ``process_samples`` if it can compute its measurement result from
+    the samples, and it should override ``process_counts`` if it can compute using an aggregated
+    histogram.
 
     .. seealso::
 
@@ -205,22 +213,22 @@ class SampleMeasurement(MeasurementProcess):
 
     _shortname = "sample"
 
-    def __init__(
-        self, obs=None, bases: sa.BasisMap | None = None, eigvals=None, id=None
-    ):
-        """
+    def __init__(self, obs=None, bases: sa.BasisMap | None = None, eigvals=None, id=None):
+        """Constructs a sample-based measurement
+
         Args:
             obs: The optional observable to sample from. If provided, the samples will be a set of
                 eigenvalue samples.
 
-            bases: The optional schema describing the bases each wire is measured in. If it is provided,
-                the samples will be computational basis states matching the format in the schema. If an
-                observable is provided, ``schema`` must be ``None``, where it will be inferred from the
-                observable.
+            bases: The optional schema describing the bases each wire is measured in. If it is
+                provided, the samples will be computational basis states matching the format in
+                the schema. If an observable is provided, ``schema`` must be ``None``, where it
+                will be inferred from the observable.
 
-            eigvals: An optional array of the eigenvalues of an observable. If provided, the samples will be
-                eigenvalues from the array. Note that this doesn't make sense for position/coherent basis measurements
-                since those do not have a finite number of eigenstates.
+            eigvals: An optional array of the eigenvalues of an observable. If provided, the
+                samples will be eigenvalues from the array. Note that this doesn't make sense for
+                position/coherent basis measurements since those do not have a finite number of
+                eigenstates.
 
             id: An optional identifier to label the measurement operation.
         """
@@ -255,10 +263,11 @@ class SampleMeasurement(MeasurementProcess):
 
             wire_order: The order of the wires in the circuit
 
-            shot_range: A 2-tuple specifying the range of samples to use. If not specified, all samples are used
+            shot_range: A 2-tuple specifying the range of samples to use. If not specified, all
+                samples are used
 
-            bin_size: Divides the shot range into bins of ``bin_size`` and then computes the result over each
-                bin. If not specified, all samples are grouped into a single bin.
+            bin_size: Divides the shot range into bins of ``bin_size`` and then computes the
+                result over each bin. If not specified, all samples are grouped into a single bin.
         """
 
     @abstractmethod
@@ -291,13 +300,14 @@ class Truncation(ABC):
         """Reshapes a possibly-batched statevector to match the system shape of this truncation
 
         Args:
-            state: A flattened statevector of shape ``(..., d)``, which has optional batch dimensions.
+            state: A flattened statevector of shape ``(..., d)``, which has optional batch
+                dimensions.
 
             wire_order: The order of the wires in the statevector
 
         Returns:
-            The statevector with shape ``(..., *shape)``, where ``shape`` is the result of :py:meth:`.Truncation.shape`. Each
-            wire will have its own dimension.
+            The statevector with shape ``(..., *shape)``, where ``shape`` is the result of
+                :py:meth:`.Truncation.shape`. Each wire will have its own dimension.
         """
         target_shape = self.shape(wire_order)
 
@@ -306,7 +316,7 @@ class Truncation(ABC):
         has_batch_dim = len(orig_shape) > 1
 
         if has_batch_dim:
-            target_shape = tuple([*orig_shape[:-1], target_shape])
+            target_shape = (*orig_shape[:-1], target_shape)
 
         return qp.math.reshape(state, target_shape)
 
@@ -315,12 +325,12 @@ class Truncation(ABC):
 class FockTruncation(Truncation):
     r"""Truncation in Fock space up to a desired photon count
 
-    For each wire, a size should be provided indicating the dimension of that subsystem. If no size is provided
-    for a wire, it is defaulted to 2 (a qubit).
+    For each wire, a size should be provided indicating the dimension of that subsystem. If no
+    size is provided for a wire, it is defaulted to 2 (a qubit).
 
-    Note that we allow continuous-variable bases in the schema even though we have a hard system-size
-    cutoff in Fock space. This is because someone might want to simulate position measurements while truncating
-    the maximum energy of a qumode.
+    Note that we allow continuous-variable bases in the schema even though we have a hard
+    system-size cutoff in Fock space. This is because someone might want to simulate position
+    measurements while truncating the maximum energy of a qumode.
     """
 
     basis_schema: sa.BasisMap
@@ -330,26 +340,33 @@ class FockTruncation(Truncation):
     """Mapping from wires to their truncated system dimension"""
 
     def dim(self, wire):
+        r"""Returns the hilbert dimension of a wire"""
         return self.dim_sizes.get(wire, 2)
 
     @classmethod
     def all_fock_space(cls, wires: Sequence[Hashable], dim_sizes: dict[Hashable, int]):
+        r"""Constructs a FockTruncation for all wires in the system"""
         wires = Wires.all_wires(wires)
-        schema = sa.BasisMap({w: sa.ComputationalBasis.Discrete for w in wires})
+        schema = sa.BasisMap(dict.fromkeys(wires, sa.ComputationalBasis.Discrete))
         return cls(basis_schema=schema, dim_sizes=dim_sizes)
 
 
 @dataclass(frozen=True)
 class StateResult:
-    statevector: Sequence[complex]
+    r"""Container for the results of a statevector-based measurement"""
+
+    statevector: TensorLike
+    r"""The statevector from the simulation"""
 
     truncation: Truncation
+    r"""The truncation used to simulate the statevector"""
 
     wire_order: Wires
+    r"""The order of the wires in the statevector"""
 
 
 class StateMeasurement(MeasurementProcess):
-    r"""Interface for all measurements that operate directly on (classically-simulated) statevectors"""
+    r"""Interface for measurements operating directly on statevectors"""
 
     _shortname = "state"
 
@@ -397,6 +414,8 @@ class StateMeasurement(MeasurementProcess):
 
 
 class ShapeRequiresWireDims(MeasurementProcess):
+    r"""Mixin for measurement processes that the wire dimensions to compute their shape"""
+
     wire_dims: Mapping[Hashable, int] | None = None
 
     def copy_with_wire_dims(self, wire_dims: Mapping[Hashable, int]) -> Self:
@@ -409,10 +428,9 @@ class ShapeRequiresWireDims(MeasurementProcess):
         return new
 
     def map_wires(self, wire_map: dict[Hashable, Hashable]) -> Self:
+        r"""Returns a copy of this measurement with the wires remapped"""
         new = super().map_wires(wire_map)
         if self.wire_dims is not None:
-            new_wire_dims = {
-                wire_map.get(wire, wire): dim for wire, dim in self.wire_dims.items()
-            }
+            new_wire_dims = {wire_map.get(wire, wire): dim for wire, dim in self.wire_dims.items()}
             new.wire_dims = new_wire_dims
         return new

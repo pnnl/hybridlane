@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-from collections.abc import Mapping
-from typing import Hashable
+r"""Transforms and utilities for preprocessing quantum circuits before execution."""
+
+from collections.abc import Hashable, Mapping
 
 import pennylane as qp
+from pennylane.devices.default_qubit import null_postprocessing
 from pennylane.tape import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn
 
@@ -22,7 +24,7 @@ def static_analyze_tape(
     role remains the same in the rest of the circuit. This is physically motivated since a device
     cannot perform swap gates between qubits and qumodes (there would be truncation issues).
 
-    Example
+    Example:
 
     .. code:: python
 
@@ -36,17 +38,13 @@ def static_analyze_tape(
         tape: The quantum circuit to check
 
     Raises:
-        :py:class:`~hybridlane.sa.StaticAnalysisError` if any wire is used as both a qubit and a qumode across the circuit, or
-        if its type cannot be inferred and no default is provided.
+        :py:class:`~hybridlane.sa.StaticAnalysisError` if any wire is used as both a qubit and a
+            qumode across the circuit, or if its type cannot be inferred and no default is
+            provided.
     """
-
     sa.type_check(tape)  # errors if anything is wrong
 
     return (tape,), null_postprocessing
-
-
-def null_postprocessing(results):
-    return results[0]
 
 
 @qp.transform
@@ -55,6 +53,13 @@ def fill_wire_dims(
     wire_dims: Mapping[Hashable, int] | None = None,
     default_qumode_dim: int | None = None,
 ) -> tuple[QuantumScriptBatch, PostprocessingFn]:
+    r"""Transform pass that fills in missing wire dimensions for measurements
+
+    To be compatible with JAX, certain measurements require the wire dimensions to be known at
+    construction time so that JAX may deduce their shape statically. However, in hybridlane,
+    truncations are set by the device and not the circuit definition, so this pass inserts the
+    dimensions into the measurements after the circuit has been constructed.
+    """
     wire_dims = wire_dims or {}
     wire_dims = dict(wire_dims)
 

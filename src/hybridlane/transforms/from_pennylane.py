@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Conversion from PennyLane operations to hybridlane"""
 
 from __future__ import annotations
 
@@ -42,25 +43,31 @@ def from_pennylane(
 
     The following transformations are performed on the input program:
 
-    1. Gates in the circuit are mapped to their Hybridlane equivalents if they exist, such as ``qp.Beamsplitter -> hl.Beamsplitter``. Parameters may be transformed if necessary to ensure the original intent of the program is preserved. This transformation also recursively traverses the gate definition for ``SymbolicOps``, like ``qp.adjoint(qp.Beamsplitter) -> qp.adjoint(hl.Beamsplitter)``.
+    1. Gates in the circuit are mapped to their Hybridlane equivalents if they exist, such as
+        ``qp.Beamsplitter -> hl.Beamsplitter``. Parameters may be transformed if necessary to
+        ensure the original intent of the program is preserved. This transformation also
+        recursively traverses the gate definition for ``SymbolicOps``, like
+        ``qp.adjoint(qp.Beamsplitter) -> qp.adjoint(hl.Beamsplitter)``.
 
-    2. Observables are mapped to Hybridlane equivalents, if necessary, in a similar recursive manner to the gates. This also extends to``CompositeOps``.
+    2. Observables are mapped to Hybridlane equivalents, if necessary, in a similar recursive
+        manner to the gates. This also extends to``CompositeOps``.
 
-    3. Measurement processes are transformed, if possible, as a convenience for users who forget to use the ``hl`` versions, like ``qp.expval -> hl.expval``.
+    3. Measurement processes are transformed, if possible, as a convenience for users who forget
+        to use the ``hl`` versions, like ``qp.expval -> hl.expval``.
 
     Args:
         tape: The quantum program to transform
 
-        default_qumode_measurement: A basis to measure qumodes in if a basis could not be inferred (e.g. for qp.sample() passing in wires).
-            Must be one of "homodyne" or "fock".
+        default_qumode_measurement: A basis to measure qumodes in if a basis could not be inferred
+            (e.g. for ``qp.sample()`` passing in wires). Must be one of "homodyne" or "fock".
     """
-
     if (
         default_qumode_measurement
         and default_qumode_measurement not in optional_qumode_measurements
     ):
         raise ValueError(
-            f"default_qumode_measurement must be one of {optional_qumode_measurements}, got: {default_qumode_measurement}"
+            f"default_qumode_measurement must be one of {optional_qumode_measurements}, "
+            f"got: {default_qumode_measurement}"
         )
 
     new_ops = list(map(convert_operator, tape.operations))
@@ -86,6 +93,10 @@ def from_pennylane(
 
 @singledispatch
 def convert_operator(op: Operator) -> Operator:
+    r"""Converts an operator to the hybridlane equivalent
+
+    If no conversion is necessary, the original operator is returned.
+    """
     return op
 
 
@@ -119,26 +130,26 @@ def _(op: qp.Displacement):
 @convert_operator.register
 def _(op: qp.Rotation):
     # i -> -i
-    return hl.Rotation(-op.data[0], wires=op.wires)
+    return hl.Rotation(-op.data[0], wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.Squeezing):
     # we use re(i2t), they use re(ip), so t = p/2
     r, phi = op.parameters
-    return hl.Squeezing(r, phi / 2, wires=op.wires)
+    return hl.Squeezing(r, phi / 2, wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.Kerr):
     # i -> -i
-    return hl.Kerr(-op.data[0], wires=op.wires)
+    return hl.Kerr(-op.data[0], wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.CubicPhase):
     # ir(x^3)/3 -> -irx^3
-    return hl.CubicPhase(-op.data[0] / 3, wires=op.wires)
+    return hl.CubicPhase(-op.data[0] / 3, wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
@@ -147,18 +158,19 @@ def _(op: qp.Beamsplitter):
     # θ' = 2θ
     # ϕ' = -(ϕ + π/2)
     theta, phi = op.data
-    return hl.Beamsplitter(2 * theta, -(phi + math.pi / 2), wires=op.wires)
+    return hl.Beamsplitter(2 * theta, -(phi + math.pi / 2), wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @convert_operator.register
 def _(op: qp.TwoModeSqueezing):
     # r -> -r
     r, phi = op.data
-    return hl.TwoModeSqueezing(-r, phi, wires=op.wires)
+    return hl.TwoModeSqueezing(-r, phi, wires=op.wires)  # ty:ignore[unsupported-operator]
 
 
 @singledispatch
 def convert_observable(obs: Operator) -> Operator:
+    r"""Converts an observable to the hybridlane equivalent"""
     return obs
 
 
@@ -169,7 +181,7 @@ def _(obs: SProd) -> SProd:
 
 @convert_observable.register
 def _(obs: ScalarSymbolicOp) -> ScalarSymbolicOp:
-    return obs.__class__(convert_observable(obs.base), obs.scalar)
+    return obs.__class__(convert_observable(obs.base), obs.scalar)  # ty:ignore[invalid-argument-type]
 
 
 @convert_observable.register
@@ -207,9 +219,10 @@ def _(obs: qp.FockStateProjector):
 def convert_measurement_process(
     mp: MeasurementProcess,
     *,
-    default_qumode_measurement: str | None = None,
-    cache: dict[str, Any] | None = None,
+    default_qumode_measurement: str | None = None,  # noqa: ARG001
+    cache: dict[str, Any] | None = None,  # noqa: ARG001
 ) -> MeasurementProcess:
+    r"""Converts a measurement process to the hybridlane equivalent"""
     return mp
 
 
@@ -219,8 +232,8 @@ def convert_measurement_process(
 def _(
     mp: pl_mp.ExpectationMP | hl_mp.ExpectationMP,
     *,
-    default_qumode_measurement: str | None = None,
-    cache: dict[str, Any] | None = None,
+    default_qumode_measurement: str | None = None,  # noqa: ARG001
+    cache: dict[str, Any] | None = None,  # noqa: ARG001
 ) -> hl_mp.ExpectationMP:
     if mp.obs:
         return hl_mp.ExpectationMP(obs=convert_observable(mp.obs))
@@ -232,8 +245,8 @@ def _(
 def _(
     mp: pl_mp.VarianceMP | hl_mp.VarianceMP,
     *,
-    default_qumode_measurement: str | None = None,
-    cache: dict[str, Any] | None = None,
+    default_qumode_measurement: str | None = None,  # noqa: ARG001
+    cache: dict[str, Any] | None = None,  # noqa: ARG001
 ):
     if mp.obs:
         return hl_mp.VarianceMP(obs=convert_observable(mp.obs))
@@ -244,8 +257,8 @@ def _(
 def _(
     mp: hl_mp.SampleMP,
     *,
-    default_qumode_measurement: str | None = None,
-    cache: dict[str, Any] | None = None,
+    default_qumode_measurement: str | None = None,  # noqa: ARG001
+    cache: dict[str, Any] | None = None,  # noqa: ARG001
 ):
     if mp.obs:
         return hl_mp.SampleMP(obs=convert_observable(mp.obs))
@@ -262,10 +275,8 @@ def _(
     if mp.obs:
         return hl_mp.SampleMP(obs=convert_observable(mp.obs))
 
-    sa_res: TypeCheckResult = cache["sa_res"]
-    schema = BasisMap(
-        {q: ComputationalBasis.Discrete for q in mp.wires & sa_res.qubits}
-    )
+    sa_res: TypeCheckResult = cache["sa_res"]  # ty:ignore[not-subscriptable]
+    schema = BasisMap(dict.fromkeys(mp.wires & sa_res.qubits, ComputationalBasis.Discrete))
     if sa_res.qumodes:
         if default_qumode_measurement is None:
             raise ValueError(
@@ -273,7 +284,7 @@ def _(
                 "Consider passing in the `default_qumode_measurement` argument"
             )
         fill_value = optional_qumode_measurements[default_qumode_measurement]
-        qumode_schema = BasisMap({m: fill_value for m in mp.wires & sa_res.qumodes})
+        qumode_schema = BasisMap(dict.fromkeys(mp.wires & sa_res.qumodes, fill_value))
         schema |= qumode_schema
 
     return hl_mp.SampleMP(bases=schema)

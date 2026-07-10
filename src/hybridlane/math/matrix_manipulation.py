@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Module for expanding matrices and vectors to larger Hilbert spaces"""
 
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, overload
 
 import numpy as np
 import scipy as sp
@@ -11,10 +12,9 @@ from pennylane import math
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 from scipy.sparse import coo_array, sparray
-from typing_extensions import overload
 
 if TYPE_CHECKING:
-    from torch import Tensor as TorchTensor
+    from torch import Tensor as TorchTensor  # ty:ignore[unresolved-import]
 
 
 @overload
@@ -47,7 +47,8 @@ def expand_matrix(
     r"""Equivalent of :func:`pennylane.math.expand_matrix`
 
     Compared to the PennyLane version, this supports variable dimensions per subsystem, passed
-    in through the ``wire_dims`` argument. If not specified, it defaults to 2 for all wires, which is the behavior of PennyLane.
+    in through the ``wire_dims`` argument. If not specified, it defaults to 2 for all wires, which
+    is the behavior of PennyLane.
 
     Args:
         mat: The matrix to expand. Must be square and have shape ``(d, d)`` where ``d`` is
@@ -75,7 +76,7 @@ def expand_matrix(
 
     shape = math.shape(mat)
     if not wires and shape == (1, 1):  # pyright: ignore[reportCallIssue]
-        return complex(mat[0, 0])
+        return complex(mat[0, 0])  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     if wires - wire_order:
         raise ValueError("The wire_order must contain every wire in wires.")
@@ -92,9 +93,7 @@ def expand_matrix(
     before_wire_order = wire_order[:min_idx]
     mid_wire_order = wire_order[min_idx : max_idx + 1]
     after_wire_order = wire_order[max_idx + 1 :]
-    extra_wires = (
-        mid_wire_order - wires
-    )  # all the wires that we'll need to put identity on
+    extra_wires = mid_wire_order - wires  # all the wires that we'll need to put identity on
 
     # Now we'll pad all the extra wires with identity
     if extra_wires:
@@ -104,17 +103,13 @@ def expand_matrix(
 
     # Permute from sub_wire_order to subset, which is a subset of our target wire order.
     # After this, we'll only need to pad the beginning or end.
-    curr_wire_order = (
-        wires + extra_wires
-    )  # subset reordered so that all extras come at the end
+    curr_wire_order = wires + extra_wires  # subset reordered so that all extras come at the end
     if interface == "scipy":
         mat = cast(sparray, mat)
-        mat = permute_sparse_matrix(
-            mat, curr_wire_order, mid_wire_order, wire_dims, sparse_format
-        )
+        mat = _permute_sparse_matrix(mat, curr_wire_order, mid_wire_order, wire_dims, sparse_format)
     else:
         mat = cast(TensorLike, mat)
-        mat = permute_dense_matrix(mat, curr_wire_order, mid_wire_order, wire_dims)
+        mat = _permute_dense_matrix(mat, curr_wire_order, mid_wire_order, wire_dims)
 
     # Now pad the before and after sections with identity too
     if before_wire_order:
@@ -157,11 +152,11 @@ def _kron_with_batch(
     if batch_dim is None:
         return _kron(mat1, mat2, interface)
 
-    matrices = [_kron(m, mat2, interface) for m in mat1]
+    matrices = [_kron(m, mat2, interface) for m in mat1]  # ty:ignore[not-iterable]
     return math.stack(matrices, like=interface)
 
 
-def permute_dense_matrix(
+def _permute_dense_matrix(
     mat: TensorLike,
     wires: Wires,
     wire_order: Wires,
@@ -177,14 +172,14 @@ def permute_dense_matrix(
 
     # Reshape the operator from (d, d) to (o1, ..., on, i1, ..., in) where oi == ii
     source_dims = tuple(wire_dims[wire] for wire in wires)
-    expanded_shape = (batch_dim,) if batch_dim else () + source_dims + source_dims
+    expanded_shape = (batch_dim,) if batch_dim else (*source_dims, *source_dims)
     mat = math.reshape(mat, expanded_shape)
     mat = math.transpose(mat, perm)
     mat = math.reshape(mat, shape)
     return mat
 
 
-def permute_sparse_matrix(
+def _permute_sparse_matrix(
     mat: sparray,
     wires: Wires,
     wire_order: Wires,
@@ -193,28 +188,26 @@ def permute_sparse_matrix(
 ) -> sparray:
     perm = tuple(wire_order.indices(wires))
     dims = tuple(wire_dims[wire] for wire in wires)
-    P = build_sparse_permutation_matrix(dims, perm)
-    assert P.shape[-2:] == mat.shape[-2:], (
+    p = _build_sparse_permutation_matrix(dims, perm)
+    assert p.shape[-2:] == mat.shape[-2:], (  # ty:ignore[unresolved-attribute]
         "Permutation matrix must be the same shape as the input matrix."
     )
-    result = P @ mat @ P.T
+    result = p @ mat @ p.T  # ty:ignore[unresolved-attribute, unsupported-operator]
     return result.asformat(format)
 
 
-def build_sparse_permutation_matrix(
-    dims: tuple[int, ...], perm: tuple[int, ...]
-) -> sparray:
-    """
-    Build sparse permutation matrix for subsystem reordering.
+def _build_sparse_permutation_matrix(dims: tuple[int, ...], perm: tuple[int, ...]) -> sparray:
+    """Build sparse permutation matrix for subsystem reordering.
 
     Args:
         dims: tuple of subsystem dimensions (d1, ..., dn)
+
         perm: permutation of subsystems (0-indexed)
               e.g., (1, 0, 2) swaps first two subsystems
 
     Returns:
         Sparse permutation matrix P in CSR format, shape (d, d) where d = prod(dims)
-        Use as: M_permuted = P @ M @ P.T
+            Use as: M_permuted = P @ M @ P.T
     """
     d = int(math.prod(dims))
 
@@ -244,8 +237,8 @@ def build_sparse_permutation_matrix(
     # Create sparse matrix with all 1s
     data = math.ones(d, dtype=np.int8)  # or dtype=np.float64 if preferred
 
-    P = coo_array((data, (rows, cols)), shape=(d, d))
-    return P.tocsr()
+    p = coo_array((data, (rows, cols)), shape=(d, d))
+    return p.tocsr()
 
 
 @overload
@@ -278,7 +271,8 @@ def expand_vector(
     r"""Equivalent of :func:`pennylane.math.expand_vector`
 
     Compared to the PennyLane version, this supports variable dimensions per subsystem, passed
-    in through the ``wire_dims`` argument. If not specified, it defaults to 2 for all wires, which is the behavior of PennyLane.
+    in through the ``wire_dims`` argument. If not specified, it defaults to 2 for all wires, which
+    is the behavior of PennyLane.
 
     Args:
         vec: The vector to expand. Must have shape ``(d,)`` where ``d`` is
@@ -306,7 +300,7 @@ def expand_vector(
 
     shape = math.shape(vec)
     if not wires and shape == (1,):  # pyright: ignore[reportCallIssue]
-        return complex(vec[0])
+        return complex(vec[0])  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     if wires - wire_order:
         raise ValueError("The wire_order must contain every wire in wires.")
@@ -333,17 +327,13 @@ def expand_vector(
 
     # Permute from sub_wire_order to subset, which is a subset of our target wire order.
     # After this, we'll only need to pad the beginning or end.
-    curr_wire_order = (
-        wires + extra_wires
-    )  # subset reordered so that all extras come at the end
+    curr_wire_order = wires + extra_wires  # subset reordered so that all extras come at the end
     if interface == "scipy":
         vec = cast(sparray, vec)
-        vec = permute_sparse_vector(
-            vec, curr_wire_order, mid_wire_order, wire_dims, sparse_format
-        )
+        vec = _permute_sparse_vector(vec, curr_wire_order, mid_wire_order, wire_dims, sparse_format)
     else:
         vec = cast(TensorLike, vec)
-        vec = permute_dense_vector(vec, curr_wire_order, mid_wire_order, wire_dims)
+        vec = _permute_dense_vector(vec, curr_wire_order, mid_wire_order, wire_dims)
 
     # Now pad the before and after sections with zeros too
     if before_wire_order:
@@ -374,7 +364,7 @@ def _identity_vector(dim: int, like: str) -> TensorLike | sparray:
     return vec
 
 
-def permute_dense_vector(
+def _permute_dense_vector(
     vec: TensorLike,
     wires: Wires,
     wire_order: Wires,
@@ -388,7 +378,7 @@ def permute_dense_vector(
     perm = tuple(i + bool(batch_dim) for i in perm)
 
     if batch_dim:
-        perm = (0,) + perm
+        perm = (0, *perm)
 
     source_dims = tuple(wire_dims[wire] for wire in wires)
     expanded_shape = ((batch_dim,) if batch_dim else ()) + source_dims
@@ -398,7 +388,7 @@ def permute_dense_vector(
     return vec
 
 
-def permute_sparse_vector(
+def _permute_sparse_vector(
     vec: sparray,
     wires: Wires,
     wire_order: Wires,
@@ -407,6 +397,6 @@ def permute_sparse_vector(
 ) -> sparray:
     perm = tuple(wire_order.indices(wires))
     dims = tuple(wire_dims[wire] for wire in wires)
-    P = build_sparse_permutation_matrix(dims, perm)
-    result = P @ vec
+    p = _build_sparse_permutation_matrix(dims, perm)
+    result = p @ vec  # ty:ignore[unsupported-operator]
     return result.asformat(format)

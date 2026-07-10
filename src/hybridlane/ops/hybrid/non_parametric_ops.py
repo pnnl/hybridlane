@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D107, D102
+r"""Hybrid CV-DV gates that don't have any parameters"""
+
 import math
+from typing import ClassVar
 
 import numpy as np
 import pennylane as qp
@@ -58,7 +62,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
     num_wires = 2
     num_qumodes = 1
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)
@@ -66,7 +70,7 @@ class ConditionalParity(HybridOperation, FockRepresentation):
     def adjoint(self):
         return hl.ConditionalRotation(-math.pi, self.wires)
 
-    def pow(self, z: int | float) -> list[Operation]:
+    def pow(self, z: int | float) -> list[Operation]:  # ty:ignore[invalid-method-override]
         z_mod4 = z % 4
 
         if np.allclose(z_mod4, 0):
@@ -75,12 +79,10 @@ class ConditionalParity(HybridOperation, FockRepresentation):
         return [hl.ConditionalRotation(math.pi * z_mod4, self.wires)]
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CP", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "CP", cache=cache)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         f = hl.Fourier.compute_fock_matrix(wire_dims[1:])
         fd = hl.math.conj(hl.math.transpose(f))
         return hl.math.block_diag([f, fd])

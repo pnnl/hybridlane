@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: N806
 import math
 
 import pennylane as qp
@@ -59,7 +60,7 @@ class TestTwoModeSum:
         import jax.numpy as jnp
 
         lam = jnp.array(0.3)
-        op = hl.TwoModeSum(lam, wires=[0, 1])
+        op = hl.TwoModeSum(lam, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 4, 1: 4})
         eye = hl.math.eye(16, like="jax")
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
@@ -84,7 +85,7 @@ class TestTwoModeSum:
         # todo: don't have a good understanding of this gate to build a solid test
         def f(x):
             op = hl.SUM(x, wires=[0, 1])
-            return op.fock_matrix({0: 4, 1: 4}).real
+            return op.fock_matrix({0: 4, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array(0.123)
         grad_fn = hl.math.jacobian(f)
@@ -120,7 +121,7 @@ class TestTwoModeSum:
                 [0, 0, 0, 0, 1],
             ]
         )
-        assert M == pytest.approx(expected, abs=1e-6)
+        assert pytest.approx(expected, abs=1e-6) == M
 
     @pytest.mark.jax
     def test_heisenberg_rep_jit(self):
@@ -184,15 +185,11 @@ class TestBeamsplitter:
 
         # Build index list for the inner subspace (n_total = n_a + n_b <= n_cut)
         inner = hl.math.asarray(
-            [
-                n_a * dim + n_b
-                for n_a in range(dim)
-                for n_b in range(dim)
-                if n_a + n_b <= n_cut
-            ]
+            [n_a * dim + n_b for n_a in range(dim) for n_b in range(dim) if n_a + n_b <= n_cut]
         )
-        assert mat[hl.math.ix_(inner, inner)] == pytest.approx(
-            mat2[hl.math.ix_(inner, inner)], abs=1e-10
+        assert mat[hl.math.ix_(inner, inner)] == pytest.approx(  # ty:ignore[not-subscriptable]
+            mat2[hl.math.ix_(inner, inner)],  # ty:ignore[not-subscriptable]
+            abs=1e-10,
         )
 
     def test_fock_matrix_commutes(self):
@@ -203,7 +200,7 @@ class TestBeamsplitter:
         matrix = op.fock_matrix(dims)
         n_a = hl.N(0).fock_matrix(dims, wire_order=(0, 1))
         n_b = hl.N(1).fock_matrix(dims, wire_order=(0, 1))
-        commutator = matrix @ (n_a + n_b) - (n_a + n_b) @ matrix
+        commutator = matrix @ (n_a + n_b) - (n_a + n_b) @ matrix  # ty:ignore[unsupported-operator]
         assert commutator == pytest.approx(0, abs=1e-6)
 
     def test_action_on_fock_operators(self):
@@ -223,21 +220,14 @@ class TestBeamsplitter:
         a_prime = bsd @ a @ bs
         b_prime = bsd @ b @ bs
         expected_a_prime = (
-            hl.math.cos(theta / 2) * a
-            - 1j * hl.math.exp(1j * phi) * hl.math.sin(theta / 2) * b
+            hl.math.cos(theta / 2) * a - 1j * hl.math.exp(1j * phi) * hl.math.sin(theta / 2) * b
         )
         expected_b_prime = (
-            hl.math.cos(theta / 2) * b
-            - 1j * hl.math.exp(-1j * phi) * hl.math.sin(theta / 2) * a
+            hl.math.cos(theta / 2) * b - 1j * hl.math.exp(-1j * phi) * hl.math.sin(theta / 2) * a
         )
         # Build index list for the inner subspace (n_total = n_a + n_b <= n_cut)
         inner = hl.math.asarray(
-            [
-                n_a * dim + n_b
-                for n_a in range(dim)
-                for n_b in range(dim)
-                if n_a + n_b <= n_cut
-            ]
+            [n_a * dim + n_b for n_a in range(dim) for n_b in range(dim) if n_a + n_b <= n_cut]
         )
         assert a_prime[hl.math.ix_(inner, inner)] == pytest.approx(
             expected_a_prime[hl.math.ix_(inner, inner)], abs=1e-10
@@ -252,7 +242,7 @@ class TestBeamsplitter:
 
         theta = jnp.array(math.pi / 4)
         phi = jnp.array(0.0)
-        op = hl.Beamsplitter(theta, phi, wires=[0, 1])
+        op = hl.Beamsplitter(theta, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 4, 1: 4})
         eye = hl.math.eye(16, like="jax")
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
@@ -321,7 +311,7 @@ class TestBeamsplitter:
                 [0, -s * cp, -s * sp, 0, c],
             ]
         )
-        assert M == pytest.approx(expected, abs=1e-6)
+        assert pytest.approx(expected, abs=1e-6) == M
 
     @pytest.mark.jax
     def test_heisenberg_rep_jit(self):
@@ -350,9 +340,7 @@ class TestTwoModeSqueezing:
         adj_op = op.adjoint()
         assert isinstance(adj_op, hl.TwoModeSqueezing)
         assert adj_op.parameters[0] == 0.5
-        assert adj_op.parameters[1] == pytest.approx(
-            (0.3 + math.pi) % (2 * math.pi), abs=1e-6
-        )
+        assert adj_op.parameters[1] == pytest.approx((0.3 + math.pi) % (2 * math.pi), abs=1e-6)
 
     def test_simplify(self):
         op = hl.TwoModeSqueezing(0, 0.3, wires=[0, 1])
@@ -407,7 +395,7 @@ class TestTwoModeSqueezing:
         # todo: don't have a good understanding of this gate to build a solid test
         def f(x):
             op = hl.TMS(*x, wires=(0, 1))
-            return op.fock_matrix({0: 4, 1: 4}).real
+            return op.fock_matrix({0: 4, 1: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, 0.456])
         grad_fn = hl.math.jacobian(f)
@@ -434,7 +422,7 @@ class TestTwoModeSqueezing:
                 [0, sh * sp, -sh * cp, 0, ch],
             ]
         )
-        assert M == pytest.approx(expected, abs=1e-6)
+        assert pytest.approx(expected, abs=1e-6) == M
 
     @pytest.mark.jax
     def test_heisenberg_rep_jit(self):

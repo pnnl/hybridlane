@@ -21,7 +21,6 @@ def test_package_works_without_bosonic_qiskit(monkeypatch):
     import hybridlane  # noqa: F401
 
 
-@pytest.mark.bq
 class TestBosonicQiskitDevice:
     @pytest.mark.unit
     def test_device_is_registered(self):
@@ -78,9 +77,7 @@ class TestBosonicQiskitDevice:
 
         @qp.qnode(dev)
         def circuit():
-            hl.ConditionalDisplacement(
-                1.0, 0, [0, 1]
-            )  # wire 0 established as a qubit here
+            hl.ConditionalDisplacement(1.0, 0, [0, 1])  # wire 0 established as a qubit here
             return hl.expval(hl.NumberOperator(0))  # measure wire 0 in fock basis
 
         with pytest.raises(TypeCheckError):
@@ -134,7 +131,6 @@ class TestBosonicQiskitDevice:
         assert np.isclose(expval_p, expected_p)
 
 
-@pytest.mark.bq
 class TestOperations:
     @pytest.mark.integration
     def test_fockstatevector(self):
@@ -160,8 +156,8 @@ class TestOperations:
     @pytest.mark.integration
     @pytest.mark.parametrize("alpha", (0.2, 0.5, 1.0, -1.0, -0.5, -0.2))
     def test_displacement(self, alpha):
-        # Basic circuit that prepares |α> and checks the mean photon count
-        # is <n> = |α|^2
+        # Basic circuit that prepares |a> and checks the mean photon count
+        # is <n> = |a|^2
         dev = qp.device("bosonicqiskit.hybrid", max_fock_level=16)
 
         @qp.qnode(dev)
@@ -271,7 +267,6 @@ class TestOperations:
         assert np.isclose(expval, -1)
 
 
-@pytest.mark.bq
 class TestObservableMeasurements:
     @pytest.mark.integration
     def test_vacuum_expval(self):
@@ -389,7 +384,6 @@ class TestObservableMeasurements:
         assert np.isclose(n, expval_n + expval_x)
 
 
-@pytest.mark.bq
 @pytest.mark.integration
 class TestStateMeasurements:
     @pytest.mark.parametrize(["wires", "state_index"], [([0, 1], 1), ([1, 0], 2)])
@@ -471,7 +465,6 @@ class TestStateMeasurements:
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.bq
 class TestIntegration:
     @pytest.mark.parametrize("n", range(6))
     def test_create_fock_state_analytic(self, n):
@@ -540,13 +533,13 @@ class TestIntegration:
 
         @qp.qnode(dev)
         def circuit(alpha):
-            # Put the qumode into state |α> + |-α>, which acts like |0L> + |1L>
+            # Put the qumode into state |a> + |-a>, which acts like |0L> + |1L>
             qp.H(0)
             hl.CD(alpha, 0, wires=[0, 1])
             qp.H(0)
 
             # Now use ancilliary qubit to read it out with a phase kickback
-            qp.Displacement(alpha, 0, 1)  # |0> + |2α>
+            qp.Displacement(alpha, 0, 1)  # |0> + |2a>
             qp.H(2)
             hl.SQR(np.pi, np.pi / 2, 0, wires=[2, 1])  # Ry(pi)|0><0|
             qp.H(2)

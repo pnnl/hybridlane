@@ -99,7 +99,7 @@ class JCEvolution(Operation, Hybrid):
     num_params = 4
     num_wires = 2
     num_qumodes = 1
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, t, omega_r=1, omega_q=-1, chi=0.1, wires=None, id=None):
         super().__init__(t, omega_r, omega_q, chi, wires=wires, id=id)

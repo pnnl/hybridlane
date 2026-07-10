@@ -19,7 +19,7 @@ class TestGetFinalState:
         if like == "jax":
             import jax
 
-            f = jax.jit(f)
+            f = jax.jit(f)  # ty:ignore[invalid-assignment]
 
         alpha = hl.math.array(0.123, like=like)
         expected_state = coherent_state(alpha, 5)

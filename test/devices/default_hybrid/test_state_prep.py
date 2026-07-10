@@ -64,7 +64,7 @@ class TestCatState:
         for p in (0, 1):
             op = qp.CatState(0.123, 0.456, p, wires=0)
             ket = state_vector(op, (4,))
-            assert ket[(1 - p) :: 2] == pytest.approx(0)
+            assert ket[(1 - p) :: 2] == pytest.approx(0)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     def test_batched_prep(self):
         # Batched alpha parameter
@@ -79,8 +79,8 @@ class TestCatState:
         op = qp.CatState(0.123, 0, [0, 1], wires=0)
         ket = state_vector(op, (4,))
         assert hl.math.shape(ket) == (2, 4)
-        assert ket[0, 1::2] == pytest.approx(0)
-        assert ket[1, 0::2] == pytest.approx(0)
+        assert ket[0, 1::2] == pytest.approx(0)  # ty:ignore[invalid-argument-type, not-subscriptable]
+        assert ket[1, 0::2] == pytest.approx(0)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
 
 @pytest.mark.unit
@@ -108,7 +108,7 @@ class TestPennyLaneFockState:
         op = qp.FockState(3, wires=0)
         ket = state_vector(op, (8,))
         assert hl.math.shape(ket) == (8,)
-        assert ket[3] == pytest.approx(1)
+        assert ket[3] == pytest.approx(1)  # ty:ignore[invalid-argument-type, not-subscriptable]
         assert hl.math.sum(ket) == pytest.approx(1)
 
     def test_batched_prep(self):
@@ -116,7 +116,7 @@ class TestPennyLaneFockState:
         ket = state_vector(op, (4,))
         assert hl.math.shape(ket) == (3, 4)
         for i in range(3):
-            assert ket[i, i] == pytest.approx(1)
+            assert ket[i, i] == pytest.approx(1)  # ty:ignore[invalid-argument-type, not-subscriptable]
             assert hl.math.sum(ket, axis=-1) == pytest.approx(1)
 
 
@@ -126,15 +126,15 @@ class TestHybridlaneFockState:
         op = hl.FockState(3, wires=(0, 1))
         ket = state_vector(op, (2, 8))
         assert hl.math.shape(ket) == (16,)
-        assert ket[3] == pytest.approx(1)
+        assert ket[3] == pytest.approx(1)  # ty:ignore[invalid-argument-type, not-subscriptable]
         assert hl.math.sum(ket) == pytest.approx(1)
 
     def test_batched_prep(self):
-        op = hl.FockState([0, 1, 2], wires=(0, 1))
+        op = hl.FockState([0, 1, 2], wires=(0, 1))  # ty:ignore[invalid-argument-type]
         ket = state_vector(op, (2, 4))
         assert hl.math.shape(ket) == (3, 8)
         for i in range(3):
-            assert ket[i, i] == pytest.approx(1)
+            assert ket[i, i] == pytest.approx(1)  # ty:ignore[invalid-argument-type, not-subscriptable]
             assert hl.math.sum(ket, axis=-1) == pytest.approx(1)
 
 

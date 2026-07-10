@@ -56,13 +56,14 @@ class Qumode:
 
     @classmethod
     def try_from_string(cls, s: str):
+        r"""Tries to parse the string representation of a qumode."""
         match = re.match(r"^m([01])i(\d+)$", s)
         if not match:
             return None
 
         manifold = int(match.group(1))
         index = int(match.group(2))
-        return cls(manifold=manifold, index=index)
+        return cls(manifold=manifold, index=index)  # ty:ignore[invalid-argument-type]
 
 
 # Mappings from the names of gates to Jaqal
@@ -102,6 +103,7 @@ BOSON_GATES = {
 
 
 def get_qubit_gate_defs():
+    r"""Returns the Jaqal qubit gate definitions"""
     from jaqalpaq.core.usepulses import UsePulsesStatement
 
     stmt = UsePulsesStatement("qscout.v1.std", all)
@@ -110,6 +112,7 @@ def get_qubit_gate_defs():
 
 # put in function so that it is not executed on import
 def get_boson_gate_defs():
+    r"""Returns the Jaqal boson gate definitions"""
     from jaqalpaq.core import GateDefinition, Parameter, ParamType
 
     return {
@@ -207,9 +210,20 @@ def get_boson_gate_defs():
 
 
 def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
+    r"""Converts the qnode to a Jaqal program string
+
+    Args:
+        qnode: The qnode to convert to Jaqal IR
+
+        level: The level at which to convert the qnode.
+
+        precision: The precision to use when converting floating point numbers to strings.
+            Default is 20.
+    """
+
     @wraps(qnode)
     def wrapper(*args, **kwargs) -> str:
-        batch, fn = qp.workflow.construct_batch(qnode, level=level)(*args, **kwargs)
+        batch, _ = qp.workflow.construct_batch(qnode, level=level)(*args, **kwargs)
         return batch_to_jaqal(
             batch,
             precision=precision,
@@ -218,9 +232,12 @@ def to_jaqal(qnode, level: str | int | slice = "user", precision: int = 20):
     return wrapper
 
 
-def batch_to_jaqal(
-    batch: Sequence[QuantumScript], precision: int = 20
-) -> LiteralString:
+def batch_to_jaqal(batch: Sequence[QuantumScript], precision: int = 20) -> LiteralString:
+    r"""Converts a batch of tapes to a single Jaqal program
+
+    The batch of tapes will all be part of the same program, with each tape being a subcircuit
+    block in the Jaqal program.
+    """
     from jaqalpaq.core import Circuit
     from jaqalpaq.core.usepulses import UsePulsesStatement
     from jaqalpaq.generator import generate_jaqal_program
@@ -240,7 +257,7 @@ def batch_to_jaqal(
         inject_pulses=get_boson_gate_defs() | get_qubit_gate_defs(),
         autoload_pulses="ignore",
     )
-    def program(Q: "qsyntax.Q"):
+    def program(Q: qsyntax.Q):  # noqa: N803
         q = Q.register(num_qubits, "q")
         for tape in batch:
             with Q.subcircuit():
@@ -257,49 +274,50 @@ def batch_to_jaqal(
         return generate_jaqal_program(ir).strip()
 
 
-def convert_params(params, round_small=True):
+def _convert_params(params, round_small=True):
     params = [p.item() if hasattr(p, "item") else p for p in params]
 
     if round_small:
-        return list(map(lambda x: round(x, 6), params))
+        return [round(x, 6) for x in params]
     else:
         return params
 
 
 @singledispatch
-def gate_to_ir(op: Operation, Q, q):
-    if gate_id := QUBIT_GATES.get(op.name, None):
+def gate_to_ir(op: Operation, Q, q):  # noqa: N803
+    r"""Encodes a hybridlane operation into its Jaqal IR data structure"""
+    if gate_id := QUBIT_GATES.get(op.name):
         wires = [q[wire] for wire in op.wires]
-        getattr(Q, gate_id)(*wires, *convert_params(op.parameters))
+        getattr(Q, gate_id)(*wires, *_convert_params(op.parameters))
         return
 
     raise DeviceError(f"Cannot serialize non-native gate to Jaqal: {op}")
 
 
 @gate_to_ir.register
-def _(op: native_ops.R, Q, q):
+def _(op: native_ops.R, Q, q):  # noqa: N803
     gate_id = QUBIT_GATES[op.name]
-    angle, axis_angle = convert_params(op.parameters)
+    angle, axis_angle = _convert_params(op.parameters)
     qubit = q[op.wires[0]]
-    getattr(Q, gate_id)(qubit, axis_angle, angle)
+    getattr(Q, gate_id)(qubit, axis_angle, angle)  # ty:ignore[invalid-argument-type]
 
 
 @gate_to_ir.register
-def _(_op: qp.GlobalPhase | qp.Identity, Q, q):
+def _(_op: qp.GlobalPhase | qp.Identity, *_):
     return
 
 
 @gate_to_ir.register
-def _(op: hl.Red | hl.Blue, Q, q):
+def _(op: hl.Red | hl.Blue, Q, q):  # noqa: N803
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
-    [angle, phase] = convert_params(op.parameters)
+    [angle, phase] = _convert_params(op.parameters)
     getattr(Q, gate_id)(q[qubit], mode.manifold, mode.index, phase, angle)
 
 
 @gate_to_ir.register
-def _(op: hl.FockState, Q, q):
+def _(op: hl.FockState, Q, q):  # noqa: N803
     gate_id = BOSON_GATES[op.name]
     fock_state = int(op.hyperparameters["n"])
     qubit, mode = op.wires
@@ -308,22 +326,20 @@ def _(op: hl.FockState, Q, q):
 
 
 @gate_to_ir.register
-def _(op: native_ops.SidebandProbe, Q, q):
+def _(op: native_ops.SidebandProbe, Q, q):  # noqa: N803
     gate_id = BOSON_GATES[op.name]
-    [duration_us, phase, sign, detuning] = convert_params(op.parameters)
+    [duration_us, phase, sign, detuning] = _convert_params(op.parameters)
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
-    getattr(Q, gate_id)(
-        q[qubit], phase, duration_us, mode.manifold, mode.index, sign, detuning
-    )
+    getattr(Q, gate_id)(q[qubit], phase, duration_us, mode.manifold, mode.index, sign, detuning)
 
 
 @gate_to_ir.register
-def _(op: hl.XCD | hl.YCD | hl.CD, Q, q):
+def _(op: hl.XCD | hl.YCD | hl.CD, Q, q):  # noqa: N803
     gate_id = BOSON_GATES[op.name]
     qubit, mode = op.wires
     assert isinstance(mode, Qumode)
-    [beta, angle] = convert_params(op.parameters, round_small=False)
+    [beta, angle] = _convert_params(op.parameters, round_small=False)
     beta_re = beta * math.cos(angle)
     beta_im = beta * math.sin(angle)
     beta_re = round(beta_re, 6)
@@ -332,16 +348,16 @@ def _(op: hl.XCD | hl.YCD | hl.CD, Q, q):
 
 
 @gate_to_ir.register
-def _(op: native_ops.ConditionalXSqueezing, Q, q):
+def _(op: native_ops.ConditionalXSqueezing, Q, q):  # noqa: N803
     gate_id = BOSON_GATES[op.name]
-    qubit, mode = op.wires
-    [blue_red_ratio] = convert_params(op.parameters)
+    qubit, _ = op.wires
+    [blue_red_ratio] = _convert_params(op.parameters)
     getattr(Q, gate_id)(q[qubit], blue_red_ratio)
 
 
 @gate_to_ir.register
-def _(op: native_ops.NativeBeamsplitter, Q, q):
+def _(op: native_ops.NativeBeamsplitter, Q, q):  # noqa: N803
     gate_id = BOSON_GATES[op.name]
-    qubit, *modes = op.wires
-    [detuning1, detuning2, duration, phase] = convert_params(op.parameters)
+    qubit, *_ = op.wires
+    [detuning1, detuning2, duration, phase] = _convert_params(op.parameters)
     getattr(Q, gate_id)(q[qubit], detuning1, detuning2, duration, phase)

@@ -1,8 +1,11 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D102
+r"""CV observables"""
+
 import math
-from collections.abc import Iterable, Sequence
-from typing import Any, Hashable
+from collections.abc import Hashable, Iterable, Sequence
+from typing import Any
 
 import numpy as np
 import pennylane as qp
@@ -48,7 +51,7 @@ class QuadX(qp.QuadX, Spectral, FockRepresentation):
         return hl.wires.ComputationalBasis.Position
 
     @staticmethod
-    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
+    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:  # ty:ignore[invalid-method-override]  # noqa: ARG004
         return []
 
     def position_spectrum(self, *basis_states) -> Sequence[float]:
@@ -59,7 +62,7 @@ class QuadX(qp.QuadX, Spectral, FockRepresentation):
         return f"x̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         # Standard units
         lam = 1 / math.sqrt(2)
         a = hl.CreationOp.compute_fock_matrix(wire_dims)
@@ -108,14 +111,14 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
         return hl.wires.ComputationalBasis.Position
 
     @staticmethod
-    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
+    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:  # ty:ignore[invalid-method-override]
         return [Rotation(math.pi / 2, wires=wires)]  # rotate p -> x
 
     @staticmethod
     def compute_decomposition(
-        *params: TensorLike,
+        *params: TensorLike,  # noqa: ARG004
         wires: Wires | Iterable[Hashable] | Hashable | None = None,
-        **hyperparameters: dict[str, Any],
+        **hyperparameters: dict[str, Any],  # noqa: ARG004
     ) -> list[Operator]:
         return [Rotation(-math.pi / 2, wires=wires), QuadX(wires)]
 
@@ -124,7 +127,7 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
         return f"p̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         # Standard units
         lam = 1 / math.sqrt(2)
         a = hl.CreationOp.compute_fock_matrix(wire_dims)
@@ -142,7 +145,11 @@ r"""Momentum operator :math:`\hat{p}`
 
 
 class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
-    r"""The generalized quadrature observable :math:`\hat{x}_\phi = \hat{x} \cos\phi + \hat{p} \sin\phi`
+    r"""The generalized quadrature observable :math:`\hat{x}_\phi`
+
+    .. math::
+
+        \hat{x}_\phi = \hat{x} \cos\phi + \hat{p} \sin\phi
 
     When used with the :func:`~hybridlane.expval` function, the expectation
     value :math:`\braket{\hat{x_\phi}}` is returned. This corresponds to
@@ -171,7 +178,7 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
     def compute_diagonalizing_gates(
         *params: TensorLike,
         wires: Wires | Iterable[Hashable] | Hashable,
-        **hyperparams: dict[str, Any],
+        **hyperparams: dict[str, Any],  # noqa: ARG004
     ) -> list[Operator]:
         return [Rotation(params[0], wires)]
 
@@ -179,7 +186,7 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
     def compute_decomposition(
         *params: TensorLike,
         wires: Wires | Iterable[Hashable] | Hashable | None = None,
-        **hyperparameters: dict[str, Any],
+        **hyperparameters: dict[str, Any],  # noqa: ARG004
     ) -> list[Operator]:
         return [Rotation(params[0], wires=wires), QuadX(wires)]
 
@@ -188,7 +195,7 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
         return f"x̂_ϕ({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         x = QuadX.compute_fock_matrix(wire_dims)
         x = hl.math.asarray(x, like=phi)
         p = QuadP.compute_fock_matrix(wire_dims)
@@ -231,7 +238,7 @@ class NumberOperator(qp.NumberOperator, Spectral, FockRepresentation):
         return hl.wires.ComputationalBasis.Discrete
 
     @staticmethod
-    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:
+    def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:  # ty:ignore[invalid-method-override]  # noqa: ARG004
         return []
 
     def fock_spectrum(self, *basis_states) -> Sequence[float]:
@@ -242,7 +249,7 @@ class NumberOperator(qp.NumberOperator, Spectral, FockRepresentation):
         return f"n̂({inner})"
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:
+    def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         return hl.math.diag(hl.math.arange(wire_dims[0]))
 
 
@@ -256,10 +263,16 @@ r"""Number operator :math:`\hat{n}`
 
 
 class FockStateProjector(qp.FockStateProjector, Spectral, FockRepresentation):
-    r"""The projector onto a multi-mode Fock state :math:`\ket{n_1, n_2, \ldots, n_m}\bra{n_1, n_2, \ldots, n_m}`
+    r"""The projector onto a multi-mode Fock state
+
+    .. math::
+
+        \ket{n_1, n_2, \ldots, n_m}\bra{n_1, n_2, \ldots, n_m}
 
     When used with the :func:`~hybridlane.expval` function, the expectation value
-    :math:`\braket{\ket{n_1, n_2, \ldots, n_m}\bra{n_1, n_2, \ldots, n_m}}` is returned. This corresponds to the probability of the system being in the Fock state :math:`\ket{n_1, n_2, \ldots, n_m}`.
+    :math:`\braket{\ket{n_1, n_2, \ldots, n_m}\bra{n_1, n_2, \ldots, n_m}}` is returned. This
+    corresponds to the probability of the system being in the Fock state
+    :math:`\ket{n_1, n_2, \ldots, n_m}`.
 
     **Details**:
 
@@ -312,7 +325,9 @@ class FockStateProjector(qp.FockStateProjector, Spectral, FockRepresentation):
 
     @staticmethod
     def compute_diagonalizing_gates(
-        *parameters: TensorLike, wires: WiresLike, **hyperparameters
+        *parameters: TensorLike,  # noqa: ARG004
+        wires: WiresLike,  # noqa: ARG004
+        **hyperparameters,  # noqa: ARG004
     ) -> list[Operator]:
         return []
 
@@ -326,7 +341,7 @@ class FockStateProjector(qp.FockStateProjector, Spectral, FockRepresentation):
         return row_matches + 0
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], n) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], n) -> TensorLike:  # ty:ignore[invalid-method-override]
         n = hl.math.asarray(n)
 
         if n.ndim == 0:

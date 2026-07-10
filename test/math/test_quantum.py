@@ -16,7 +16,7 @@ class TestReduceStatevector:
         if like == "jax":
             import jax
 
-            f = jax.jit(f, static_argnums=(1, 2))
+            f = jax.jit(f, static_argnums=(1, 2))  # ty:ignore[invalid-assignment]
 
         states = [
             math.array([1, 0, 0, 0], like=like),
@@ -26,9 +26,7 @@ class TestReduceStatevector:
 
         for state in states:
             for index in (0, 1):
-                expected = qp.math.reduce_statevector(
-                    state, indices=(index,), c_dtype=dtype
-                )
+                expected = qp.math.reduce_statevector(state, indices=(index,), c_dtype=dtype)
                 actual = f(state, indices=(index,), dims=(2, 2))
                 assert math.get_dtype_name(actual) == dtype
                 assert actual == pytest.approx(expected)
@@ -41,7 +39,7 @@ class TestReduceStatevector:
         if like == "jax":
             import jax
 
-            f = jax.jit(f, static_argnums=(1, 2))
+            f = jax.jit(f, static_argnums=(1, 2))  # ty:ignore[invalid-assignment]
 
         state0 = math.array([0, 1, 0], like=like)
         state1 = math.array([1, 0], like=like)
@@ -77,12 +75,10 @@ class TestReduceDensityMatrix:
         if like == "jax":
             import jax
 
-            f = jax.jit(f, static_argnums=(1, 2))
+            f = jax.jit(f, static_argnums=(1, 2))  # ty:ignore[invalid-assignment]
 
         states = [
-            math.array(
-                [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], like=like
-            ),
+            math.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], like=like),
             math.array(
                 [[0.5, 0, 0.5, 0], [0, 0, 0, 0], [0.5, 0, 0.5, 0], [0, 0, 0, 0]],
                 like=like,
@@ -111,7 +107,7 @@ class TestReduceDensityMatrix:
         if like == "jax":
             import jax
 
-            f = jax.jit(f, static_argnums=(1, 2))
+            f = jax.jit(f, static_argnums=(1, 2))  # ty:ignore[invalid-assignment]
 
         state0 = math.array([0, 1, 0], like=like)
         state1 = math.array([1, 1], like=like) / math.sqrt(2)

@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-from collections.abc import Mapping
-from typing import Hashable
+r"""State and density matrix measurements"""
+
+from collections.abc import Hashable, Mapping
 
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
@@ -32,14 +33,15 @@ def state() -> "StateMP":
     >>> circuit() # |1,1>
     array([0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 0.+0.j, 1.-0.j, 0.+0.j, 0.+0.j])
     """
-
     return StateMP()
 
 
 class StateMP(StateMeasurement, ShapeRequiresWireDims):
+    r"""Statevector measurement"""
+
     _shortname = "state"
 
-    def __init__(
+    def __init__(  # noqa: D107
         self,
         wires: Wires | None = None,
         id: str | None = None,
@@ -47,23 +49,21 @@ class StateMP(StateMeasurement, ShapeRequiresWireDims):
         super().__init__(wires=wires, id=id)
 
     @property
-    def numeric_type(self):
+    def numeric_type(self):  # noqa: D102
         return complex
 
-    def shape(
-        self, shots: int | None = None, num_device_wires: int = 0
-    ) -> tuple[int, ...]:
+    def shape(self, shots: int | None = None, num_device_wires: int = 0) -> tuple[int, ...]:  # noqa: ARG002, D102
         if self.wire_dims:
             return (int(math.prod(tuple(self.wire_dims.values()))),)
 
         return ()
 
-    def process_state(
+    def process_state(  # noqa: D102
         self,
         state: TensorLike,
         wire_order: Wires,
         wire_dims: Mapping[Hashable, int],
-        eigvals: TensorLike | None = None,
+        eigvals: TensorLike | None = None,  # noqa: ARG002
     ) -> TensorLike:
         if self.wires:
             state = math.expand_vector(
@@ -74,13 +74,7 @@ class StateMP(StateMeasurement, ShapeRequiresWireDims):
         dtype = "complex64" if is_f32 else "complex128"
         return math.cast(state, dtype)
 
-    def process_density_matrix(
-        self,
-        dm: TensorLike,
-        wire_order: Wires,
-        wire_dims: Mapping[Hashable, int],
-        eigvals: TensorLike | None = None,
-    ) -> TensorLike:
+    def process_density_matrix(self, *_, **__) -> TensorLike:  # noqa: D102
         raise ValueError("Can't return density matrix from `hl.state`")
 
 
@@ -114,18 +108,18 @@ def density_matrix(wires: WiresLike | None = None) -> "DensityMatrixMP":
 
 
 class DensityMatrixMP(StateMeasurement, ShapeRequiresWireDims):
+    r"""Density matrix measurement"""
+
     _shortname = "density_matrix"
 
-    def __init__(self, wires: Wires | None = None, id: str | None = None):
+    def __init__(self, wires: Wires | None = None, id: str | None = None):  # noqa: D107
         super().__init__(wires=wires, id=id)
 
     @property
-    def numeric_type(self):
+    def numeric_type(self):  # noqa: D102
         return complex
 
-    def shape(
-        self, shots: int | None = None, num_device_wires: int = 0
-    ) -> tuple[int, ...]:
+    def shape(self, shots: int | None = None, num_device_wires: int = 0) -> tuple[int, ...]:  # noqa: ARG002, D102
         if self.wire_dims:
             if self.wires:
                 dim = int(math.prod(tuple(self.wire_dims[w] for w in self.wires)))
@@ -135,12 +129,12 @@ class DensityMatrixMP(StateMeasurement, ShapeRequiresWireDims):
 
         return ()
 
-    def process_state(
+    def process_state(  # noqa: D102
         self,
         state: TensorLike,
         wire_order: Wires,
         wire_dims: Mapping[Hashable, int],
-        eigvals: TensorLike | None = None,
+        eigvals: TensorLike | None = None,  # noqa: ARG002
     ) -> TensorLike:
         is_f32 = math.get_dtype_name(state) in ("float32", "complex64")
         dtype = "complex64" if is_f32 else "complex128"
@@ -161,9 +155,7 @@ class DensityMatrixMP(StateMeasurement, ShapeRequiresWireDims):
             # Trace out all the undesired wires
             keep_indices = range(len(self.wires))
             dims = tuple(wire_dims[w] for w in expanded_wire_order)
-            rho = math.reduce_statevector(
-                state, indices=keep_indices, dims=dims, c_dtype=dtype
-            )
+            rho = math.reduce_statevector(state, indices=keep_indices, dims=dims, c_dtype=dtype)
 
         else:
             # If no wire order specified, do the usual outer product
@@ -171,12 +163,12 @@ class DensityMatrixMP(StateMeasurement, ShapeRequiresWireDims):
 
         return math.cast(rho, dtype)
 
-    def process_density_matrix(
+    def process_density_matrix(  # noqa: D102
         self,
         dm: TensorLike,
         wire_order: Wires,
         wire_dims: Mapping[Hashable, int],
-        eigvals: TensorLike | None = None,
+        eigvals: TensorLike | None = None,  # noqa: ARG002
     ) -> TensorLike:
         is_f32 = math.get_dtype_name(dm) in ("float32", "complex64")
         dtype = "complex64" if is_f32 else "complex128"

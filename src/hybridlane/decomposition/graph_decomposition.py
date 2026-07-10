@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Patches for PennyLane's graph decomposition system."""
+
 from unittest.mock import patch
 
 import pennylane as qp
 from pennylane.decomposition import CompressedResourceOp, DecompositionRule
-from pennylane.decomposition import DecompositionGraph as PLDG
+from pennylane.decomposition import DecompositionGraph as PennyLaneDecompositionGraph
 from typing_extensions import override
 
 import hybridlane as hl
@@ -15,7 +17,9 @@ from ..ops.op_math.decompositions.qubit_conditioned_decompositions import (
 from .symbolic_decomposition import ctrl_from_qcond, flip_pow_qcond, make_qcond_decomp
 
 
-class DecompositionGraph(PLDG):
+class DecompositionGraph(PennyLaneDecompositionGraph):
+    r"""Custom decomposition graph for PennyLane supporting our custom symbolic operators."""
+
     @override
     def _get_decompositions(
         self, op: CompressedResourceOp, use_reconstructor: bool = False
@@ -23,9 +27,7 @@ class DecompositionGraph(PLDG):
         decomps = super()._get_decompositions(op, use_reconstructor)
 
         if op.op_type in (hl.ops.QubitConditioned,):
-            decomps.extend(
-                self._get_qubit_conditioned_decompositions(op, use_reconstructor)
-            )
+            decomps.extend(self._get_qubit_conditioned_decompositions(op, use_reconstructor))
 
         return decomps
 
@@ -65,7 +67,7 @@ class DecompositionGraph(PLDG):
     def _get_pow_decompositions(
         op: CompressedResourceOp, use_reconstructor: bool = False
     ) -> list[DecompositionRule]:
-        decomps = PLDG._get_pow_decompositions(op)
+        decomps = PennyLaneDecompositionGraph._get_pow_decompositions(op)
 
         if op.params["base_class"] in (hl.ops.QubitConditioned,):
             decomps.append(flip_pow_qcond)
@@ -73,6 +75,4 @@ class DecompositionGraph(PLDG):
         return decomps
 
 
-_ = patch(
-    "pennylane.transforms.decompose.DecompositionGraph", DecompositionGraph
-).start()
+_ = patch("pennylane.transforms.decompose.DecompositionGraph", DecompositionGraph).start()

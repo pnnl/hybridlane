@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-from collections.abc import Mapping
-from typing import Hashable
+r"""Module for probability measurement processes"""
+
+from collections.abc import Hashable, Mapping
 
 from pennylane.operation import Operator
 from pennylane.typing import TensorLike
@@ -12,16 +13,22 @@ from .base import CountsResult, SampleMeasurement, SampleResult, StateMeasuremen
 
 
 def probs(wires: Wires | None = None, op: Operator | None = None) -> "ProbabilityMP":
+    r"""Probability measurement process
+
+    Note this is not yet implemented and is a stub
+    """
     # fixme: figure out how to support probs in the future
     raise NotImplementedError()
 
 
 class ProbabilityMP(SampleMeasurement, StateMeasurement):
+    r"""Probability measurement process"""
+
     @property
-    def numeric_type(self):
+    def numeric_type(self):  # noqa: D102
         return float
 
-    def process_samples(
+    def process_samples(  # noqa: D102
         self,
         samples: SampleResult,
         wire_order: Wires,
@@ -30,15 +37,15 @@ class ProbabilityMP(SampleMeasurement, StateMeasurement):
     ):
         raise NotImplementedError()
 
-    def process_counts(self, counts: CountsResult):
+    def process_counts(self, counts: CountsResult):  # noqa: D102
         raise NotImplementedError()
 
-    def process_state(
+    def process_state(  # noqa: D102
         self,
         state: TensorLike,
         wire_order: Wires,
         wire_dims: Mapping[Hashable, int],
-        eigvals: TensorLike | None = None,
+        eigvals: TensorLike | None = None,  # noqa: ARG002
     ) -> TensorLike:
         is_f32 = math.get_dtype_name(state) in ("float32", "complex64")
         dtype = "float32" if is_f32 else "float64"
@@ -78,16 +85,16 @@ class ProbabilityMP(SampleMeasurement, StateMeasurement):
 
         return math.cast(probs, dtype)
 
-    def process_density_matrix(
+    def process_density_matrix(  # noqa: D102
         self,
         dm: TensorLike,
         wire_order: Wires,
         wire_dims: Mapping[Hashable, int],
-        eigvals: TensorLike | None = None,
+        eigvals: TensorLike | None = None,  # noqa: ARG002
     ) -> TensorLike:
         # this arcane logic comes from pennylane. because the diagonal of a density matrix
-        # ρ_ii gives the probability of measuring state |i>, we form vectors of
-        # sqrt(p(|i>) = ρ_ii) and then pass those to process_state, which will square them
+        # rho_ii gives the probability of measuring state |i>, we form vectors of
+        # sqrt(p(|i>) = rho_ii) and then pass those to process_state, which will square them
         # again to get the original probabilities while also handling reshaping for us
         if math.ndim(dm) == 2:
             probs = math.diagonal(dm)

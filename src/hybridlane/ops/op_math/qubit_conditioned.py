@@ -1,7 +1,11 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Qubit-conditioned symbolic operator"""
+
+import itertools
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable
+from typing import ClassVar
 
 import pennylane as qp
 from pennylane.operation import Operator
@@ -31,10 +35,10 @@ def qcond(op: Operator | Callable, control_wires: WiresLike):
     >>> hl.qcond(qp.RZ(0.123, wires=0), control_wires=1)
     IsingZZ(0.123, wires=[1, 0])
     """
-    return create_qubit_conditioned_op(op, control_wires)
+    return _create_qubit_conditioned_op(op, control_wires)
 
 
-def create_qubit_conditioned_op(op: Operator | Callable, control: WiresLike):
+def _create_qubit_conditioned_op(op: Operator | Callable, control: WiresLike):
     control_wires = Wires(control)
 
     # Try wrapping in a custom known gate
@@ -42,12 +46,12 @@ def create_qubit_conditioned_op(op: Operator | Callable, control: WiresLike):
     decomps = base_to_custom_conditioned_op()
     if cond_op := decomps.get(key):
         qp.QueuingManager.remove(op)
-        return cond_op(*op.data, control_wires + op.wires)
+        return cond_op(*op.data, control_wires + op.wires)  # ty:ignore[unresolved-attribute]
 
     # Special case because parameter convention change
     if isinstance(op, hl.Rotation) and len(control_wires) == 1:
         qp.QueuingManager.remove(op)
-        return hl.ConditionalRotation(2 * op.data[0], control_wires + op.wires)
+        return hl.ConditionalRotation(2 * op.data[0], control_wires + op.wires)  # ty:ignore[unsupported-operator]
 
     if isinstance(op, (qp.GlobalPhase, qp.RZ, qp.IsingZZ, qp.MultiRZ)):
         qp.QueuingManager.remove(op)
@@ -75,9 +79,7 @@ def _qcond_transform(func, control: Wires):
     def wrapper(*args, **kwargs):
         tape = qp.tape.make_qscript(func)(*args, **kwargs)
 
-        leaves, _ = qp.pytrees.flatten(
-            (args, kwargs), lambda obj: isinstance(obj, Operator)
-        )
+        leaves, _ = qp.pytrees.flatten((args, kwargs), lambda obj: isinstance(obj, Operator))
         for leaf in leaves:
             if isinstance(leaf, Operator):
                 qp.QueuingManager.remove(leaf)
@@ -94,13 +96,11 @@ def _qcond_transform(func, control: Wires):
     return wrapper
 
 
-def _handle_z_rotations(
-    op: qp.GlobalPhase | qp.RZ | qp.IsingZZ | qp.MultiRZ, control_wires: Wires
-):
+def _handle_z_rotations(op: qp.GlobalPhase | qp.RZ | qp.IsingZZ | qp.MultiRZ, control_wires: Wires):
     param = op.data[0]
     if isinstance(op, qp.GlobalPhase):
         wires = control_wires
-        param = 2 * param
+        param = 2 * param  # ty:ignore[unsupported-operator]
     else:
         wires = control_wires + op.wires
 
@@ -124,7 +124,7 @@ class QubitConditioned(SymbolicOp):
     the decomposition system as ``qCond(.)``
     """
 
-    resource_keys = {"base_class", "base_params", "num_control_wires"}
+    resource_keys: ClassVar = {"base_class", "base_params", "num_control_wires"}
 
     def _flatten(self):
         return (self.base,), (self.control_wires,)
@@ -138,24 +138,25 @@ class QubitConditioned(SymbolicOp):
         cls,
         base,
         control_wires,
-        id=None,
+        id=None,  # noqa: ARG003
     ):
         control_wires = Wires(control_wires)
-        return cls._primitive.bind(base, *control_wires)
+        return cls._primitive.bind(base, *control_wires)  # ty:ignore[unresolved-attribute]
 
     def __init__(self, base: Operator, control_wires: WiresLike, id: str | None = None):
-        """
+        """Construct a qubit-conditioned version of the operator
+
         Args:
             base: The operator to be conditioned
+
             control_wires: The qubits to condition the operator on
+
             id: The id of the operator
         """
         control_wires = Wires(control_wires)
 
         if base.wires & control_wires:
-            raise ValueError(
-                "The control wires must be different from the operator wires"
-            )
+            raise ValueError("The control wires must be different from the operator wires")
 
         self.hyperparameters["control_wires"] = control_wires
         self.name: str = f"QubitConditioned({base.name})"
@@ -164,14 +165,16 @@ class QubitConditioned(SymbolicOp):
 
     @property
     def control_wires(self) -> Wires:
+        r"""The qubit wires that the operator is conditioned on"""
         return self.hyperparameters["control_wires"]
 
     @property
     def wires(self) -> Wires:
+        r"""The wires that the operator acts on, including the control wires"""
         return self.control_wires + self.base.wires
 
     @property
-    def resource_params(self):
+    def resource_params(self):  # noqa: D102
         return {
             "base_class": type(self.base),
             "base_params": self.base.resource_params,
@@ -182,20 +185,18 @@ class QubitConditioned(SymbolicOp):
         params = [f"control_wires={self.control_wires.tolist()}"]
         return f"QubitConditioned({self.base}, {', '.join(params)})"
 
-    def label(
-        self, decimals: int | None = None, base_label: str | None = None, cache=None
-    ):
+    def label(self, decimals: int | None = None, base_label: str | None = None, cache=None):  # noqa: D102
         return self.base.label(decimals=decimals, base_label=base_label, cache=cache)
 
     @property
-    def has_diagonalizing_gates(self):
+    def has_diagonalizing_gates(self):  # noqa: D102
         return self.base.has_diagonalizing_gates
 
-    def diagonalizing_gates(self) -> list[Operator]:
+    def diagonalizing_gates(self) -> list[Operator]:  # noqa: D102
         return super().diagonalizing_gates()
 
     @property
-    def has_decomposition(self):
+    def has_decomposition(self):  # noqa: D102
         if self.compute_decomposition is not Operator.compute_decomposition:
             return True
 
@@ -210,42 +211,39 @@ class QubitConditioned(SymbolicOp):
         if type(self.base) in (qp.GlobalPhase, qp.Identity, hl.Rotation):
             return True
 
-        if (
+        return bool(
             len(self.control_wires) == 1
             and hasattr(self.base, "_qubit_conditioned")
             and type(self) is QubitConditioned
-        ):
-            return True
+        )
 
-        return False
-
-    def decomposition(self):
+    def decomposition(self):  # noqa: D102
         if self.compute_decomposition is not Operator.compute_decomposition:
             return self.compute_decomposition(*self.data, self.wires)
 
         if (decomp := _decompose_custom_op(self)) is None:
-            raise qp.decomposition.DecompositionUndefinedError(
+            raise qp.decomposition.DecompositionUndefinedError(  # ty:ignore[unresolved-attribute]
                 f"Decomposition not defined for {self}"
             )
 
         return decomp
 
     @property
-    def has_generator(self):
+    def has_generator(self):  # noqa: D102
         return self.base.has_generator
 
-    def generator(self):
+    def generator(self):  # noqa: D102
         z_factors = [qp.Z(w) for w in self.control_wires]
         return qp.prod(*z_factors, self.base.generator())
 
     @property
-    def has_adjoint(self):
+    def has_adjoint(self):  # noqa: D102
         return self.base.has_adjoint
 
-    def adjoint(self):
+    def adjoint(self):  # noqa: D102
         return QubitConditioned(self.base.adjoint(), self.control_wires)
 
-    def pow(self, z):
+    def pow(self, z):  # noqa: D102
         return QubitConditioned(qp.pow(self.base, z), self.control_wires)
 
     def __eq__(self, other):
@@ -270,32 +268,33 @@ def _decompose_custom_op(op: QubitConditioned) -> list[Operator] | None:
         return [qp.Identity(op.control_wires + op.base.wires)]
 
     if isinstance(op.base, qp.GlobalPhase):
-        return [qp.MultiRZ(2 * op.base.data[0], wires=op.control_wires)]
+        return [qp.MultiRZ(2 * op.base.data[0], wires=op.control_wires)]  # ty:ignore[unsupported-operator]
 
     # We can always use CNOTs to take a single Z in the generator and extend it to arbitrary qubits
     if len(op.control_wires) >= 2:
-        cnots = [
-            qp.CNOT(wires=(c, t))
-            for c, t in zip(op.control_wires[:-1], op.control_wires[1:])
-        ]
-        return cnots + [qcond(op.base, [op.control_wires[-1]])] + cnots[::-1]
+        cnots = [qp.CNOT(wires=(c, t)) for c, t in itertools.pairwise(op.control_wires)]
+        return [*cnots, qcond(op.base, [op.control_wires[-1]]), *cnots[::-1]]
 
     # Handle the differing factor of 2 in the definitions
     if isinstance(op.base, hl.Rotation):
         return [
             hl.ConditionalRotation(
-                2 * op.base.data[0], op.control_wires + op.base.wires
+                2 * op.base.data[0],  # ty:ignore[unsupported-operator]
+                op.control_wires + op.base.wires,
             )
         ]
-
-    # Here pennylane has a _controlled attribute defined, but then they marked it as to be removed. I can't
-    # find where they define [sc-37951] to talk about their broader refactoring plans
 
     return None
 
 
 # Dictionary mapping operators to their conditional versions, if the parameters are the same
 def base_to_custom_conditioned_op() -> dict[tuple[type[Operator], int], type[Operator]]:
+    r"""Returns a dictionary mapping base operators to their conditional versions
+
+    The keys are tuples of the form ``(base_class, num_control_wires)`` and the values are the
+    corresponding conditional operator classes. This is used to determine if a custom conditional
+    operator exists for a given base operator and number of control wires.
+    """
     return {
         (hl.Displacement, 1): hl.ConditionalDisplacement,
         (hl.Fourier, 1): hl.ConditionalParity,

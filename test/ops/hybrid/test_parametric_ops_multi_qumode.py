@@ -56,7 +56,7 @@ class TestConditionalBeamsplitter:
 
         theta = jnp.array(0.5)
         phi = jnp.array(0.3)
-        op = hl.ConditionalBeamsplitter(theta, phi, wires=[0, 1, 2])
+        op = hl.ConditionalBeamsplitter(theta, phi, wires=[0, 1, 2])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
         eye = hl.math.eye(32, like="jax")
         assert hl.math.get_interface(matrix) == "jax"
@@ -81,7 +81,7 @@ class TestConditionalBeamsplitter:
 
         def f(x):
             op = hl.CBS(*x, wires=(0, 1, 2))
-            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real
+            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, -0.456])
         grad_fn = hl.math.jacobian(f)
@@ -133,7 +133,7 @@ class TestConditionalTwoModeSqueezing:
 
         r = jnp.array(0.3)
         phi = jnp.array(0.5)
-        op = hl.ConditionalTwoModeSqueezing(r, phi, wires=[0, 1, 2])
+        op = hl.ConditionalTwoModeSqueezing(r, phi, wires=[0, 1, 2])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
         eye = hl.math.eye(32, like="jax")
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
@@ -157,7 +157,7 @@ class TestConditionalTwoModeSqueezing:
 
         def f(x):
             op = hl.CTMS(*x, wires=(0, 1, 2))
-            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real
+            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123, -0.456])
         grad_fn = hl.math.jacobian(f)
@@ -208,7 +208,7 @@ class TestConditionalTwoModeSum:
         import jax.numpy as jnp
 
         lam = jnp.array(0.3)
-        op = hl.ConditionalTwoModeSum(lam, wires=[0, 1, 2])
+        op = hl.ConditionalTwoModeSum(lam, wires=[0, 1, 2])  # ty:ignore[invalid-argument-type]
         matrix = op.fock_matrix({0: 2, 1: 4, 2: 4})
         eye = hl.math.eye(32, like="jax")
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
@@ -232,7 +232,7 @@ class TestConditionalTwoModeSum:
 
         def f(x):
             op = hl.CSUM(*x, wires=(0, 1, 2))
-            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real
+            return op.fock_matrix({0: 2, 1: 4, 2: 4}).real  # ty:ignore[unresolved-attribute]
 
         x = jnp.array([0.123])
         grad_fn = hl.math.jacobian(f)

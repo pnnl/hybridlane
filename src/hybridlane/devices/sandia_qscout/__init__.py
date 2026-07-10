@@ -109,7 +109,7 @@ subcircuit.
         Sz q[1]
     }
 
-References
+References:
 ----------
 
 .. footbibliography::
@@ -121,11 +121,11 @@ from .draw import get_default_style
 from .jaqal import Qumode, batch_to_jaqal, to_jaqal
 
 __all__ = [
-    "ops",
     "QscoutIonTrap",
+    "Qumode",
+    "batch_to_jaqal",
     "get_compiler",
     "get_default_style",
-    "batch_to_jaqal",
+    "ops",
     "to_jaqal",
-    "Qumode",
 ]

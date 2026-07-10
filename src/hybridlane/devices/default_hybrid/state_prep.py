@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Implementation of state preparation routines in Fock space"""
+
 import functools
 import itertools
 from collections.abc import Mapping, Sequence
@@ -32,6 +34,7 @@ cv_state_prep_ops = {
 
 
 def is_state_prep(op: Operator) -> bool:
+    r"""Returns True if the operation is a recognized state preparation operation"""
     return isinstance(op, StatePrepBase) or type(op) in cv_state_prep_ops
 
 
@@ -49,9 +52,9 @@ def prepare_initial_state(
     This requires all state preparation operations to acting on disjoint systems.
 
     Returns:
-        The state vector representing the initial state, and the index of the first non-state-prep operation in the tape
+        The state vector representing the initial state, and the index of the first non-state-prep
+            operation in the tape
     """
-
     wires = sorted(tape.op_wires)
     state_preps = list(itertools.takewhile(is_state_prep, tape.operations))
     idx = len(state_preps)
@@ -78,7 +81,8 @@ def vacuum_state(
     wire_order: WiresLike | None = None,
     like: str | None = None,
 ) -> TensorLike:
-    state_dim = tuple(wire_dims[cast(int, wire)] for wire in wire_order)
+    r"""Returns the vacuum state :math:`\ket{0}` for a given set of wires"""
+    state_dim = tuple(wire_dims[cast(int, wire)] for wire in wire_order)  # ty:ignore[not-iterable]
     state = math.zeros(state_dim, dtype=complex)
     state[tuple(0 for _ in state_dim)] = 1.0
     state = math.asarray(state, like=like)
@@ -91,6 +95,7 @@ def tensor_state_prep(
     wire_dims: Mapping[Any, int],
     wire_order: WiresLike,
 ) -> TensorLike:
+    r"""Prepares a tensor product of state preparation ops."""
     all_wires = Wires.all_wires([op.wires for op in ops])
     wire_order = Wires(wire_order)
 
@@ -113,9 +118,7 @@ def tensor_state_prep(
 
 
 @functools.singledispatch
-def state_vector(
-    op: Operator, wire_dims: tuple[int, ...]
-) -> TensorLike:  # pragma: no cover
+def state_vector(op: Operator, wire_dims: tuple[int, ...]) -> TensorLike:  # pragma: no cover
     """Returns the state vector for a preparation operation
 
     Args:
@@ -138,7 +141,7 @@ def _(op: StatePrepBase, wire_dims: tuple[int, ...]) -> TensorLike:
 @state_vector.register
 def _(op: qp.CoherentState, wire_dims: tuple[int, ...]) -> TensorLike:
     a, phi = op.parameters
-    alpha = a * math.exp(1j * phi)
+    alpha = a * math.exp(1j * phi)  # ty:ignore[unsupported-operator]
     return coherent_state(alpha, wire_dims[0])
 
 
@@ -202,21 +205,29 @@ def _(op: qp.FockStateVector, wire_dims: tuple[int, ...]) -> TensorLike:
     batch_size = int(math.prod(batch_dims)) if batch_dims else None
 
     inner_shape = shape[1:] if batch_size is not None else shape
-    if any(s > d for s, d in zip(inner_shape, wire_dims)):
+    if any(s > d for s, d in zip(inner_shape, wire_dims, strict=True)):
         raise ValueError(
-            f"State vector has unbatched shape {inner_shape} which is incompatible with wire dimensions {wire_dims}"
+            f"State vector has unbatched shape {inner_shape} which is incompatible with wire "
+            f"dimensions {wire_dims}"
         )
 
     # Pad with 0 to match the target shape of wire_dims
-    pad_width = [(0, d - s) for s, d in zip(inner_shape, wire_dims)]
+    pad_width = [(0, d - s) for s, d in zip(inner_shape, wire_dims, strict=True)]
     if batch_size:
-        pad_width = [(0, 0)] + pad_width
+        pad_width = [(0, 0), *pad_width]
 
     ket = math.pad(state, pad_width, mode="constant", constant_values=0)
     return flatten_state(ket, is_state_batched=batch_size is not None)
 
 
 def coherent_state(alpha: TensorLike, dim: int) -> TensorLike:
+    r"""Returns the state vector for a coherent state :math:`\ket{\alpha}`
+
+    Args:
+        alpha: The complex amplitude of the coherent state
+
+        dim: The dimension of the Hilbert space
+    """
     batch_size = math.get_batch_size(alpha, (), 1)
     if batch_size:
         alpha = math.reshape(alpha, (batch_size, 1))
@@ -230,6 +241,13 @@ def coherent_state(alpha: TensorLike, dim: int) -> TensorLike:
 
 
 def fock_state(n: TensorLike, dim: int) -> TensorLike:
+    r"""Returns the state vector for a Fock state :math:`\ket{n}`
+
+    Args:
+        n: The number of photons in the Fock state
+
+        dim: The dimension of the Hilbert space
+    """
     n = math.asarray(n).reshape(-1)
     batch_size = math.get_batch_size(n, (), 1) or 1
 
@@ -247,11 +265,12 @@ def fock_state(n: TensorLike, dim: int) -> TensorLike:
 
 
 def factorial(x: TensorLike) -> TensorLike:
+    r"""Returns the factorial of x"""
     import autoray as ar
 
     if math.get_interface(x) == "torch":
-        import torch
+        import torch  # ty:ignore[unresolved-import]
 
-        return torch.exp(torch.lgamma(x + 1))
+        return torch.exp(torch.lgamma(x + 1))  # ty:ignore[unsupported-operator]
 
     return ar.do("scipy.special.factorial", x)

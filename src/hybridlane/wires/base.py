@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Base type definitions for type checking"""
+
 from collections import OrderedDict
 from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass
@@ -16,7 +18,7 @@ class Qubit:
     """Type representing a qubit"""
 
     @property
-    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:  # noqa: D102
         return (ComputationalBasis.Discrete,)
 
 
@@ -29,7 +31,7 @@ class Qudit:
     dim: int
 
     @property
-    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:  # noqa: D102
         return (ComputationalBasis.Discrete,)
 
 
@@ -38,7 +40,7 @@ class Qumode:
     """Type representing a qumode"""
 
     @property
-    def supported_bases(self) -> tuple["ComputationalBasis", ...]:
+    def supported_bases(self) -> tuple["ComputationalBasis", ...]:  # noqa: D102
         return (
             ComputationalBasis.Discrete,
             ComputationalBasis.Position,
@@ -52,13 +54,16 @@ WireType = Qubit | Qudit | Qumode
 class ComputationalBasis(Enum):
     r"""Enum containing the different computational bases in CV-DV computing
 
-    The discrete basis is used for the familiar computational basis of qubits, :math:`\{\ket{0}, \ket{1}\}`. It can also
-    represent the result of measuring qudits :math:`\{\ket{0},\dots, \ket{d-1}\}` and Fock state measurements on qumodes
+    The discrete basis is used for the familiar computational basis of qubits,
+    :math:`\{\ket{0}, \ket{1}\}`. It can also represent the result of measuring qudits
+    :math:`\{\ket{0},\dots, \ket{d-1}\}` and Fock state measurements on qumodes
     :math:`\ket{n}, n \in \mathbb{N}`. The result of a discrete measurement is an ``int``.
 
-    The position basis describes the continuous (qumode) basis :math:`\ket{x}`, where :math:`\ket{x}` is the non-normalizeable
-    eigenket of the position operator :math:`\hat{x}\ket{x} = x\ket{x}`. This is an equivalent notion of a computational basis
-    in CV computing, and it is implemented through homodyne detection. The result of a position basis measurement is a ``float``.
+    The position basis describes the continuous (qumode) basis :math:`\ket{x}`, where
+    :math:`\ket{x}` is the non-normalizeable eigenket of the position operator
+    :math:`\hat{x}\ket{x} = x\ket{x}`. This is an equivalent notion of a computational basis
+    in CV computing, and it is implemented through homodyne detection. The result of a position
+    basis measurement is a ``float``.
 
     Finally, the coherent basis captures heterodyne detection, which measures the Husimi Q-function
 
@@ -78,13 +83,7 @@ class ComputationalBasis(Enum):
     Coherent = (3, complex)
     r"""Basis of coherent states :math:`\ket{\alpha}`"""
 
-    def __init__(self, value, return_type: type):
-        """
-        Args:
-            value: The internal value of the enum
-
-            return_type: The type required to represent a basis vector
-        """
+    def __init__(self, value, return_type: type):  # noqa: D107
         self._value_ = value
         self.return_type = return_type
 
@@ -92,7 +91,7 @@ class ComputationalBasis(Enum):
 class BasisMap(Mapping[Any, ComputationalBasis]):
     r"""Utility class for representing the computational basis that wires are measured in"""
 
-    def __init__(self, wire_map: dict[WiresLike, ComputationalBasis]):
+    def __init__(self, wire_map: dict[WiresLike, ComputationalBasis]):  # noqa: D107
         self._wire_map: dict[Wires, ComputationalBasis] = {}
         for wires, basis in wire_map.items():
             for wire in Wires(wires):
@@ -100,29 +99,34 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
 
     def get_basis(self, wire: WiresLike) -> ComputationalBasis:
         r"""Gets the basis a particular wire is measured in"""
-        return self._wire_map[wire]
+        return self._wire_map[wire]  # ty:ignore[invalid-argument-type]
 
     def get_type(self, wire: WiresLike) -> type:
         r"""Gets the primitive data type for a wire"""
-        return self._wire_map[wire].return_type
+        return self._wire_map[wire].return_type  # ty:ignore[invalid-argument-type]
 
     @property
     def wires(self) -> Wires:
+        r"""Returns the wires in this schema"""
         return Wires.all_wires(self._wire_map.keys())
 
     @staticmethod
-    def all_wires(schemas: Sequence["BasisMap"]) -> "BasisMap":
-        return reduce(lambda x, y: x.union(y), schemas)
+    def all_wires(maps: Sequence["BasisMap"]) -> "BasisMap":
+        r"""Unions multiple basis maps together"""
+        return reduce(lambda x, y: x.union(y), maps)
 
     @staticmethod
     def unique_wires(schemas: Sequence["BasisMap"]) -> "BasisMap":
+        r"""Returns a map containing only the wires unique to each map"""
         return reduce(lambda x, y: x.symmetric_difference(y), schemas)
 
     @staticmethod
     def common_wires(schemas: Sequence["BasisMap"]) -> "BasisMap":
+        r"""Returns a map containing only the wires common to all maps"""
         return reduce(lambda x, y: x.intersection(y), schemas)
 
     def intersection(self, other: "BasisMap") -> "BasisMap":
+        r"""Returns a map containing only the wires common to both maps"""
         common_wires = self.wires & other.wires
         for w in common_wires:
             if self.get_basis(w) != other.get_basis(w):
@@ -131,22 +135,26 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
         return self.for_wires(common_wires)
 
     def union(self, other: "BasisMap") -> "BasisMap":
+        r"""Returns a map containing all wires from both maps"""
         # Check for any conflicts
         for w in self.wires & other.wires:
             if self.get_basis(w) != other.get_basis(w):
                 raise WireError(f"Incompatible schemas on wire {w}")
 
-        return BasisMap(self._wire_map | other._wire_map)
+        return BasisMap(self._wire_map | other._wire_map)  # ty:ignore[invalid-argument-type]
 
     def difference(self, other: "BasisMap") -> "BasisMap":
+        r"""Returns a map containing only the wires in this map that are not in the other map"""
         wires = self.wires - other.wires
         return self.for_wires(wires)
 
     def symmetric_difference(self, other: "BasisMap") -> "BasisMap":
+        r"""Returns a map containing only the wires that are in either map, but not both"""
         wires = self.wires ^ other.wires
         return self.for_wires(self.wires & wires) + other.for_wires(other.wires & wires)
 
     def for_wires(self, wires: Wires) -> "BasisMap":
+        r"""Returns a map containing only the specified wires"""
         if unspecified_wires := wires - self.wires:
             raise WireError(f"Schema does not contain wires {unspecified_wires}")
 
@@ -184,7 +192,7 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
         return self._wire_map == other._wire_map
 
     def __getitem__(self, wire: WiresLike) -> ComputationalBasis:
-        return self._wire_map[wire]
+        return self._wire_map[wire]  # ty:ignore[invalid-argument-type]
 
     def __iter__(self):
         return iter(self._wire_map)
@@ -198,9 +206,7 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
 
         # Group wires by basis for more compact representation
         basis_to_wires: dict[ComputationalBasis, list] = {}
-        for wire, basis in sorted(
-            self._wire_map.items(), key=lambda x: (str(type(x[0])), x[0])
-        ):
+        for wire, basis in sorted(self._wire_map.items(), key=lambda x: (str(type(x[0])), x[0])):
             basis_to_wires.setdefault(basis, []).append(wire)
 
         # Build the wire_map dict representation
@@ -221,9 +227,7 @@ class BasisMap(Mapping[Any, ComputationalBasis]):
 
         # Group wires by basis type for readable output
         basis_to_wires: dict[ComputationalBasis, list] = {}
-        for wire, basis in sorted(
-            self._wire_map.items(), key=lambda x: (str(type(x[0])), x[0])
-        ):
+        for wire, basis in sorted(self._wire_map.items(), key=lambda x: (str(type(x[0])), x[0])):
             basis_to_wires.setdefault(basis, []).append(wire)
 
         parts = []
@@ -247,21 +251,25 @@ class TypeCheckResult:
 
     @property
     def qubits(self) -> Wires:
+        r"""All qubits in the tape or operation"""
         return Wires([w for w, t in self.wire_types.items() if t == Qubit()])
 
     @property
     def qumodes(self) -> Wires:
+        r"""All qumodes in the tape or operation"""
         return Wires([w for w, t in self.wire_types.items() if t == Qumode()])
 
     @property
     def wire_order(self) -> Wires:
+        r"""The wires in the order they were first seen in the tape or operation"""
         return Wires(self.wire_types)
 
 
+# experimental
 class TypedWires(Sequence["TypedWire"], Hashable):
     """A register of wires with an associated type"""
 
-    def __init__(self, wires: WiresLike, wire_type: WireType):
+    def __init__(self, wires: WiresLike, wire_type: WireType):  # noqa: D107
         self.wires = Wires(wires)
         self.wire_type = wire_type
 
@@ -281,10 +289,11 @@ class TypedWires(Sequence["TypedWire"], Hashable):
         return hash((self.wires, self.wire_type))
 
 
+# experimental
 class TypedWire(Hashable):
     """A single wire with an associated type"""
 
-    def __init__(self, wire: WiresLike, wire_type: WireType):
+    def __init__(self, wire: WiresLike, wire_type: WireType):  # noqa: D107
         wires = Wires(wire)
         if len(wires) != 1:
             raise ValueError("TypedWire must be initialized with a single wire")
@@ -302,7 +311,21 @@ class TypedWire(Hashable):
         return hash((self.wire, self.wire_type))
 
 
+# experimental
 def typed_registers(register_dict: dict, type: WireType) -> dict:
+    r"""Creates a register of wires that have a particular, statically-declared type
+
+    This function is analogous to :func:`pennylane.registers`, but the resulting wires are wrapped
+    with a specific type, allowing you to declare a set of registers that have a particular type.
+
+    This could be useful when defining a circuit that has uninformative operations (like Identity),
+    and this may be used in the future for polymorphic operations.
+
+    Args:
+        register_dict: A dictionary of the format expected by ``qp.registers``
+
+        type: The type of the wires in the register
+    """
     possibly_nested_dict = qp.registers(register_dict)
 
     def remap_dict(d):

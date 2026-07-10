@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Module for all measurement-related classes and functions"""
+
 from ..wires import BasisMap, ComputationalBasis
 from .base import (
     CountsResult,
@@ -26,18 +28,18 @@ __all__ = [
     "ExpectationMP",
     "FockTruncation",
     "ProbabilityMP",
-    "SampleMeasurement",
     "SampleMP",
+    "SampleMeasurement",
     "SampleResult",
+    "StateMP",
     "StateMeasurement",
     "StateResult",
-    "StateMP",
     "Truncation",
     "VarianceMP",
     "density_matrix",
     "expval",
-    "var",
+    "probs",
     "sample",
     "state",
-    "probs",
+    "var",
 ]

@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D107, D102
+r"""Hybrid CV-DV operations acting on multiple qumodes"""
+
 import math
+from typing import ClassVar
 
 import pennylane as qp
 from pennylane.decomposition.symbolic_decomposition import (
@@ -60,7 +64,7 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
 
         :py:class:`~hybridlane.ops.Beamsplitter`
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -71,7 +75,7 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
     num_qumodes = 2
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -83,30 +87,26 @@ class ConditionalBeamsplitter(HybridOperation, FockRepresentation):
         super().__init__(theta, phi, wires=wires, id=id)
 
     def adjoint(self):
-        return ConditionalBeamsplitter(-self.data[0], self.data[1], self.wires)
+        return ConditionalBeamsplitter(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def pow(self, z: int | float):
-        return [ConditionalBeamsplitter(self.data[0] * z, self.data[1], self.wires)]
+        return [ConditionalBeamsplitter(self.data[0] * z, self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        theta = self.data[0] % (4 * math.pi)
-        phi = self.data[1] % math.pi
+        theta = self.data[0] % (4 * math.pi)  # ty:ignore[unsupported-operator]
+        phi = self.data[1] % math.pi  # ty:ignore[unsupported-operator]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify CBS when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify CBS when ``theta`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(self.wires)
 
         return ConditionalBeamsplitter(theta, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CBS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "CBS", cache=cache)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         bs = hl.BS.compute_fock_matrix(wire_dims[1:], theta, phi)
         bsd = hl.math.conj(hl.math.transpose(bs))
         return hl.math.block_diag([bs, bsd])
@@ -180,7 +180,7 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
 
         :py:class:`~hybridlane.ops.TwoModeSqueezing`
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -191,7 +191,7 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
     num_qumodes = 2
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -204,13 +204,13 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
 
     def pow(self, z: int | float):
         r, phi = self.data
-        return [ConditionalTwoModeSqueezing(r * z, phi, self.wires)]
+        return [ConditionalTwoModeSqueezing(r * z, phi, self.wires)]  # ty:ignore[unsupported-operator]
 
     def adjoint(self):
-        return [ConditionalTwoModeSqueezing(-self.data[0], self.data[1], self.wires)]
+        return [ConditionalTwoModeSqueezing(-self.data[0], self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        r, phi = self.data[0], self.data[1] % (2 * math.pi)
+        r, phi = self.data[0], self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         r = concrete_or_error(None, r, "Cannot simplify CTMS when ``r`` is a tracer")
         if can_replace(r, 0):
@@ -219,12 +219,10 @@ class ConditionalTwoModeSqueezing(HybridOperation, FockRepresentation):
         return ConditionalTwoModeSqueezing(r, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CTMS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "CTMS", cache=cache)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         tms = hl.TMS.compute_fock_matrix(wire_dims[1:], r, phi)
         tmsd = hl.math.conj(hl.math.transpose(tms))
         return hl.math.block_diag([tms, tmsd])
@@ -289,7 +287,7 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
 
         :py:class:`~hybridlane.ops.TwoModeSum`
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -300,17 +298,17 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
     num_qumodes = 2
     ndim_params = (0,)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, lam: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lam, wires=wires, id=id)
 
     def adjoint(self):
         lambda_ = self.parameters[0]
-        return ConditionalTwoModeSum(-lambda_, wires=self.wires)
+        return ConditionalTwoModeSum(-lambda_, wires=self.wires)  # ty:ignore[unsupported-operator]
 
     def pow(self, z: int | float):
-        return [ConditionalTwoModeSum(self.data[0] * z, self.wires)]
+        return [ConditionalTwoModeSum(self.data[0] * z, self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
         lambda_ = self.data[0]
@@ -324,12 +322,10 @@ class ConditionalTwoModeSum(HybridOperation, FockRepresentation):
         return ConditionalTwoModeSum(lambda_, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CSUM", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "CSUM", cache=cache)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], lam) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], lam) -> TensorLike:  # ty:ignore[invalid-method-override]
         tms = hl.SUM.compute_fock_matrix(wire_dims[1:], lam)
         tmsd = hl.math.conj(hl.math.transpose(tms))
         return hl.math.block_diag([tms, tmsd])

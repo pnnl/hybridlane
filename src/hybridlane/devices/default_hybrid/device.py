@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Implementation of the ``default.hybrid`` device."""
+
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from functools import partial
-from itertools import starmap
 from typing import Any, cast
 
 import numpy as np
@@ -14,6 +15,7 @@ from pennylane.decomposition import GateSet
 from pennylane.devices.default_qubit import (
     _BASE_DQ_GATE_SET,
     ALL_DQ_GATES,
+    null_postprocessing,
 )
 from pennylane.devices.device_api import Device, ExecutionConfig
 from pennylane.devices.modifiers import simulator_tracking, single_tape_support
@@ -131,13 +133,16 @@ ALL_DH_GATES = GateSet(
     | _state_preps,
     name="All DefaultHybrid gates",
 )
+"""All supported gates for the device"""
 
 ALL_DH_GATES_PLUS_MCM = GateSet(
     ALL_DH_GATES | {"MidMeasureMP"}, name="All DefaultHybrid gates + MCM"
 )
+"""All supported gates for the device, including mid-circuit measurement"""
 
 
 def stopping_condition(op: Operator, allow_mcm: bool = True) -> bool:
+    r"""Condition for determining if an operator should be decomposed further."""
     from pennylane.devices.default_qubit import (
         stopping_condition as dq_stopping_condition,
     )
@@ -153,6 +158,7 @@ stopping_condition_with_mcm = partial(stopping_condition, allow_mcm=True)
 
 
 def is_analytic_mp_supported(mp: MeasurementProcess) -> bool:
+    r"""Determines if a measurement is supported when running in analytic mode."""
     if not isinstance(mp, StateMeasurement):
         return False
 
@@ -163,6 +169,7 @@ def is_analytic_mp_supported(mp: MeasurementProcess) -> bool:
 
 
 def is_analytic_observable_supported(obs: Operator | MeasurementValue) -> bool:
+    r"""Determines if an observable is supported when running in analytic mode."""
     match obs:
         case SymbolicOp(base=base_op):
             return is_analytic_observable_supported(base_op)
@@ -171,27 +178,23 @@ def is_analytic_observable_supported(obs: Operator | MeasurementValue) -> bool:
         case MeasurementValue():
             return True
 
-    return (
-        obs.has_matrix or obs.has_sparse_matrix or isinstance(obs, FockRepresentation)
-    )
+    return obs.has_matrix or obs.has_sparse_matrix or isinstance(obs, FockRepresentation)
 
 
 def is_sampled_mp_supported(mp: MeasurementProcess) -> bool:
+    r"""Determines if a measurement is supported when running with finite shots"""
     if not isinstance(mp, SampleMeasurement):
         return False
 
     if mp.obs is not None:
-        return is_sampled_observable_supported(
-            mp.obs, is_expval=isinstance(mp, ExpectationMP)
-        )
+        return is_sampled_observable_supported(mp.obs, is_expval=isinstance(mp, ExpectationMP))
 
     # hl.wiresmple() called with a schema
     return all(mp.schema.get_basis(w) == ComputationalBasis.Discrete for w in mp.wires)
 
 
-def is_sampled_observable_supported(
-    obs: Operator | MeasurementValue, is_expval: bool
-) -> bool:
+def is_sampled_observable_supported(obs: Operator | MeasurementValue, is_expval: bool) -> bool:
+    r"""Determines if an observable is supported when running with finite shots"""
     match obs:
         case MeasurementValue():
             return True
@@ -209,8 +212,7 @@ def is_sampled_observable_supported(
 @simulator_tracking
 @single_tape_support
 class DefaultHybrid(Device):
-    """A hybridlane device written in Python capable of backpropagation
-
+    r"""A hybridlane device written in Python capable of backpropagation
 
     Args:
         fock_level: The default truncation level for all qumodes.
@@ -314,7 +316,7 @@ class DefaultHybrid(Device):
 
     * Mid-circuit measurements aren't supported yet. `#51 <https://github.com/pnnl/hybridlane/issues/51>`_
     * Operator batching isn't supported. If you want to batch operations, consider using ``jax.vmap``. `#52 <https://github.com/pnnl/hybridlane/issues/52>`_
-    """
+    """  # noqa: E501, RUF002
 
     name = "default.hybrid"
     author = "PNNL"
@@ -333,6 +335,7 @@ class DefaultHybrid(Device):
         shots: int | None = None,
         max_workers: int | None = None,
     ):
+        r"""Initialize the default.hybrid device."""
         super().__init__(wires=wires, shots=shots)
 
         if seed == "global":
@@ -352,7 +355,7 @@ class DefaultHybrid(Device):
         self._max_workers = max_workers
 
     @debug_logger
-    def supports_derivatives(
+    def supports_derivatives(  # noqa: D102
         self,
         execution_config: ExecutionConfig | None = None,
         circuit: QuantumScript | None = None,
@@ -361,8 +364,7 @@ class DefaultHybrid(Device):
             return True
 
         no_max_workers = (
-            execution_config.device_options.get("max_workers", self._max_workers)
-            is None
+            execution_config.device_options.get("max_workers", self._max_workers) is None
         )
 
         if execution_config.gradient_method in {"backprop", "best"} and no_max_workers:
@@ -375,10 +377,10 @@ class DefaultHybrid(Device):
         return execution_config.gradient_method in {param_shift, param_shift_cv, None}
 
     @debug_logger
-    def setup_execution_config(
+    def setup_execution_config(  # noqa: D102
         self,
         config: ExecutionConfig | None = None,
-        circuit: QuantumScript | None = None,
+        circuit: QuantumScript | None = None,  # noqa: ARG002
     ) -> ExecutionConfig:
         config = config or ExecutionConfig()
         updated_values = {}
@@ -417,35 +419,25 @@ class DefaultHybrid(Device):
         # ----- Device options -----
         for option in config.device_options:
             if option not in self._device_options:
-                raise DeviceError(
-                    f"Device option '{option}' is not supported by {self.name}."
-                )
+                raise DeviceError(f"Device option '{option}' is not supported by {self.name}.")
 
         updated_values["device_options"] = dict(config.device_options)
-        default_device_options = {
-            k: getattr(self, f"_{k}") for k in self._device_options
-        }
-        updated_values["device_options"] = (
-            default_device_options | updated_values["device_options"]
-        )
+        default_device_options = {k: getattr(self, f"_{k}") for k in self._device_options}
+        updated_values["device_options"] = default_device_options | updated_values["device_options"]
 
         # Check the truncations. Only one may be specified because if `fock_level` is
         # specified, we will use the same cutoff across all qumodes (whose wires will be
         # determined in execute()). Perhaps we should consider renaming `wire_dims` to
         # `overrides` and allowing it to provide non-default cutoffs and infer everything
         # else.
-        wire_dims = cast(
-            Mapping[Any, int] | None, updated_values["device_options"]["wire_dims"]
-        )
+        wire_dims = cast(Mapping[Any, int] | None, updated_values["device_options"]["wire_dims"])
         fock_level = cast(int | None, updated_values["device_options"]["fock_level"])
         if (wire_dims is not None) == (fock_level is not None):
-            raise DeviceError(
-                "Exactly one of 'wire_dims' or 'fock_level' must be specified."
-            )
+            raise DeviceError("Exactly one of 'wire_dims' or 'fock_level' must be specified.")
 
         return replace(config, **updated_values)
 
-    def preprocess_transforms(
+    def preprocess_transforms(  # noqa: D102
         self, execution_config: ExecutionConfig | None = None
     ) -> CompilePipeline:
         config = execution_config or ExecutionConfig()
@@ -453,7 +445,7 @@ class DefaultHybrid(Device):
         target_gate_set = ALL_DH_GATES
 
         if config.interface == Interface.JAX_JIT:
-            pipeline.add_transform(no_sample)
+            pipeline.add_transform(_no_sample)
 
         match config.mcm_config.mcm_method:  # ty:ignore[unresolved-attribute]
             case "deferred":
@@ -490,9 +482,7 @@ class DefaultHybrid(Device):
         pipeline.add_transform(
             fill_wire_dims,
             wire_dims=config.device_options.get("wire_dims", self._wire_dims),
-            default_qumode_dim=config.device_options.get(
-                "fock_level", self._fock_level
-            ),
+            default_qumode_dim=config.device_options.get("fock_level", self._fock_level),
         )
         pipeline.add_transform(validate_device_wires, self.wires, name=self.name)
         pipeline.add_transform(
@@ -514,7 +504,7 @@ class DefaultHybrid(Device):
         return pipeline
 
     @debug_logger
-    def execute(
+    def execute(  # noqa: D102
         self,
         circuits: Sequence[QuantumScript],
         execution_config: ExecutionConfig | None = None,
@@ -527,8 +517,8 @@ class DefaultHybrid(Device):
         self._prng_key, *prng_keys = jax_random_split(self._prng_key, len(circuits) + 1)
 
         # Get the concrete wire_dims by performing type inference
-        wire_maps = list(map(lambda t: t._get_standard_wire_map(), circuits))
-        wire_dims = list(map(lambda t: _get_wire_dims(t, execution_config), circuits))
+        wire_maps = [t._get_standard_wire_map() for t in circuits]
+        wire_dims = [_get_wire_dims(t, execution_config) for t in circuits]
         remapped_circuits = map(QuantumScript.map_to_standard_wires, circuits)
 
         if max_workers is None:
@@ -540,12 +530,12 @@ class DefaultHybrid(Device):
                     "debugger": self._debugger,
                     "wire_map": wire_map,
                 }
-                for prng_key, wire_map in zip(prng_keys, wire_maps)
+                for prng_key, wire_map in zip(prng_keys, wire_maps, strict=True)
             )
-            return tuple(starmap(_simulator, zip(remapped_circuits, wire_dims, kwargs)))
+            return tuple(map(_simulator, remapped_circuits, wire_dims, kwargs))
 
         remapped_circuits = tuple(
-            map(lambda tape: convert_to_numpy_parameters(tape)[0][0], remapped_circuits)
+            convert_to_numpy_parameters(tape)[0][0] for tape in remapped_circuits
         )
         rngs = self._rng.integers(2**31 - 1, size=len(circuits))
         kwargs = (
@@ -556,16 +546,14 @@ class DefaultHybrid(Device):
                 "debugger": self._debugger,
                 "wire_map": wire_map,
             }
-            for rng, prng_key, wire_map in zip(rngs, prng_keys, wire_maps)
+            for rng, prng_key, wire_map in zip(rngs, prng_keys, wire_maps, strict=True)
         )
 
         assert execution_config.executor_backend is not None
         backend = get_executor(execution_config.executor_backend)  # ty:ignore[invalid-argument-type]
         with backend(max_workers=max_workers) as executor:
             executor = cast(RemoteExec, executor)
-            results = tuple(
-                executor.map(_simulator, remapped_circuits, wire_dims, kwargs)
-            )
+            results = tuple(executor.map(_simulator, remapped_circuits, wire_dims, kwargs))
 
         self._rng = np.random.default_rng(self._rng.integers(2**31 - 1))
         return results
@@ -585,12 +573,10 @@ def _get_wire_dims(tape: QuantumScript, config: ExecutionConfig) -> dict[int, in
     This must be called *before* remapping the tape's wires or we won't be able to remap
     the wire dimensions as well
 
-
     Returns:
         The wire dimensions mapped to standard wire order as determined by
             ``tape._get_standard_wire_map()``
     """
-
     # Guaranteed in setup_execution_config that exactly one of these is not None
     wire_dims = config.device_options.get("wire_dims")
     fock_level = cast(int | None, config.device_options.get("fock_level"))
@@ -600,8 +586,8 @@ def _get_wire_dims(tape: QuantumScript, config: ExecutionConfig) -> dict[int, in
     if fock_level is not None:
         res = sa.type_check(tape)
         wire_dims = (
-            {w: 2 for w in res.qubits}
-            | {w: fock_level for w in res.qumodes}
+            dict.fromkeys(res.qubits, 2)
+            | dict.fromkeys(res.qumodes, fock_level)
             | {w: t.dim for w, t in res.wire_types.items() if isinstance(t, sa.Qudit)}
         )
 
@@ -625,13 +611,13 @@ def _batching_is_unsupported(
                 f" {op} has batch size {op.batch_size}. Consider using `jax.vmap`"
             )
 
-    return (tape,), lambda x: x[0]
+    return (tape,), null_postprocessing
 
 
 @qp.transform
-def no_sample(tape: QuantumScript) -> tuple[QuantumScriptOrBatch, PostprocessingFn]:
+def _no_sample(tape: QuantumScript) -> tuple[QuantumScriptOrBatch, PostprocessingFn]:
     for mp in tape.measurements:
         if isinstance(mp, SampleMP):
             raise DeviceError(f"`jax.jit` does not support {mp}")
 
-    return (tape,), lambda x: x[0]
+    return (tape,), null_postprocessing

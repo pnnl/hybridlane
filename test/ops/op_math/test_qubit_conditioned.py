@@ -23,22 +23,20 @@ class TestQubitConditioned:
         # Hybridlane gates
         assert hl.qcond(hl.Rotation(0.5, 0), 1) == hl.ConditionalRotation(1.0, [1, 0])
         assert hl.qcond(hl.Fourier(0), 1) == hl.ConditionalParity([1, 0])
-        assert hl.qcond(
-            hl.Beamsplitter(0.1, 0.2, [0, 1]), 2
-        ) == hl.ConditionalBeamsplitter(0.1, 0.2, [2, 0, 1])
+        assert hl.qcond(hl.Beamsplitter(0.1, 0.2, [0, 1]), 2) == hl.ConditionalBeamsplitter(
+            0.1, 0.2, [2, 0, 1]
+        )
         assert hl.qcond(hl.Displacement(0.1, 0.2, 0), 1) == hl.ConditionalDisplacement(
             0.1, 0.2, [1, 0]
         )
-        assert hl.qcond(
-            hl.TwoModeSqueezing(0.1, 0, [0, 1]), 2
-        ) == hl.ConditionalTwoModeSqueezing(0.1, 0, [2, 0, 1])
+        assert hl.qcond(hl.TwoModeSqueezing(0.1, 0, [0, 1]), 2) == hl.ConditionalTwoModeSqueezing(
+            0.1, 0, [2, 0, 1]
+        )
 
         # Pennylane gates
         assert hl.qcond(qp.GlobalPhase(0.5, 0), 1) == qp.RZ(1.0, 1)
         assert hl.qcond(qp.GlobalPhase(0.5, 0), [1, 2]) == qp.IsingZZ(1.0, [1, 2])
-        assert hl.qcond(qp.IsingZZ(0.5, [0, 1]), [2, 3]) == qp.MultiRZ(
-            0.5, [2, 3, 0, 1]
-        )
+        assert hl.qcond(qp.IsingZZ(0.5, [0, 1]), [2, 3]) == qp.MultiRZ(0.5, [2, 3, 0, 1])
 
     def test_nested_qcond(self):
         op = hl.qcond(QubitConditioned(hl.Displacement(0.5, 0, 0), 1), 2)

@@ -57,7 +57,7 @@ class TestDiagonalize:
         ev, gates = diagonalize(obs, (0, 1), {0: 2, 1: 2})
 
         assert ev == pytest.approx([1, -1, -1, 1])
-        assert set(gates) == {qp.H(0), qp.H(1)}
+        assert set(gates) == {qp.H(0), qp.H(1)}  # ty:ignore[invalid-argument-type]
 
     def test_sprod(self):
         obs = 0.5 * hl.N(0)
@@ -93,9 +93,7 @@ class TestBuildFockMatrix:
         assert hl.math.shape(mat) == (12, 12)
 
         mat1 = hl.X(0).fock_matrix(wire_dims)
-        mat2 = hl.QuadOperator(hl.math.array(0.5, like=like), wires=1).fock_matrix(
-            wire_dims
-        )
+        mat2 = hl.QuadOperator(hl.math.array(0.5, like=like), wires=1).fock_matrix(wire_dims)
         expected_mat = hl.math.kron(mat1, mat2)
         assert mat == pytest.approx(expected_mat)
 
@@ -109,7 +107,7 @@ class TestBuildFockMatrix:
         expected_mat = hl.math.linalg.matrix_power(x_mat, 2)
         assert mat == pytest.approx(expected_mat)
 
-    def test_pow(self, like):
+    def test_pow(self, like):  # noqa: ARG002
         wire_dims = {0: 5}
         base_op = hl.N(0)
         obs = base_op**3
@@ -120,17 +118,17 @@ class TestBuildFockMatrix:
         expected_mat = hl.math.linalg.matrix_power(base_mat, 3)
         assert mat == pytest.approx(expected_mat)
 
-    def test_sprod(self, like):
+    def test_sprod(self, like):  # noqa: ARG002
         wire_dims = {0: 5}
         obs = 0.5 * hl.N(0)
         mat = build_fock_matrix(obs, Wires(0), wire_dims)
         assert hl.math.shape(mat) == (5, 5)
 
         base_mat = hl.N(0).fock_matrix(wire_dims)
-        expected_mat = 0.5 * base_mat
+        expected_mat = 0.5 * base_mat  # ty:ignore[unsupported-operator]
         assert mat == pytest.approx(expected_mat)
 
-    def test_sum(self, like):
+    def test_sum(self, like):  # noqa: ARG002
         wire_dims = {0: 5}
         obs = hl.N(0) + hl.N(0) ** 2
         mat = build_fock_matrix(obs, Wires(0), wire_dims)
@@ -140,7 +138,7 @@ class TestBuildFockMatrix:
         expected_mat = base_mat + hl.math.linalg.matrix_power(base_mat, 2)
         assert mat == pytest.approx(expected_mat)
 
-    def test_qubit(self, like):
+    def test_qubit(self, like):  # noqa: ARG002
         wire_dims = {0: 2}
         obs = qp.X(0)
         mat = build_fock_matrix(obs, Wires(0), wire_dims)

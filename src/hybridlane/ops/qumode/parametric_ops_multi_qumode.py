@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""CV gates acting on multiple qumodes"""
+
+# ruff: noqa: D107, D102
 import math
+from typing import ClassVar
 
 import numpy as np
 import pennylane as qp
@@ -85,7 +89,7 @@ class Beamsplitter(CVOperation, FockRepresentation):
            [ 0.    ,  0.    ,  0.9689, -0.2462,  0.0247],
            [ 0.    , -0.0247,  0.2462,  0.9689,  0.    ],
            [ 0.    , -0.2462, -0.0247,  0.    ,  0.9689]])
-    """
+    """  # noqa: E501
 
     num_params = 2
     num_wires = 2
@@ -93,7 +97,7 @@ class Beamsplitter(CVOperation, FockRepresentation):
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule, _two_term_shift_rule)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -128,27 +132,23 @@ class Beamsplitter(CVOperation, FockRepresentation):
 
     def adjoint(self):
         theta, phi = self.parameters
-        return Beamsplitter(-theta, phi, wires=self.wires)
+        return Beamsplitter(-theta, phi, wires=self.wires)  # ty:ignore[unsupported-operator]
 
     def simplify(self):
-        theta = self.data[0] % (4 * math.pi)
-        phi = self.data[1] % (2 * math.pi)
+        theta = self.data[0] % (4 * math.pi)  # ty:ignore[unsupported-operator]
+        phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify BS when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify BS when ``theta`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
 
         return Beamsplitter(theta, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "BS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "BS", cache=cache)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         dim_a, dim_b = wire_dims
         ad = hl.math.asarray(hl.CreationOp.compute_fock_matrix((dim_a,)), like=theta)
         b = hl.math.asarray(hl.AnnihilationOp.compute_fock_matrix((dim_b,)), like=theta)
@@ -233,7 +233,7 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
            [ 0.    ,  0.2985,  0.0605,  1.0453,  0.    ],
            [ 0.    ,  0.0605, -0.2985,  0.    ,  1.0453]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -252,7 +252,7 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
         _two_term_shift_rule,
     )
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, r, phi, wires, id=None):
         super().__init__(r, phi, wires=wires, id=id)
@@ -281,12 +281,12 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
 
     def adjoint(self):
         r, phi = self.parameters
-        new_phi = (phi + np.pi) % (2 * np.pi)
+        new_phi = (phi + np.pi) % (2 * np.pi)  # ty:ignore[unsupported-operator]
         return TwoModeSqueezing(r, new_phi, wires=self.wires)
 
     def simplify(self):
         r = self.data[0]
-        phi = self.data[1] % (2 * math.pi)
+        phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
         r = concrete_or_error(None, r, "Cannot simplify TMS when ``r`` is a tracer")
         if can_replace(r, 0):
@@ -295,12 +295,10 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
         return TwoModeSqueezing(r, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "TMS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "TMS", cache=cache)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:
+    def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         ad = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[:1]), like=r)
         bd = hl.math.asarray(hl.CreationOp.compute_fock_matrix(wire_dims[1:]), like=r)
         adbd = hl.math.kron(ad, bd)
@@ -392,7 +390,7 @@ class TwoModeSum(CVOperation, FockRepresentation):
            [ 0. ,  0.5,  0. ,  1. ,  0. ],
            [ 0. ,  0. ,  0. ,  0. ,  1. ]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -404,7 +402,7 @@ class TwoModeSum(CVOperation, FockRepresentation):
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule,)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, lambda_: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lambda_, wires=wires, id=id)
@@ -425,10 +423,10 @@ class TwoModeSum(CVOperation, FockRepresentation):
 
     def adjoint(self):
         lambda_ = self.parameters[0]
-        return TwoModeSum(-lambda_, wires=self.wires)
+        return TwoModeSum(-lambda_, wires=self.wires)  # ty:ignore[unsupported-operator]
 
     def pow(self, z: int | float):
-        return [TwoModeSum(self.data[0] * z, self.wires)]
+        return [TwoModeSum(self.data[0] * z, self.wires)]  # ty:ignore[unsupported-operator]
 
     def simplify(self):
         lambda_ = self.data[0]
@@ -442,19 +440,13 @@ class TwoModeSum(CVOperation, FockRepresentation):
         return TwoModeSum(lambda_, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "SUM", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "SUM", cache=cache)
 
     @staticmethod
-    def compute_fock_matrix(wire_dims: tuple[int, ...], lambda_) -> TensorLike:
-        a = hl.math.asarray(
-            hl.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_
-        )
+    def compute_fock_matrix(wire_dims: tuple[int, ...], lambda_) -> TensorLike:  # ty:ignore[invalid-method-override]
+        a = hl.math.asarray(hl.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_)
         ad = hl.math.conj(hl.math.transpose(a))
-        b = hl.math.asarray(
-            hl.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_
-        )
+        b = hl.math.asarray(hl.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_)
         bd = hl.math.conj(hl.math.transpose(b))
         g = 0.5 * lambda_ * hl.math.kron(a + ad, bd - b)
         return hl.math.expm(g)

@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Module for simulating a circuit in Fock space"""
+
 from __future__ import annotations
 
 import logging
@@ -29,9 +31,22 @@ def get_final_state(
     tape: QuantumScript,
     wire_dims: dict[Any, int],
     debugger=None,
-    prng_key: "Array | None" = None,
+    prng_key: Array | None = None,
     **execution_kwargs,
 ) -> tuple[TensorLike, bool]:
+    r"""Simulate a tape and return the final state prior to measurement.
+
+    Args:
+        tape: The quantum tape to simulate.
+
+        wire_dims: A dictionary mapping each wire to its dimension.
+
+        debugger: A pennylane debugger object
+
+        prng_key: A JAX PRNG key for generating random numbers.
+
+        execution_kwargs: Any additional keyword arguments to pass to the execution function.
+    """
     interface = Interface(execution_kwargs.get("interface"))
 
     # Obtain the wire map internally to also map the wire dimensions
@@ -64,9 +79,7 @@ def get_final_state(
         batch_size = shape[0] if is_state_batched else 1
         state = math.reshape(state, (batch_size, -1))
 
-        state = math.expand_vector(
-            state, tape.op_wires, wire_dims=wire_dims, wire_order=tape.wires
-        )
+        state = math.expand_vector(state, tape.op_wires, wire_dims=wire_dims, wire_order=tape.wires)
 
         # Unflatten
         new_shape = tuple(wire_dims[w] for w in tape.wires)
@@ -81,25 +94,45 @@ def measure_final_state(
     state: TensorLike,
     is_state_batched: bool,
     tape: QuantumScript,
-    wire_dims: dict[Any, int],
-    debugger=None,
+    wire_dims: dict[Any, int],  # noqa: ARG001
+    debugger=None,  # noqa: ARG001
     rng: Any | None = None,
-    prng_key: "Array | None" = None,
+    prng_key: Array | None = None,
     wire_map: dict[Any, Any] | None = None,
-    **execution_kwargs,
+    **execution_kwargs,  # noqa: ARG001
 ) -> Result:
+    r"""Measures the final state of a tape and returns the result
+
+    Args:
+        state: The final state of the tape prior to measurement.
+
+        is_state_batched: Whether the state is batched.
+
+        tape: The quantum tape being simulated.
+
+        wire_dims: A dictionary mapping each wire to its dimension.
+
+        debugger: A pennylane debugger object
+
+        rng: A random number generator for sampling.
+
+        prng_key: A JAX PRNG key for generating random numbers.
+
+        wire_map: A dictionary mapping the original wire labels in the user's tape to the
+            standard integer wire labels used internally.
+
+        execution_kwargs: Any additional keyword arguments to pass to the execution function.
+    """
     if not tape.shots:
-        results = tuple(
-            map(lambda m: measure(m, state, is_state_batched), tape.measurements)
-        )
+        results = tuple(measure(m, state, is_state_batched) for m in tape.measurements)
 
         if len(results) == 1:
-            return results[0]
+            return results[0]  # ty:ignore[invalid-return-type]
 
-        return results
+        return results  # ty:ignore[invalid-return-type]
 
     results = measure_with_shots(
-        tape.measurements,
+        tape.measurements,  # ty:ignore[invalid-argument-type]
         state,
         tape.shots,
         is_state_batched,
@@ -109,9 +142,9 @@ def measure_final_state(
     )
 
     if len(tape.measurements) == 1:
-        return results[0]
+        return results[0]  # ty:ignore[invalid-return-type]
 
-    return results
+    return results  # ty:ignore[invalid-return-type]
 
 
 @debug_logger
@@ -119,9 +152,22 @@ def simulate(
     tape: QuantumScript,
     wire_dims: dict[Any, int],
     debugger=None,
-    prng_key: "Array | None" = None,
+    prng_key: Array | None = None,
     **execution_kwargs,
 ) -> Result:
+    r"""Simulates a tape and returns the result of the measurements.
+
+    Args:
+        tape: The quantum tape to simulate.
+
+        wire_dims: A dictionary mapping each wire to its dimension.
+
+        debugger: A pennylane debugger object
+
+        prng_key: A JAX PRNG key for generating random numbers.
+
+        execution_kwargs: Any additional keyword arguments to pass to the execution function.
+    """
     state, is_state_batched = get_final_state(
         tape, wire_dims, debugger=debugger, prng_key=prng_key, **execution_kwargs
     )

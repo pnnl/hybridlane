@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 
-import importlib
 import math
 import sys
 from collections import Counter
@@ -26,18 +25,12 @@ def test_package_works_without_jaqalpaq(monkeypatch):
     import hybridlane  # noqa: F401
 
 
-missing_jaqalpaq = importlib.util.find_spec("jaqalpaq") is None
-
-
 @pytest.mark.usefixtures("enable_graph_decomp")
-@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDevice:
     @pytest.mark.unit
     @pytest.mark.parametrize("allow_com", (True, False))
     def test_com_modes(self, allow_com):
-        dev = qp.device(
-            "sandiaqscout.hybrid", enable_com_modes=allow_com, use_virtual_wires=False
-        )
+        dev = qp.device("sandiaqscout.hybrid", enable_com_modes=allow_com, use_virtual_wires=False)
 
         qubits = dev._max_qubits
 
@@ -172,7 +165,6 @@ class TestDevice:
 
 
 @pytest.mark.usefixtures("enable_graph_decomp")
-@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestLayout:
     @pytest.mark.integration
     def test_qumode_assignment(self):
@@ -225,12 +217,9 @@ class TestLayout:
 
 @pytest.mark.usefixtures("enable_graph_decomp")
 @pytest.mark.integration
-@pytest.mark.skipif(missing_jaqalpaq, reason="jaqalpaq is not installed")
 class TestDecomposition:
     def test_fockstate_and_conditionaldisplacement(self):
-        dev = qp.device(
-            "sandiaqscout.hybrid", optimize=True, use_virtual_wires=False, n_qubits=3
-        )
+        dev = qp.device("sandiaqscout.hybrid", optimize=True, use_virtual_wires=False, n_qubits=3)
 
         @qp.set_shots(20)
         @qp.qnode(dev)
@@ -264,9 +253,7 @@ class TestDecomposition:
         assert op_counts[qp.IsingXX] == 1
 
     def test_no_beamsplitter_decomposition(self):
-        dev = qp.device(
-            "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
-        )
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False)
 
         @qp.set_shots(20)
         @qp.qnode(dev)
@@ -279,17 +266,13 @@ class TestDecomposition:
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
         with (
-            pytest.warns(
-                DecompositionWarning, match="unable to find a decomposition for"
-            ),
+            pytest.warns(DecompositionWarning, match="unable to find a decomposition for"),
             pytest.raises(DeviceError),
         ):
             construct_tape(circuit, level="device")()
 
     def test_no_squeezing_decomposition(self):
-        dev = qp.device(
-            "sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False
-        )
+        dev = qp.device("sandiaqscout.hybrid", n_qubits=6, optimize=True, use_virtual_wires=False)
 
         @qp.set_shots(20)
         @qp.qnode(dev)
@@ -302,9 +285,7 @@ class TestDecomposition:
         # Emits 2 warnings if it can't find a decomposition, then raises an error
         # because the decomposed tape has non-native operations
         with (
-            pytest.warns(
-                DecompositionWarning, match="unable to find a decomposition for"
-            ),
+            pytest.warns(DecompositionWarning, match="unable to find a decomposition for"),
             pytest.raises(DeviceError),
         ):
             construct_tape(circuit, level="device")()
@@ -324,7 +305,7 @@ class TestDecomposition:
             return hl.expval(qp.Z("q"))
 
         specs = qp.specs(circuit, level="device")(1.0)
-        gate_count = specs.resources.gate_types
+        gate_count = specs.resources.gate_types  # ty:ignore[unresolved-attribute]
 
         # The D gates should be replaced by CD gates on an ancilla qubit
         assert gate_count.get("Displacement", 0) == 0

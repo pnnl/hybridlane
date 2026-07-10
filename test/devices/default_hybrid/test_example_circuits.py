@@ -106,11 +106,11 @@ class TestAnalyticCircuits:
 
         @qp.qnode(dev, interface=like)
         def circuit(alpha):
-            # Put the qumode into state |α> + |-α>, which acts like |0L> + |1L>
+            # Put the qumode into state |a> + |-a>, which acts like |0L> + |1L>
             qp.CatState(alpha, 0, 0, wires=0)
 
             # Now use ancilliary qubit to read it out with a phase kickback
-            hl.D(alpha, 0, 0)  # |0> + |2α>
+            hl.D(alpha, 0, 0)  # |0> + |2a>
             qp.H(1)
             hl.SQR(np.pi, np.pi / 2, 0, wires=[1, 0])  # Ry(pi)|0><0|
             qp.H(1)
@@ -161,9 +161,9 @@ class TestAnalyticCircuits:
     @pytest.mark.parametrize(
         "n,expected",
         [
-            (0, 1.0),   # |0> is the +1 eigenstate of GellMann(3) = diag(1,-1,0)
+            (0, 1.0),  # |0> is the +1 eigenstate of GellMann(3) = diag(1,-1,0)
             (1, -1.0),  # |1> is the -1 eigenstate
-            (2, 0.0),   # |2> is the 0 eigenstate
+            (2, 0.0),  # |2> is the 0 eigenstate
         ],
     )
     def test_qutrit_basis_state_gellmann(self, like, n, expected):
@@ -264,7 +264,6 @@ class TestFiniteCircuits:
 
         if like == "jax":
             pytest.xfail(reason="JAX jit doesn't work with sample yet")
-            circuit = jax.jit(circuit)
 
         # Rather than repeat the circuit `repetitions` times, which would be slower,
         # we just partition the shots ourselves into that many tests
@@ -303,7 +302,7 @@ class TestFiniteCircuits:
             return hl.expval(hl.N(0))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         alpha = hl.math.array(3.0, like=like)
         lam = alpha**2
@@ -328,7 +327,7 @@ class TestFiniteCircuits:
             return hl.expval(qp.Z(0) @ hl.N(1)), hl.expval(qp.Z(0)), hl.expval(hl.N(1))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         alpha = hl.math.array(3.0, like=like)
         lam = alpha**2
@@ -344,7 +343,7 @@ class TestFiniteCircuits:
         assert n == pytest.approx(lam, abs=0.1)
 
     def test_qpe(self, like):
-        U = hl.R(0.5, wires="m")
+        U = hl.R(0.5, wires="m")  # noqa: N806
 
         dev = qp.device("default.hybrid", fock_level=8)
 
@@ -373,7 +372,6 @@ class TestFiniteCircuits:
 
         if like == "jax":
             pytest.xfail(reason="JAX jit doesn't work with sample yet")
-            circuit = jax.jit(circuit, static_argnums=0)
 
         n_bits = 3
         samples = circuit(n_bits)
@@ -397,7 +395,7 @@ class TestFiniteCircuits:
             return hl.var(hl.N(0))
 
         if like == "jax":
-            circuit = jax.jit(circuit, static_argnums=0)
+            circuit = jax.jit(circuit, static_argnums=0)  # ty:ignore[invalid-assignment]
 
         for n in range(fock_levels):
             var = circuit(n)
@@ -417,7 +415,7 @@ class TestFiniteCircuits:
             return hl.expval(qp.X(0) @ qp.X(1)), hl.expval(qp.Z(0) @ qp.Z(1))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         expvals = circuit()
         assert hl.math.get_deep_interface(expvals) == like
@@ -437,7 +435,7 @@ class TestFiniteCircuits:
             return hl.expval(qp.Z(0) + 0.1 * hl.N(1))
 
         if like == "jax":
-            circuit = jax.jit(circuit)
+            circuit = jax.jit(circuit)  # ty:ignore[invalid-assignment]
 
         alpha = hl.math.array(3.0, like=like)
         lam = alpha**2
@@ -446,7 +444,7 @@ class TestFiniteCircuits:
         assert hl.math.get_interface(expval) == like
         assert hl.math.get_dtype_name(expval) == "float64"
         assert expval.shape == ()
-        expval == pytest.approx(0.1 * lam, abs=0.1)
+        assert expval == pytest.approx(0.1 * lam, abs=0.1)
 
     def test_sample_preserves_wire_labels(self, like):
         fock_levels = 32

@@ -1,5 +1,5 @@
-import pennylane as qp
-
+# SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+# SPDX-License-Identifier: BSD-2-Clause
 import hybridlane as hl
 from hybridlane.devices.sandia_qscout import ops
 from hybridlane.wires.type_check import infer_wires

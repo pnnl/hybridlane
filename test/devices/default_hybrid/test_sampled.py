@@ -36,22 +36,20 @@ class TestSampleState:
         """Single qumode of dim 4, 10 shots => (10, 1)."""
         state = hl.math.array([1.0, 0.0, 0.0, 0.0], like=like)
         result = sample_state(state, Shots(10), is_state_batched=False, **_rng(like))
-        assert result.shape == (10, 1)
+        assert result.shape == (10, 1)  # ty:ignore[unresolved-attribute]
 
     def test_output_shape_multi_wire(self, like):
         """Two wires (qumode dim 4, qubit dim 2), 6 shots => (6, 2)."""
         state = hl.math.zeros((4, 2), like=like)
         state = hl.math.scatter_element_add(state, [0, 0], 1.0)
         result = sample_state(state, Shots(6), is_state_batched=False, **_rng(like))
-        assert result.shape == (6, 2)
+        assert result.shape == (6, 2)  # ty:ignore[unresolved-attribute]
 
     def test_output_shape_batched(self, like):
         """Two batch elements, single wire dim 4, 5 shots => (2, 5, 1)."""
-        state = hl.math.array(
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like
-        )
+        state = hl.math.array([[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like)
         result = sample_state(state, Shots(5), is_state_batched=True, **_rng(like))
-        assert result.shape == (2, 5, 1)
+        assert result.shape == (2, 5, 1)  # ty:ignore[unresolved-attribute]
 
     # ------------------------------------------------------------------
     # Deterministic states (prob=1 on a single basis state)
@@ -61,30 +59,28 @@ class TestSampleState:
         """Vacuum state |0> must always sample Fock number 0."""
         state = hl.math.array([1.0, 0.0, 0.0, 0.0], like=like)
         result = sample_state(state, Shots(20), is_state_batched=False, **_rng(like))
-        assert hl.math.all(result[:, 0] == 0)
+        assert hl.math.all(result[:, 0] == 0)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     def test_fock_excited_state(self, like):
         """Fock state |2> must always sample Fock number 2."""
         state = hl.math.array([0.0, 0.0, 1.0, 0.0], like=like)
         result = sample_state(state, Shots(20), is_state_batched=False, **_rng(like))
-        assert hl.math.all(result[:, 0] == 2)
+        assert hl.math.all(result[:, 0] == 2)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     def test_two_wire_product_state(self, like):
         """Product state |2>|1> must return wire0=2, wire1=1 on every shot."""
         state = hl.math.zeros((4, 2), like=like)
         state = hl.math.scatter_element_add(state, [2, 1], 1.0)
         result = sample_state(state, Shots(10), is_state_batched=False, **_rng(like))
-        assert hl.math.all(result[:, 0] == 2)
-        assert hl.math.all(result[:, 1] == 1)
+        assert hl.math.all(result[:, 0] == 2)  # ty:ignore[invalid-argument-type, not-subscriptable]
+        assert hl.math.all(result[:, 1] == 1)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     def test_batched_deterministic(self, like):
         """Batched state: element 0 always samples 0, element 1 always samples 2."""
-        state = hl.math.array(
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like
-        )
+        state = hl.math.array([[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]], like=like)
         result = sample_state(state, Shots(8), is_state_batched=True, **_rng(like))
-        assert hl.math.all(result[0, :, 0] == 0)
-        assert hl.math.all(result[1, :, 0] == 2)
+        assert hl.math.all(result[0, :, 0] == 0)  # ty:ignore[invalid-argument-type, not-subscriptable]
+        assert hl.math.all(result[1, :, 0] == 2)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     # ------------------------------------------------------------------
     # Wire subsetting
@@ -97,8 +93,8 @@ class TestSampleState:
         result = sample_state(
             state, Shots(6), is_state_batched=False, wires=Wires([0]), **_rng(like)
         )
-        assert result.shape == (6, 1)
-        assert hl.math.all(result[:, 0] == 2)
+        assert result.shape == (6, 1)  # ty:ignore[unresolved-attribute]
+        assert hl.math.all(result[:, 0] == 2)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     def test_subset_wire1_from_two(self, like):
         """Sampling wire 1 from |2>|1> always gives 1, with shape (shots, 1)."""
@@ -107,8 +103,8 @@ class TestSampleState:
         result = sample_state(
             state, Shots(6), is_state_batched=False, wires=Wires([1]), **_rng(like)
         )
-        assert result.shape == (6, 1)
-        assert hl.math.all(result[:, 0] == 1)
+        assert result.shape == (6, 1)  # ty:ignore[unresolved-attribute]
+        assert hl.math.all(result[:, 0] == 1)  # ty:ignore[invalid-argument-type, not-subscriptable]
 
     # ------------------------------------------------------------------
     # Reproducibility
@@ -140,5 +136,5 @@ class TestSampleState:
         state = hl.math.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)], like=like)
         shots = 10_000
         result = sample_state(state, Shots(shots), is_state_batched=False, **_rng(like))
-        frac_zero = hl.math.sum(result[:, 0] == 0) / shots
+        frac_zero = hl.math.sum(result[:, 0] == 0) / shots  # ty:ignore[invalid-argument-type, not-subscriptable]
         assert float(frac_zero) == pytest.approx(0.5, abs=0.02)
