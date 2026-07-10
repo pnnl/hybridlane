@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""CV gates acting on multiple qumodes"""
+
+# ruff: noqa: D107, D102
 import math
+from typing import ClassVar
 
 import numpy as np
 import pennylane as qp
@@ -85,7 +89,7 @@ class Beamsplitter(CVOperation, FockRepresentation):
            [ 0.    ,  0.    ,  0.9689, -0.2462,  0.0247],
            [ 0.    , -0.0247,  0.2462,  0.9689,  0.    ],
            [ 0.    , -0.2462, -0.0247,  0.    ,  0.9689]])
-    """
+    """  # noqa: E501
 
     num_params = 2
     num_wires = 2
@@ -93,7 +97,7 @@ class Beamsplitter(CVOperation, FockRepresentation):
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule, _two_term_shift_rule)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -134,18 +138,14 @@ class Beamsplitter(CVOperation, FockRepresentation):
         theta = self.data[0] % (4 * math.pi)  # ty:ignore[unsupported-operator]
         phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify BS when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify BS when ``theta`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
 
         return Beamsplitter(theta, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "BS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "BS", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -233,7 +233,7 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
            [ 0.    ,  0.2985,  0.0605,  1.0453,  0.    ],
            [ 0.    ,  0.0605, -0.2985,  0.    ,  1.0453]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -252,7 +252,7 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
         _two_term_shift_rule,
     )
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, r, phi, wires, id=None):
         super().__init__(r, phi, wires=wires, id=id)
@@ -295,9 +295,7 @@ class TwoModeSqueezing(CVOperation, FockRepresentation):
         return TwoModeSqueezing(r, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "TMS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "TMS", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -392,7 +390,7 @@ class TwoModeSum(CVOperation, FockRepresentation):
            [ 0. ,  0.5,  0. ,  1. ,  0. ],
            [ 0. ,  0. ,  0. ,  0. ,  1. ]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -404,7 +402,7 @@ class TwoModeSum(CVOperation, FockRepresentation):
     grad_method = "A"
     grad_recipe = (_two_term_shift_rule,)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, lambda_: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(lambda_, wires=wires, id=id)
@@ -442,19 +440,13 @@ class TwoModeSum(CVOperation, FockRepresentation):
         return TwoModeSum(lambda_, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "SUM", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "SUM", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], lambda_) -> TensorLike:  # ty:ignore[invalid-method-override]
-        a = hl.math.asarray(
-            hl.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_
-        )
+        a = hl.math.asarray(hl.AnnihilationOp.compute_fock_matrix(wire_dims[:1]), like=lambda_)
         ad = hl.math.conj(hl.math.transpose(a))
-        b = hl.math.asarray(
-            hl.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_
-        )
+        b = hl.math.asarray(hl.AnnihilationOp.compute_fock_matrix(wire_dims[1:]), like=lambda_)
         bd = hl.math.conj(hl.math.transpose(b))
         g = 0.5 * lambda_ * hl.math.kron(a + ad, bd - b)
         return hl.math.expm(g)

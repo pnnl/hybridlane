@@ -1,11 +1,12 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Module for drawing-related functions"""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from functools import partial, wraps
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 from unittest.mock import patch
 
 import pennylane as qp
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from pennylane.workflow.qnode import QNode
 
 
-def draw_mpl(
+def draw_mpl(  # noqa: D417
     qnode: QNode | Callable,
     wire_order: Sequence | None = None,
     show_all_wires: bool = False,
@@ -52,7 +53,8 @@ def draw_mpl(
     For other arguments, see :py:func:`qp.draw_mpl <pennylane.draw_mpl>`.
 
     Returns:
-        A function that when called, produces the same output as :py:func:`qp.draw_mpl <pennylane.draw_mpl>`
+        A function that when called, produces the same output as
+        :py:func:`qp.draw_mpl <pennylane.draw_mpl>`
 
     **Examples**
 

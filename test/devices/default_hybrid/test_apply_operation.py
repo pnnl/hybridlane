@@ -81,10 +81,7 @@ class TestApplyOperation:
                 if is_batched
                 else hl.math.reshape(state, (-1,))
             )
-            if is_batched:
-                expected_result = hl.math.matvec(m, flat_state)
-            else:
-                expected_result = m @ flat_state
+            expected_result = hl.math.matvec(m, flat_state) if is_batched else m @ flat_state
             expected_result = hl.math.reshape(expected_result, shape)
 
             result = f(state, is_batched)
@@ -120,10 +117,7 @@ class TestApplyOperation:
             state = hl.math.ones(shape, like=like, dtype="complex128")
             m = hl.math.asarray(op.fock_matrix({0: dim}), like=like)
             result = f(state, is_batched)
-            if is_batched:
-                expected_result = hl.math.matvec(m, state)
-            else:
-                expected_result = m @ state
+            expected_result = hl.math.matvec(m, state) if is_batched else m @ state
 
             assert result == pytest.approx(expected_result)
 
@@ -147,7 +141,7 @@ class TestApplyOperation:
 
         batch_size = 3
         dim = 5
-        wire_dims = {op.wires[0]: 2} | {wire: dim for wire in op.wires[1:]}
+        wire_dims = {op.wires[0]: 2} | dict.fromkeys(op.wires[1:], dim)
         inner_shape = tuple(wire_dims[wire] for wire in range(len(op.wires)))
 
         def f(state, is_batched):
@@ -170,18 +164,13 @@ class TestApplyOperation:
                 if is_batched
                 else hl.math.reshape(state, (-1,))
             )
-            if is_batched:
-                expected_result = hl.math.matvec(m, flat_state)
-            else:
-                expected_result = m @ flat_state
+            expected_result = hl.math.matvec(m, flat_state) if is_batched else m @ flat_state
             expected_result = hl.math.reshape(expected_result, shape)
 
             result = f(state, is_batched)
             assert result == pytest.approx(expected_result)
 
-    @pytest.mark.parametrize(
-        "op,dim", [(qp.RX(0.123, wires=0), 2), (hl.R(0.123, wires=0), 5)]
-    )
+    @pytest.mark.parametrize("op,dim", [(qp.RX(0.123, wires=0), 2), (hl.R(0.123, wires=0), 5)])
     @pytest.mark.all_interfaces
     def test_conditional(self, op, dim, like):
         params = hl.math.asarray(op.parameters, like=like)
@@ -191,9 +180,7 @@ class TestApplyOperation:
         def f(state, val):
             mv = qp.measure(wires=1)
             op = Conditional(mv, then_op)
-            return apply_operation(
-                op, state, mid_measurements={mv.measurements[0]: val}
-            )
+            return apply_operation(op, state, mid_measurements={mv.measurements[0]: val})
 
         if like == "jax":
             import jax

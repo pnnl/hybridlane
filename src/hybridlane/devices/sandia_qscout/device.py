@@ -4,13 +4,14 @@
 r"""Device definition for Sandia Qscout ion trap"""
 
 import math
-from collections.abc import Sequence
+from collections.abc import Hashable, Sequence
 from dataclasses import replace
 from functools import partial, singledispatch
-from typing import Hashable, cast
+from typing import cast
 
 import pennylane as qp
 from pennylane.devices import Device
+from pennylane.devices.default_qubit import null_postprocessing
 from pennylane.devices.execution_config import ExecutionConfig
 from pennylane.devices.modifiers import single_tape_support
 from pennylane.devices.preprocess import (
@@ -36,11 +37,11 @@ from pennylane.transforms import (
 from pennylane.wires import Wires
 
 import hybridlane as hl
-from hybridlane.ops.hybrid.parametric_ops_single_qumode import _cd_to_xcd
-from hybridlane.ops.op_math.decompositions import make_gate_with_ancilla_qubit
 
 from ... import wires as sa
 from ...measurements import SampleMeasurement
+from ...ops.hybrid.parametric_ops_single_qumode import _cd_to_xcd
+from ...ops.op_math.decompositions import make_gate_with_ancilla_qubit
 from ...transforms import from_pennylane
 from . import jaqal
 from . import ops as native_ops
@@ -52,6 +53,7 @@ from .jaqal import Qumode
 
 
 def accepted_sample_measurement(m: MeasurementProcess) -> bool:
+    r"""Determines if the measurement is supported by the device."""
     if not isinstance(m, SampleMeasurement):
         return False
 
@@ -62,6 +64,7 @@ def accepted_sample_measurement(m: MeasurementProcess) -> bool:
 
 
 def is_sampled_observable_supported(o: Operator) -> bool:
+    r"""Determines if the observable is supported"""
     if o.pauli_rep:
         pr = cast(PauliSentence, o.pauli_rep)
         return len(pr) == 1
@@ -70,15 +73,19 @@ def is_sampled_observable_supported(o: Operator) -> bool:
 
 
 NATIVE_GATES = set(jaqal.QUBIT_GATES) | set(jaqal.BOSON_GATES)
+r"""The native gate set of the ion trap"""
+
 # Assign non-native CD gates a higher cost so it'll use the xCD gate
-NATIVE_GATES_WITH_COST = {g: 1 for g in NATIVE_GATES} | {
+NATIVE_GATES_WITH_COST = dict.fromkeys(NATIVE_GATES, 1) | {
     "ConditionalDisplacement": 3,
 }
+r"""The supported operations of the ion trap with their cost assigned"""
 
 
 # Define constraints on the gates
 @singledispatch
 def is_gate_supported(op: Operator):
+    r"""Determines if the operation is supported by the device."""
     return op.name in NATIVE_GATES
 
 
@@ -116,7 +123,7 @@ class QscoutIonTrap(Device):
 
         tape = qp.workflow.construct_tape(circuit)()
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -154,13 +161,22 @@ class QscoutIonTrap(Device):
 
             shots: The number of shots to use for a measurement
 
-        Keyword arguments:
+            n_qubits: The number of qubits to be used in the trap.
+
+            optimize: Whether to perform any simplifications of the circuit
+
+            enable_com_modes: If True, the center-of-mass qumodes are enabled.
+
+            use_virtual_wires: If True, the circuit may contain algorithmic (virtual) wires that
+                will be mapped to physical wires by the compiler. If False, the circuit must
+                contain only physical wires.
+
+        Keyword Arguments:
             See the options of :func:`get_compiler`
         """
         if n_qubits is not None and n_qubits > self._max_qubits:
             raise DeviceError(
-                f"Requested more qubits than available "
-                f"({n_qubits} > {self._max_qubits})"
+                f"Requested more qubits than available ({n_qubits} > {self._max_qubits})"
             )
 
         if not use_virtual_wires:
@@ -174,16 +190,16 @@ class QscoutIonTrap(Device):
         self._enable_com_modes = enable_com_modes
         self._use_virtual_wires = use_virtual_wires
 
-    def execute(  # type: ignore
+    def execute(  # type: ignore  # noqa: D102
         self,
         circuits: Sequence[QuantumScript],
-        execution_config: ExecutionConfig | None = None,
+        execution_config: ExecutionConfig | None = None,  # noqa: ARG002
     ):
         # We can't actually execute anything, instead this device is just meant
         # as a compilation target.
         return (0,) * len(circuits)
 
-    def setup_execution_config(
+    def setup_execution_config(  # noqa: D102
         self,
         config: ExecutionConfig | None = None,
         circuit: QuantumScript | None = None,
@@ -207,7 +223,7 @@ class QscoutIonTrap(Device):
 
         return replace(config, **updated_values)
 
-    def preprocess_transforms(
+    def preprocess_transforms(  # noqa: D102
         self, execution_config: ExecutionConfig | None = None
     ) -> qp.CompilePipeline:
         execution_config = execution_config or ExecutionConfig()
@@ -257,7 +273,7 @@ def get_compiler(
 
     # At this point, everything is a native instruction so we can perform virtual
     # wire layout if desired.
-    pipeline += parse_hardware_wires
+    pipeline += _parse_hardware_wires
     if use_virtual_wires:
         pipeline += layout_wires(
             max_qubits=max_qubits,
@@ -282,9 +298,7 @@ def get_compiler(
     return pipeline
 
 
-def get_validator(
-    max_qubits: int, enable_com_modes: bool = False
-) -> qp.CompilePipeline:
+def get_validator(max_qubits: int, enable_com_modes: bool = False) -> qp.CompilePipeline:
     r"""Returns a validation pipeline for QscoutIonTrap device"""
     physical_wires = _get_allowed_device_wires(max_qubits, enable_com_modes)
 
@@ -300,12 +314,10 @@ def get_validator(
 
 @qp.transform
 def validate_gates_supported_on_hardware(tape: QuantumScript):
+    r"""Transform to ensure all operations are supported by the device"""
     for op in tape.operations:
         if not is_gate_supported(op):
             raise DeviceError(f"Operation {op} is not supported natively")
-
-    def null_postprocessing(results):
-        return results[0]
 
     return (tape,), null_postprocessing
 
@@ -317,6 +329,11 @@ def dynamic_gate_decompose(
     max_qubits: int | None = None,
     gate_set: set | dict | None = None,
 ):
+    r"""Decomposes a circuit into the native gate set, allowing for dynamic qubit allocation.
+
+    This calculates the number of unused ions by type checking the circuit, then that remainder
+    is used to perform dynamic qubit allocation to synthesize non-native gates.
+    """
     if sa_res is None:
         sa_res = sa.type_check(tape)
 
@@ -350,6 +367,11 @@ def layout_wires(
     max_qubits: int | None = None,
     use_com_modes: bool = False,
 ):
+    r"""Perform virtual wire allocation to physical wires.
+
+    This transform will attempt to find a mapping of virtual wires to physical wires that
+    allows the circuit to be implemented on the device with its current operations.
+    """
     if sa_res is None:
         sa_res = sa.type_check(tape)
 
@@ -370,33 +392,26 @@ def layout_wires(
         )
 
     wire_map = _constrained_layout(
-        tape, sa_res, max_qubits=max_qubits, use_com_modes=use_com_modes
+        tape,
+        sa_res,
+        max_qubits=max_qubits,
+        use_com_modes=use_com_modes,
     )
 
     if wire_map is None:
-        raise DeviceError(
-            "No layout was found that could implement the gates in the circuit"
-        )
-
-    def null_postprocessing(results):
-        return results[0]
+        raise DeviceError("No layout was found that could implement the gates in the circuit")
 
     tape_batch, _ = qp.map_wires(tape, wire_map)
     return tape_batch, null_postprocessing
 
 
 @qp.transform
-def parse_hardware_wires(tape: QuantumScript):
+def _parse_hardware_wires(tape: QuantumScript):
+    r"""Transform that converts user-friendly string wires to their internal type"""
     wire_map = {w: w for w in tape.wires}
     for wire in tape.wires:
-        if (
-            isinstance(wire, str)
-            and (new_wire := Qumode.try_from_string(wire)) is not None
-        ):
+        if isinstance(wire, str) and (new_wire := Qumode.try_from_string(wire)) is not None:
             wire_map[wire] = new_wire
-
-    def null_postprocessing(results):
-        return results[0]
 
     tape_batch, _ = qp.map_wires(tape, wire_map)
     return tape_batch, null_postprocessing
@@ -425,7 +440,7 @@ def _construct_csp(
     hw_qubits: Wires,
     hw_qumodes: Wires,
 ):
-    from constraint import AllDifferentConstraint, Problem  # ty:ignore[unresolved-import]
+    from constraint import AllDifferentConstraint, Problem
 
     # We'll solve the layout (note: not routing) as a constraint satisfaction problem.
     # The inputs are virtual wires, and our output is hardware wires. Each gate
@@ -449,9 +464,7 @@ def _construct_csp(
         problem.addConstraint(lambda assigned, w=w: assigned == w, [w])
 
     def constraint(*hw_wires, virtual_op: Operator):
-        hw_op = virtual_op.map_wires(
-            {w: w2 for w, w2 in zip(virtual_op.wires, hw_wires)}
-        )
+        hw_op = virtual_op.map_wires(dict(zip(virtual_op.wires, hw_wires, strict=False)))
         return is_gate_supported(hw_op)
 
     # Add a constraint per gate that aligns with the conditions above
@@ -467,7 +480,8 @@ def _construct_csp(
 
 @qp.register_resources({qp.IsingXX: 1, qp.RY: 2, qp.RX: 2})
 def cnot_decomp(wires, **_):
-    # Taken from https://en.wikipedia.org/wiki/Mølmer–Sørensen_gate#Description
+    r"""Decomposition for CNOT gate into native ion trap gates"""
+    # Taken from https://en.wikipedia.org/wiki/Mølmer–Sørensen_gate#Description  # noqa: RUF003
     qp.RY(math.pi / 2, wires[0])
     qp.IsingXX(math.pi / 2, wires)
     qp.RX(-math.pi / 2, wires[1])
@@ -477,6 +491,7 @@ def cnot_decomp(wires, **_):
 
 @qp.register_resources({qp.GlobalPhase: 1, native_ops.R: 2})
 def rot_decomp(phi, theta, omega, wires, **_):
+    r"""Decomposition for the Rot gate into native ion trap gates"""
     native_ops.R(theta - math.pi, math.pi / 2 - phi, wires=wires)
     native_ops.R(math.pi, (omega - phi) / 2 + math.pi / 2, wires=wires)
     qp.GlobalPhase((phi + omega) / 2)
@@ -506,7 +521,5 @@ def _get_device_qubits(max_qubits: int) -> Wires:
 
 def _get_device_qumodes(max_qubits: int, use_com_modes: bool) -> Wires:
     min_qumode_idx = 1 - use_com_modes
-    qumodes = Wires(
-        [Qumode(m, i) for i in range(min_qumode_idx, max_qubits) for m in (0, 1)]
-    )
+    qumodes = Wires([Qumode(m, i) for i in range(min_qumode_idx, max_qubits) for m in (0, 1)])
     return qumodes

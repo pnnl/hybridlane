@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Sample measurement for observables and wires"""
+
 from collections.abc import Sequence
 from functools import reduce
 
@@ -22,18 +24,18 @@ def sample(
 ):
     r"""Samples the supplied observable or the wires in a provided schema
 
-    If an observable is given, this method samples the eigenspectrum (!) of the observable, returning
-    one eigenvalue per shot. The observable must have a recipe for diagonalizing it in some set of
-    computational bases.
+    If an observable is given, this method samples the eigenspectrum (!) of the observable,
+    returning one eigenvalue per shot. The observable must have a recipe for diagonalizing it in
+    some set of computational bases.
 
-    When sampling wires without an observable, unlike in the DV (qubit) case, there are multiple possible
-    computational bases to use (see :py:class:`~hybridlane.measurements.measurement.ComputationalBasis`).
-    Therefore, one must provide a :py:class`~hybridlane.measurements.measurement.BasisMap` specifying what
-    basis to measure each wire in. Note that it'll likely be easier to perform homodyne (:math:`\hat{x}`) or Fock
-    (:math:`\hat{n}`) measurements by supplying the corresponding observable rather than manually constructing
-    the appropriate schema.
+    When sampling wires without an observable, unlike in the DV (qubit) case, there are multiple
+    possible computational bases to use (see
+    :py:class:`~hybridlane.measurements.measurement.ComputationalBasis`). Therefore, one must
+    provide a :py:class`~hybridlane.measurements.measurement.BasisMap` specifying what basis to
+    measure each wire in. Note that it'll likely be easier to perform homodyne (:math:`\hat{x}`)
+    or Fock (:math:`\hat{n}`) measurements by supplying the corresponding observable rather than
+    manually constructing the appropriate schema.
     """
-
     if isinstance(op, MeasurementValue):
         raise NotImplementedError("Mid-circuit measurement is currently not supported")
 
@@ -41,19 +43,21 @@ def sample(
 
 
 class SampleMP(SampleMeasurement):
+    r"""Sample measurement process"""
+
     _shortname = "sample"
 
     @property
-    def numeric_type(self):
+    def numeric_type(self):  # noqa: D102
         return float
 
-    def shape(self, shots: int | None = None, num_device_wires: int = 0) -> tuple:
+    def shape(self, shots: int | None = None, num_device_wires: int = 0) -> tuple:  # noqa: ARG002, D102
         return (shots,)
 
-    def process_samples(
+    def process_samples(  # noqa: D102
         self,
         samples: SampleResult,
-        wire_order: Wires,
+        wire_order: Wires,  # noqa: ARG002
         shot_range: tuple[int, ...] | None = None,
         bin_size: int | None = None,
     ) -> TensorLike | SampleResult | list[TensorLike | SampleResult]:
@@ -68,7 +72,7 @@ class SampleMP(SampleMeasurement):
         eigvals = self._sample_observable(self.obs, samples)  # ty:ignore[invalid-argument-type]
         return eigvals
 
-    def process_counts(self, counts: CountsResult) -> CountsResult:
+    def process_counts(self, counts: CountsResult) -> CountsResult:  # noqa: D102
         # todo:
         raise NotImplementedError("Unclear how to bin potentially real eigenvalues")
 
@@ -84,12 +88,12 @@ class SampleMP(SampleMeasurement):
             a tensor of shape ``(*batch_dim, shots)`` corresponding to the eigenvalue of each shot
 
         Raises:
-            :py:class:`ValueError` if the observable has different natural bases on different wires, or if
-                the result was measured in a basis besides the natural basis (and therefore the observable
-                is not diagonal)
+            :py:class:`ValueError` if the observable has different natural bases on different
+                wires, or if the result was measured in a basis besides the natural basis (and
+                therefore the observable is not diagonal)
         """
-        # todo: should these be in here, or should these be tape transform strategies with associated
-        # postprocessing_fn? Each can be measured in a single circuit.
+        # todo: should these be in here, or should these be tape transform strategies with
+        # associated postprocessing_fn? Each can be measured in a single circuit.
 
         # For a scalar observable c * O, eigenvalues are just scaled too
         if isinstance(obs, SProd):
@@ -106,29 +110,28 @@ class SampleMP(SampleMeasurement):
             tensors = [self._sample_observable(o, result) for o in obs.operands]
             return reduce(qp.math.multiply, tensors)
 
-        # For CV operators where we defined the infinite-spectrum functions in position or fock basis,
-        # use those to convert the basis states to eigenvalues
+        # For CV operators where we defined the infinite-spectrum functions in position or fock
+        # basis, use those to convert the basis states to eigenvalues
         elif (
-            obs in attributes.diagonal_in_fock_basis
-            or obs in attributes.diagonal_in_position_basis
+            obs in attributes.diagonal_in_fock_basis or obs in attributes.diagonal_in_position_basis
         ):
             wires = obs.wires
             obs_bases = {self.schema.get_basis(w) for w in wires}
             result_bases = {result.bases.get_basis(w) for w in wires}
             basis = next(iter(result_bases))
 
-            # We don't know how to handle mixed bases. An operator like n_1 p_0 is valid, but because
-            # n_1 is in fock basis and p_0 is in position basis, they should be separated into a qp.Prod
-            # where we'd calculate the eigenvalues like above. This process should be handled by circuit transforms,
-            # so if we reach this point, we just error.
+            # We don't know how to handle mixed bases. An operator like n_1 p_0 is valid, but
+            # because n_1 is in fock basis and p_0 is in position basis, they should be separated
+            # into a qp.Prod where we'd calculate the eigenvalues like above. This process should
+            # be handled by circuit transforms, so if we reach this point, we just error.
             if len(obs_bases) > 1:
                 raise ValueError(
                     "Observable is measured across multiple bases. It should be decomposed into"
                     " a tensor product (`qp.Prod`) of single-basis observables"
                 )
 
-            # Our observable is not diagonal in the measured basis. There should have been a tape transform that
-            # diagonalized it prior to us reaching this point
+            # Our observable is not diagonal in the measured basis. There should have been a tape
+            # transform that diagonalized it prior to us reaching this point
             if result_bases != obs_bases:
                 raise ValueError(
                     f"This observable is not diagonal in the basis {result_bases} measured"
@@ -142,23 +145,20 @@ class SampleMP(SampleMeasurement):
                 case ComputationalBasis.Position:
                     eigvals = obs.position_spectrum(*ordered_tensors)  # ty:ignore[unresolved-attribute]
                 case _:
-                    raise ValueError(
-                        f"Unknown how to calculate spectrum for basis {basis}"
-                    )
+                    raise ValueError(f"Unknown how to calculate spectrum for basis {basis}")
 
             return eigvals
 
-        # All regular observables fall here, we should just dispatch to pennylane and call it a day.
-        # Technically, qp.Hamiltonian/Sum also fall here, but if it errors, that's fine since they should
-        # be decomposed using circuit transforms
+        # All regular observables fall here, we should just dispatch to pennylane and call it a
+        # day. Technically, qp.Hamiltonian/Sum also fall here, but if it errors, that's fine since
+        # they should be decomposed using circuit transforms
         else:
-            # Concatenate all of the (qubit) basis states together into a single tensor, so we go from
-            # |wires| tensors of shape (*batch_dim, shots) to 1 tensor of shape (*batch_dim, shots, wires)
+            # Concatenate all of the (qubit) basis states together into a single tensor, so we go
+            # from |wires| tensors of shape (*batch_dim, shots) to 1 tensor of shape
+            # (*batch_dim, shots, wires)
             ordered_tensors = [result[w] for w in obs.wires]
             batch_dim: tuple[int, ...] = result.shape
-            ordered_tensors = [
-                qp.math.reshape(t, (*batch_dim, 1)) for t in ordered_tensors
-            ]
+            ordered_tensors = [qp.math.reshape(t, (*batch_dim, 1)) for t in ordered_tensors]
             new_samples: TensorLike = qp.math.concatenate(
                 ordered_tensors, axis=-1
             )  # n x (..., 1) -> (..., n)

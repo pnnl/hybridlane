@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D107, D102
+r"""CV gates that don't accept a parameter"""
+
 import math
+from typing import ClassVar
 
 import numpy as np
 import pennylane as qp
@@ -62,22 +66,20 @@ class Fourier(CVOperation, FockRepresentation):
     num_params = 0
     num_wires = 1
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)
 
     @staticmethod
-    def _heisenberg_rep(p):
+    def _heisenberg_rep(p):  # noqa: ARG004
         return hl.math.symplectic.rotation(math.pi / 2)
 
     def adjoint(self):
         return hl.Rotation(-math.pi / 2, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "F", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "F", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
@@ -103,7 +105,7 @@ def _adjoint_f_to_r(wires, **_):
     hl.Rotation(-math.pi / 2, wires)
 
 
-def _pow_f_to_r_resources(z, **_):
+def _pow_f_to_r_resources(z, **_):  # noqa: ARG001
     return {hl.Rotation: 1}
 
 
@@ -196,7 +198,7 @@ class ModeSwap(CVOperation, FockRepresentation):
            [ 0.+0.j,  1.-0.j,  0.+0.j,  0.+0.j],
            [ 0.+0.j,  0.+0.j,  0.+0.j, -1.+0.j]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -205,7 +207,7 @@ class ModeSwap(CVOperation, FockRepresentation):
     num_params = 0
     num_wires = 2
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)
@@ -301,7 +303,7 @@ class CreationOp(CV, Operator, FockRepresentation):
     num_wires = 1
     is_verified_hermitian = False
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)
@@ -356,7 +358,7 @@ class AnnihilationOp(CV, Operator, FockRepresentation):
     num_wires = 1
     is_verified_hermitian = False
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, wires: WiresLike, id: str | None = None):
         super().__init__(wires=wires, id=id)

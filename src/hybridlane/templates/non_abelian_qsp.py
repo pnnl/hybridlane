@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D102
+r"""Templates from the non-Abelian QSP paper arXiv:2504.19992"""
 
-__all__ = ["SqueezedCatState", "GKPState"]
+__all__ = ["GKPState", "SqueezedCatState"]
 
 import math
-from typing import Literal
+from typing import ClassVar, Literal
 
 import numpy as np
 import pennylane as qp
@@ -75,7 +77,7 @@ class SqueezedCatState(ErrorOperation, Hybrid):
         error = errors_dict["SpectralNormError"]
         print(error)
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -87,7 +89,7 @@ class SqueezedCatState(ErrorOperation, Hybrid):
     grad_method = None  # pyright: ignore[reportIncompatibleMethodOverride]
     type_signature = (hl.wires.Qubit(), hl.wires.Qumode())
 
-    resource_keys = {"parity", "has_squeezing"}
+    resource_keys: ClassVar = {"parity", "has_squeezing"}
 
     def __init__(
         self,
@@ -99,7 +101,8 @@ class SqueezedCatState(ErrorOperation, Hybrid):
         wires: WiresLike = None,
         id: str | None = None,
     ):
-        r"""
+        r"""Initialize the template
+
         Args:
             a: Magnitude of the displacement
 
@@ -135,8 +138,7 @@ class SqueezedCatState(ErrorOperation, Hybrid):
         return {
             "parity": self.hyperparameters["parity"],
             "has_squeezing": (
-                not qp.math.isclose(self.data[2], 1)
-                and self.hyperparameters["include_squeezing"]
+                not qp.math.isclose(self.data[2], 1) and self.hyperparameters["include_squeezing"]
             ),
         }
 
@@ -193,7 +195,7 @@ class GKPState(ErrorOperation, Hybrid):
     :math:`\mathcal{U}(\theta', |\alpha|, \Delta)` is applied to disentangle the qubit
     from the qumode.
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -205,7 +207,7 @@ class GKPState(ErrorOperation, Hybrid):
     grad_method = None  # pyright: ignore[reportIncompatibleMethodOverride]
     type_signature = (hl.wires.Qubit(), hl.wires.Qumode())
 
-    resource_keys = {"logical_state", "has_squeezing", "repetitions"}
+    resource_keys: ClassVar = {"logical_state", "has_squeezing", "repetitions"}
 
     def __init__(
         self,
@@ -215,7 +217,8 @@ class GKPState(ErrorOperation, Hybrid):
         wires: WiresLike = None,
         id: str | None = None,
     ):
-        r"""
+        r"""Initialize the template
+
         Args:
             delta: Uncertainty in the resulting squeezed state. A value of
                 :math:`\Delta = 1` has no squeezing, :math:`\Delta < 1` squeeezes in
@@ -242,9 +245,7 @@ class GKPState(ErrorOperation, Hybrid):
 
     def error(self) -> AlgorithmicError:
         error = sum(
-            op.error().error
-            for op in self.decomposition()
-            if isinstance(op, ErrorOperation)
+            op.error().error for op in self.decomposition() if isinstance(op, ErrorOperation)
         )
         return SpectralNormError(error)
 
@@ -263,9 +264,7 @@ def _gkpstate_resources(logical_state, has_squeezing, repetitions):
     if has_squeezing:
         resources[hl.S] = 1
 
-    resources[qp.resource_rep(SqueezedCatState, has_squeezing=False, parity="even")] = (
-        repetitions
-    )
+    resources[qp.resource_rep(SqueezedCatState, has_squeezing=False, parity="even")] = repetitions
 
     if logical_state == 1:
         resources[hl.D] = 1
@@ -296,7 +295,7 @@ class GaussianControlledRotation(ErrorOperation, Hybrid):
     This is a helper gate for the other templates. It implements the GCR pulse sequence
     of :footcite:p:`singh2025towards`.
 
-    References
+    References:
     ----------
 
     .. footbibliography::

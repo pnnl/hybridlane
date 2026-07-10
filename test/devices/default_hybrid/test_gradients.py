@@ -53,7 +53,7 @@ def test_binomial_state_prep():
 
     @jax.jit
     def train_step(params, opt_state):
-        loss_value, grads = jax.value_and_grad(loss)(params)
+        _, grads = jax.value_and_grad(loss)(params)
         updates, opt_state = optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
 

@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Functions for drawing circuits with matplotlib"""
 
 from __future__ import annotations
 
@@ -115,9 +116,7 @@ def _draw_icons(
     wire_icon_colors: dict[Any, str] | None = None,
 ):
     type_res = cast(sa.TypeCheckResult, sa.type_check(tape))  # ty:ignore[redundant-cast]
-    _, wire_map = convert_wire_order(
-        tape, wire_order=wire_order, show_all_wires=show_all_wires
-    )
+    _, wire_map = convert_wire_order(tape, wire_order=wire_order, show_all_wires=show_all_wires)
 
     icons = [type_res.wire_types[w] for w in wire_map]
     wire_colors = _get_default_colors(wire_map, type_res) | (wire_icon_colors or {})
@@ -126,7 +125,7 @@ def _draw_icons(
     drawer.wire_icons(icons, colors)
 
 
-def tape_mpl(
+def tape_mpl(  # noqa: D417
     tape: QuantumScript,
     wire_order: Sequence | None = None,
     show_all_wires: bool = False,
@@ -134,7 +133,7 @@ def tape_mpl(
     decimals: int | None = None,
     style: str | None = None,
     *,
-    fig: "mpl.figure.Figure" | None = None,
+    fig: mpl.figure.Figure | None = None,
     max_length: int | None = None,
     **kwargs,
 ):

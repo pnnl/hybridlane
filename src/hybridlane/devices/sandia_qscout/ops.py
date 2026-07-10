@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D102
 
 r"""Module containing the native bosonic gates of the ion trap"""
 
 import math
+from typing import ClassVar
 
 import pennylane as qp
 from pennylane.operation import Operation
@@ -44,18 +46,14 @@ class ConditionalXSqueezing(HybridOperation):
     num_qumodes = 1
     grad_method = "F"
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
-    def __init__(
+    def __init__(  # noqa: D107
         self,
         ratio: TensorLike,
         wires: WiresLike,
         id: str | None = None,
     ):
-        r"""
-        Args:
-            ratio: The blue/red ratio
-        """
         super().__init__(ratio, wires=wires, id=id)
 
     @property
@@ -63,9 +61,7 @@ class ConditionalXSqueezing(HybridOperation):
         return {}
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "RampUp", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "RampUp", cache=cache)
 
 
 class SidebandProbe(HybridOperation):
@@ -79,9 +75,9 @@ class SidebandProbe(HybridOperation):
     num_qumodes = 1
     grad_method = None
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
-    def __init__(
+    def __init__(  # noqa: D107
         self,
         duration_us: TensorLike,
         phase: TensorLike,
@@ -101,9 +97,7 @@ class SidebandProbe(HybridOperation):
         return {}
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "Rt_SBP", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "Rt_SBP", cache=cache)
 
 
 class NativeBeamsplitter(HybridOperation):
@@ -121,9 +115,9 @@ class NativeBeamsplitter(HybridOperation):
     num_qumodes = 2
     grad_method = None
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
-    def __init__(
+    def __init__(  # noqa: D107
         self,
         detuning1: TensorLike,
         detuning2: TensorLike,
@@ -139,9 +133,7 @@ class NativeBeamsplitter(HybridOperation):
         return {}
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "BS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "BS", cache=cache)
 
 
 class R(Operation):
@@ -156,9 +148,9 @@ class R(Operation):
     ndim_params = (0, 0)
     num_wires = 1
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
-    def __init__(self, theta, phi, wires: WiresLike = None, id: str | None = None):
+    def __init__(self, theta, phi, wires: WiresLike = None, id: str | None = None):  # noqa: D107
         super().__init__(theta, phi, wires=wires, id=id)
 
     def adjoint(self):
@@ -174,9 +166,7 @@ class R(Operation):
     def simplify(self):
         theta, phi = self.data[0] % (4 * math.pi), self.data[1] % math.pi  # ty:ignore[unsupported-operator]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify R when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify R when ``theta`` is a tracer")
         phi = concrete_or_error(None, phi, "Cannot simplify R when ``phi`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(wires=self.wires)
@@ -196,6 +186,4 @@ class R(Operation):
         return R(theta, phi, wires=self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "R", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "R", cache=cache)

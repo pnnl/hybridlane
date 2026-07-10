@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
 # Inspired by PennyLane's default.qubit device
+# ruff: noqa: ARG001
+r"""Module containing implementation for operations acting on a state (in Fock space)."""
 
 from functools import singledispatch
 from string import ascii_letters as alphabet
@@ -27,6 +29,20 @@ def apply_operation(
     debugger=None,
     **execution_kwargs,
 ):
+    r"""Applies a quantum operation to the given state.
+
+    Args:
+        op: The operation to apply
+
+        state: The state(vector) to which the operation is applied
+
+        is_state_batched: Whether the state has a leading batch dimension in its shape
+
+        debugger: A PennyLane debugger object.
+
+        execution_kwargs: Additional keyword arguments to pass to the underlying apply_operation
+            function
+    """
     # If the operation has a matrix representation, we will need to handle it ourselves
     # because PennyLane won't be able to expand it to match the state dimensions properly.
     if op.has_matrix:
@@ -34,9 +50,7 @@ def apply_operation(
         return apply_operation_einsum(mat, state, op.wires, is_state_batched)
 
     # Fall back to the pennylane method and then see what breaks
-    return apply_operation_qubit(
-        op, state, is_state_batched, debugger, **execution_kwargs
-    )
+    return apply_operation_qubit(op, state, is_state_batched, debugger, **execution_kwargs)
 
 
 @apply_operation.register
@@ -54,7 +68,7 @@ def apply_fock_operator(
     # transform, so we can always do this
     n = cast(int, math.ndim(state) - is_state_batched)
     state_shape = cast(tuple[int, ...], math.shape(state))[-n:]
-    wire_dims = {w: d for w, d in enumerate(state_shape)}
+    wire_dims = dict(enumerate(state_shape))
     mat = op.fock_matrix(wire_dims)
 
     return apply_operation_einsum(mat, state, op.wires, is_state_batched)
@@ -70,6 +84,7 @@ def apply_conditional(
     debugger=None,
     **kwargs,
 ):
+    r"""Applies a classically-conditional operation."""
     mid_measurements = kwargs.get("mid_measurements")
     rng = kwargs.get("rng")
     prng_key = kwargs.get("prng_key")
@@ -105,11 +120,13 @@ def apply_conditional(
 
 @apply_operation.register
 def apply_qubit_mid_measure(op: MidMeasure, state: TensorLike, **kwargs):
+    r"""Applies a mid-circuit measurement operation."""
     return apply_operation_qubit(op, state, **kwargs)
 
 
 @apply_operation.register
 def apply_qubit_conditioned(op: ops.QubitConditioned, state: TensorLike, **kwargs):
+    r"""Applies a qubit-conditioned operation."""
     if len(op.control_wires) != 1:
         raise NotImplementedError("Only single control wire is supported for now")
 
@@ -124,6 +141,7 @@ def apply_adjoint(
     debugger=None,
     **kwargs,
 ):
+    r"""Applies the adjoint of an operation."""
     try:
         with qp.QueuingManager.stop_recording():
             adj_op = op.base.adjoint()
@@ -174,7 +192,7 @@ def apply_optimized_pennylane_op(
 
 
 @apply_operation.register
-def apply_number_operator(
+def _apply_number_operator(
     op: ops.N,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -187,7 +205,7 @@ def apply_number_operator(
 
 
 @apply_operation.register
-def apply_fourier(
+def _apply_fourier(
     op: ops.F,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -200,7 +218,7 @@ def apply_fourier(
 
 
 @apply_operation.register
-def apply_rotation(
+def _apply_rotation(
     op: ops.R,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -213,7 +231,7 @@ def apply_rotation(
 
 
 @apply_operation.register
-def apply_kerr(
+def _apply_kerr(
     op: ops.K,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -226,7 +244,7 @@ def apply_kerr(
 
 
 @apply_operation.register
-def apply_snap(
+def _apply_snap(
     op: ops.SNAP,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -236,13 +254,14 @@ def apply_snap(
     axis = cast(int, op.wires[0] + is_state_batched)
     slices = list(math.unstack(state, axis=axis))
     slices[op.hyperparameters["n"]] = math.multiply(
-        slices[op.hyperparameters["n"]], math.exp(1j * op.parameters[0])  # ty:ignore[unsupported-operator]
+        slices[op.hyperparameters["n"]],
+        math.exp(1j * op.parameters[0]),  # ty:ignore[unsupported-operator]
     )
     return math.stack(slices, axis=axis)
 
 
 @apply_operation.register
-def apply_conditional_parity(
+def _apply_conditional_parity(
     op: ops.CP,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -255,7 +274,7 @@ def apply_conditional_parity(
 
 
 @apply_operation.register
-def apply_conditional_rotation(
+def _apply_conditional_rotation(
     op: ops.CR,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -268,7 +287,7 @@ def apply_conditional_rotation(
 
 
 @apply_operation.register
-def apply_conditional_displacement(
+def _apply_conditional_displacement(
     op: ops.CD,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -281,7 +300,7 @@ def apply_conditional_displacement(
 
 
 @apply_operation.register
-def apply_conditional_squeezing(
+def _apply_conditional_squeezing(
     op: ops.CS,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -294,7 +313,7 @@ def apply_conditional_squeezing(
 
 
 @apply_operation.register
-def apply_conditional_sum(
+def _apply_conditional_sum(
     op: ops.CSUM,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -307,7 +326,7 @@ def apply_conditional_sum(
 
 
 @apply_operation.register
-def apply_conditional_tms(
+def _apply_conditional_tms(
     op: ops.CTMS,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -320,7 +339,7 @@ def apply_conditional_tms(
 
 
 @apply_operation.register
-def apply_conditional_bs(
+def _apply_conditional_bs(
     op: ops.CBS,
     state: TensorLike,
     is_state_batched: bool = False,
@@ -338,13 +357,27 @@ def apply_operation_einsum(
     op_wires: Wires,
     is_state_batched: bool = False,
 ) -> TensorLike:
+    r"""Applies a matrix to a state using einsum
+
+    This method is just like pennylane's apply_operation_einsum, but it supports our variable
+    dimension states.
+
+    Args:
+        mat: The matrix to apply to the state
+
+        state: The state to which the matrix is applied
+
+        op_wires: The wires on which the matrix acts
+
+        is_state_batched: Whether the state has a leading batch dimension in its shape
+    """
     # Implicit casting like in pennylane's qubit version
     mat = mat + 0j  # ty:ignore[unsupported-operator]
     n = cast(int, math.ndim(state) - is_state_batched)
     state_shape = cast(tuple[int, ...], math.shape(state))[-n:]
 
     m = len(op_wires)
-    wire_dims = {w: d for w, d in enumerate(state_shape)}
+    wire_dims = dict(enumerate(state_shape))
     mat_dim = int(math.prod([wire_dims[w] for w in op_wires]))
     batch_shape = math.get_batch_size(mat, (mat_dim, mat_dim), mat_dim**2)
 
@@ -353,12 +386,10 @@ def apply_operation_einsum(
     new_indices = alphabet[n : n + m]
 
     new_state_indices = state_indices
-    for old, new in zip(affected_indices, new_indices):
+    for old, new in zip(affected_indices, new_indices, strict=True):
         new_state_indices = new_state_indices.replace(old, new)
 
-    indices = (
-        f"...{new_indices}{affected_indices},...{state_indices}->...{new_state_indices}"
-    )
+    indices = f"...{new_indices}{affected_indices},...{state_indices}->...{new_state_indices}"
 
     # Reshape the matrix to have the appropriate shape for the einsum
     target_shape = tuple(wire_dims[w] for w in op_wires) * 2
@@ -372,10 +403,21 @@ def apply_operation_einsum(
 def apply_diag_operation(
     diag: TensorLike, state: TensorLike, op_wires: Wires, is_state_batched: bool = False
 ) -> TensorLike:
+    r"""Applies a diagonal matrix to a state using elementwise multiplication
+
+    Args:
+        diag: The diagonal elements of the matrix to apply to the state
+
+        state: The state to which the matrix is applied
+
+        op_wires: The wires on which the matrix acts
+
+        is_state_batched: Whether the state has a leading batch dimension in its shape
+    """
     axis = cast(int, op_wires[0] + is_state_batched)
 
     slices = []
-    for d, s in zip(diag, math.unstack(state, axis=axis)):  # ty:ignore[invalid-argument-type, not-iterable]
+    for d, s in zip(diag, math.unstack(state, axis=axis), strict=True):  # ty:ignore[invalid-argument-type, not-iterable]
         slices.append(math.multiply(s, d))
 
     return math.stack(slices, axis=axis)
@@ -387,6 +429,21 @@ def apply_qcond(
     cond_wire: int,
     is_state_batched: bool = False,
 ) -> TensorLike:
+    r"""Applies the matrix of a qubit-conditioned operation to a state blockwise
+
+    Because a qubit-conditioned operation is block-diagonal w.r.t. the controlling qubit, this
+    function uses the underlying unconditioned matrix and applies it to each block of the state.
+
+    Args:
+        op: The (unconditioned) operation to apply. For example, if trying to apply a CD gate,
+            the op should be an equivalent D gate.
+
+        state: The state to which the operation is applied
+
+        cond_wire: The wire of the controlling qubit
+
+        is_state_batched: Whether the state has a leading batch dimension in its shape
+    """
     assert isinstance(op, Operator)
     axis = cond_wire + is_state_batched
 
@@ -397,7 +454,7 @@ def apply_qcond(
     s0, s1 = math.unstack(state, axis=axis)
     n = cast(int, math.ndim(s0) - is_state_batched)
     state_shape = cast(tuple[int, ...], math.shape(s0))[-n:]
-    wire_dims = {w: d for w, d in enumerate(state_shape)}
+    wire_dims = dict(enumerate(state_shape))
     mat = new_op.fock_matrix(wire_dims)
 
     s0 = apply_operation_einsum(mat, s0, new_op.wires, is_state_batched)

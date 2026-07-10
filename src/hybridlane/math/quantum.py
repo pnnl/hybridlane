@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Quantum information related math functions"""
+
 from collections.abc import Sequence
 from string import ascii_lowercase as alphabet
 
@@ -127,7 +129,6 @@ def reduce_dm(
 
     .. seealso:: :func:`~hybridlane.math.reduce_statevector`
     """
-
     n_input = len(dims)
     d = int(math.prod(dims))
 

@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: N806
 import math
 
 import pennylane as qp
@@ -55,7 +56,7 @@ class TestFourier:
                 [0, -1, 0],  # x -> -p
             ]
         )
-        assert M == pytest.approx(expected)
+        assert pytest.approx(expected) == M
 
 
 @pytest.mark.unit
@@ -129,7 +130,7 @@ class TestModeSwap:
                 [0, 0, 1, 0, 0],
             ]
         )
-        assert M == pytest.approx(expected, abs=1e-6)
+        assert pytest.approx(expected, abs=1e-6) == M
 
 
 @pytest.mark.unit

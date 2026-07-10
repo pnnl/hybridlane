@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Patches for PennyLane's decomposition utils module."""
+
 import re
 from functools import singledispatch
 from unittest.mock import patch
@@ -13,6 +15,7 @@ from pennylane.operation import Operator
 
 @singledispatch
 def to_name(op):
+    r"""Returns the canonical name of an operator in the graph decomposition framework."""
     return pl_to_name(op)
 
 
@@ -32,6 +35,7 @@ def _type_to_name(op: type):
 
 
 def translate_op_alias(op_alias):
+    r"""Translates an operator alias to its canonical name."""
     if match := re.match(r"(?:qCond|QubitConditioned)\((\w+)\)", op_alias):
         base_op_name = match.group(1)
         return f"qCond({translate_op_alias(base_op_name)})"

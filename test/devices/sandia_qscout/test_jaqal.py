@@ -13,7 +13,7 @@ import pytest
 
 jaqalpaq = pytest.importorskip("jaqalpaq")
 
-from jaqalpaq.parser import parse_jaqal_string  # noqa: E402  # ty:ignore[unresolved-import]
+from jaqalpaq.parser import parse_jaqal_string  # noqa: E402
 
 import hybridlane as hl  # noqa: E402
 from hybridlane.devices.sandia_qscout import to_jaqal  # noqa: E402
@@ -71,13 +71,13 @@ class TestToJaqal:
             register q[2]
 
             subcircuit {
-               	Rz q[0] 3.142
-               	Ry q[0] 3.142
-               	XX q[0] q[1] 1.571
-               	Rx q[1] 11.00
-               	Rz q[0] 7.854
-               	Ry q[0] 1.571
-               	Rz q[0] 1.571
+                Rz q[0] 3.142
+                Ry q[0] 3.142
+                XX q[0] q[1] 1.571
+                Rx q[1] 11.00
+                Rz q[0] 7.854
+                Ry q[0] 1.571
+                Rz q[0] 1.571
             }
             """
         ).strip()
@@ -102,8 +102,8 @@ class TestToJaqal:
             register q[1]
 
             subcircuit {
-               	JC q[0] 1 1 0.0 0.5
-               	AJC q[0] 1 1 0.0 0.5
+                JC q[0] 1 1 0.0 0.5
+                AJC q[0] 1 1 0.0 0.5
             }
             """
         ).strip()
@@ -126,11 +126,11 @@ class TestToJaqal:
             register q[2]
 
             subcircuit {
-               	xCD q[1] 1 1 4.0 0.0
-               	Rz q[1] 11.00
-               	xCD q[1] 1 1 0.0 0.09818
-               	yCD q[1] 1 1 -0.09818 -0.0
-               	Sz q[1]
+                xCD q[1] 1 1 4.0 0.0
+                Rz q[1] 11.00
+                xCD q[1] 1 1 0.0 0.09818
+                yCD q[1] 1 1 -0.09818 -0.0
+                Sz q[1]
             }
             """
         )
@@ -155,10 +155,10 @@ class TestToJaqal:
             from Calibration_PulseDefinitions.QubitBosonPulses usepulses *
             register q[2]
             subcircuit {
-               	xCD q[0] 1 1 1.0 0.0
-               	zCD q[1] 1 1 0.0 1.0
-               	xCD q[0] 1 1 -1.0 -0.0
-               	zCD q[1] 1 1 -0.0 -1.0
+                xCD q[0] 1 1 1.0 0.0
+                zCD q[1] 1 1 0.0 1.0
+                xCD q[0] 1 1 -1.0 -0.0
+                zCD q[1] 1 1 -0.0 -1.0
             }
             """
         ).strip()

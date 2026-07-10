@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Implementation of analytic measurements in Fock space."""
+
 import itertools
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from functools import reduce, singledispatch
-from typing import Any, Hashable, cast
+from typing import Any, cast
 
 from pennylane.measurements import MeasurementProcess
 from pennylane.operation import CV, Operator
@@ -27,6 +29,7 @@ from .apply_operation import apply_operation
 
 
 def flatten_state(state: TensorLike, is_state_batched: bool) -> TensorLike:
+    r"""Flattens a multi-dimensional state tensor into a vector."""
     if is_state_batched:
         batch_size = math.shape(state)[0]
         shape = (batch_size, -1)
@@ -53,9 +56,7 @@ def _expand_eigvals(
     # Then permute it to match `wire_order`. Because we did the expansion prior, this only
     # performs permutation
     curr_wire_order = obs_wires + wire_order
-    return math.expand_vector(
-        eigvals, curr_wire_order, wire_order=wire_order, wire_dims=wire_dims
-    )
+    return math.expand_vector(eigvals, curr_wire_order, wire_order=wire_order, wire_dims=wire_dims)
 
 
 @singledispatch
@@ -83,9 +84,7 @@ def _(obs: Sum | LinearCombination) -> bool:
 @is_diagonalizable.register
 def _(obs: Prod) -> bool:
     # Only support tensor products
-    return not obs.has_overlapping_wires and all(
-        is_diagonalizable(op) for op in obs.operands
-    )
+    return not obs.has_overlapping_wires and all(is_diagonalizable(op) for op in obs.operands)
 
 
 @is_diagonalizable.register
@@ -105,7 +104,6 @@ def diagonalize(
     This method fails if called on an observable that is not diagonalizable, so check
     with `is_diagonalizable` first.
     """
-
     gates = obs.diagonalizing_gates()
 
     if not return_evs:
@@ -119,7 +117,7 @@ def diagonalize(
 
 
 @diagonalize.register
-def diagonalize_spectral(
+def _diagonalize_spectral(
     obs: Spectral,
     wire_order: Wires | None = None,
     wire_dims: Mapping[Hashable, int] | None = None,
@@ -147,7 +145,7 @@ def diagonalize_spectral(
 
 
 @diagonalize.register
-def diagonalize_tensor_prod(
+def _diagonalize_tensor_prod(
     obs: Prod,
     wire_order: Wires | None = None,
     wire_dims: Mapping[Hashable, int] | None = None,
@@ -160,7 +158,7 @@ def diagonalize_tensor_prod(
     assert wire_order is not None
     assert wire_dims is not None
     evs_and_gates = [diagonalize(op, op.wires, wire_dims) for op in obs.operands]
-    evs, gates = zip(*evs_and_gates)
+    evs, gates = zip(*evs_and_gates, strict=True)
     gates = list(itertools.chain.from_iterable(gates))
     ev = reduce(math.kron, evs)
     wires = Wires.all_wires([op.wires for op in obs.operands])
@@ -169,7 +167,7 @@ def diagonalize_tensor_prod(
 
 
 @diagonalize.register
-def diagonalize_sprod(
+def _diagonalize_sprod(
     obs: SProd,
     wire_order: Wires | None = None,
     wire_dims: Mapping[Hashable, int] | None = None,
@@ -183,7 +181,7 @@ def diagonalize_sprod(
 
 
 @diagonalize.register
-def diagonalize_pow(
+def _diagonalize_pow(
     obs: Pow,
     wire_order: Wires | None = None,
     wire_dims: Mapping[Hashable, int] | None = None,
@@ -201,6 +199,15 @@ def build_fock_matrix(
     wire_order: Wires,
     wire_dims: Mapping[Any, int],
 ) -> TensorLike:
+    r"""Builds the matrix representation of an observable in the Fock basis.
+
+    Args:
+        obs: The observable to build the matrix for
+
+        wire_order: The desired order of the wires in the output matrix.
+
+        wire_dims: A mapping from wire labels to their dimensions
+    """
     match obs:
         case Sum(operands=terms):
             mats = [build_fock_matrix(t, wire_order, wire_dims) for t in terms]
@@ -230,6 +237,7 @@ def build_fock_matrix(
 def diagonalizing_gates(
     mp: StateMeasurement, state: TensorLike, is_state_batched: bool
 ) -> TensorLike:
+    r"""Performs the measurement by diagonalizing the state"""
     shape = cast(tuple[int, ...], math.shape(state))
     n_wires = math.ndim(state) - is_state_batched
     wire_order = Wires(range(n_wires))
@@ -252,6 +260,7 @@ def diagonalizing_gates(
 
 
 def einsum(mp: StateMeasurement, state: TensorLike, is_state_batched: bool):
+    r"""Measures the state using exact tensor contraction."""
     shape = cast(tuple[int, ...], math.shape(state))
     n_wires = math.ndim(state) - is_state_batched
     wire_order = Wires(range(n_wires))
@@ -269,14 +278,14 @@ def einsum(mp: StateMeasurement, state: TensorLike, is_state_batched: bool):
             mat2 = math.linalg.matrix_power(mat, 2)
             state = flatten_state(state, is_state_batched)
             return math.real(
-                math.expectation_value(mat2, state)
-                - math.expectation_value(mat, state) ** 2
+                math.expectation_value(mat2, state) - math.expectation_value(mat, state) ** 2
             )
 
     raise NotImplementedError()  # pragma: no cover
 
 
 def get_measurement_function(mp: StateMeasurement):
+    r"""Determines the appropriate strategy for the given measurement"""
     obs = mp.obs
     if isinstance(obs, MeasurementValue) or obs is None or is_diagonalizable(obs):
         return diagonalizing_gates
@@ -284,9 +293,8 @@ def get_measurement_function(mp: StateMeasurement):
     return einsum
 
 
-def measure(
-    mp: MeasurementProcess, state: TensorLike, is_state_batched: bool
-) -> TensorLike:
+def measure(mp: MeasurementProcess, state: TensorLike, is_state_batched: bool) -> TensorLike:
+    r"""Measures the state according to the given measurement process."""
     if isinstance(mp, StateMeasurement):
         func = get_measurement_function(mp)
         return func(mp, state, is_state_batched)

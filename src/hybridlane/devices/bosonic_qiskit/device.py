@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Device implementation of Bosonic Qiskit."""
 
 # A note on imports: This bosonic qiskit device is considered optional, and the user
 # can choose whether or not to install support for it. However, pennylane will always
@@ -7,9 +8,9 @@
 # this file needs to be importable *even if* bosonic qiskit is not installed.
 
 import importlib.util
-from collections.abc import Sequence
+from collections.abc import Hashable, Sequence
 from dataclasses import replace
-from typing import Hashable, Literal
+from typing import Literal
 
 from pennylane.devices import Device
 from pennylane.devices.execution_config import ExecutionConfig
@@ -48,6 +49,7 @@ from . import gates
 
 
 def accepted_analytic_measurement(m: MeasurementProcess) -> bool:
+    r"""Determines if a measurement is allowed in analytic mode."""
     if not isinstance(m, StateMeasurement):
         return False
 
@@ -58,6 +60,7 @@ def accepted_analytic_measurement(m: MeasurementProcess) -> bool:
 
 
 def accepted_sample_measurement(m: MeasurementProcess) -> bool:
+    r"""Determines if a measurement is allowed with finite shots."""
     if not isinstance(m, SampleMeasurement) or isinstance(m, CountsMP):
         return False
 
@@ -65,20 +68,18 @@ def accepted_sample_measurement(m: MeasurementProcess) -> bool:
         return is_sampled_observable_supported(m.obs)  # ty:ignore[invalid-argument-type]
 
     # If we're directly sampling the basis states, it has to be in Fock space
-    for wire in m.schema.wires:
-        if m.schema.get_basis(wire) != ComputationalBasis.Discrete:
-            return False
-
-    return True
+    return all(m.schema.get_basis(wire) == ComputationalBasis.Discrete for wire in m.schema.wires)
 
 
-def is_analytic_observable_supported(o: Operator) -> bool:
+def is_analytic_observable_supported(o: Operator) -> bool:  # noqa: ARG001
+    r"""Determines if an observable can be measured in analytic mode."""
     # Fixme: there might be edge cases, but for the most part we've got
     # methods to derive the appropriate matrix for o. See `_get_observable_matrix`
     return True
 
 
 def is_sampled_observable_supported(o: Operator) -> bool:
+    r"""Determines if an observable can be measured with finite shots."""
     match o:
         case SymbolicOp(base=base_op):
             return is_sampled_observable_supported(base_op)
@@ -106,7 +107,7 @@ def is_sampled_observable_supported(o: Operator) -> bool:
 
 @single_tape_support
 class BosonicQiskitDevice(Device):
-    r"""Backend for Pennylane that executes hybrid CV-DV circuits in Bosonic Qiskit"""
+    r"""Backend for hybridlane that executes hybrid CV-DV circuits in Bosonic Qiskit."""
 
     name = "Bosonic Qiskit"
     shortname = "bosonic-qiskit"
@@ -126,7 +127,7 @@ class BosonicQiskitDevice(Device):
         units: Literal["standard", "wigner"] = "standard",
         fast_transpilation: bool = True,
     ):
-        r"""Initializes the device
+        r"""Initializes the device.
 
         Args:
             wires: An optional list of wires to expect in each circuit. If this is passed,
@@ -141,8 +142,14 @@ class BosonicQiskitDevice(Device):
                 specified per-qumode. This must be passed if `max_fock_level` is None.
 
             hbar: The value for the constant :math:`\bar{h}`.
-        """
 
+            units: The units to use (either ``wigner`` or ``standard``), primarily for measuring
+                :math:`\hat{x}` or :math:`\hat{p}`. Default is ``standard``.
+
+            fast_transpilation: If set to ``True`` (default), this bypasses some qiskit overhead
+                in transpiling the underlying ``CVCircuit``, resulting in a modest speedup.
+                This should probably always be set to ``True``.
+        """
         if importlib.util.find_spec("bosonic_qiskit") is None:
             raise ImportError(
                 f"The {self.name} device depends on bosonic-qiskit, "
@@ -162,24 +169,21 @@ class BosonicQiskitDevice(Device):
         circuits: Sequence[QuantumScript],
         execution_config: ExecutionConfig | None = None,
     ):
+        r"""Executes the batch of circuits."""
         from .simulate import simulate
 
         execution_config = execution_config or ExecutionConfig()
         truncation = execution_config.device_options.get("truncation", self._truncation)
-        max_fock_level = execution_config.device_options.get(
-            "max_fock_level", self._max_fock_level
-        )
+        max_fock_level = execution_config.device_options.get("max_fock_level", self._max_fock_level)
 
         # Try to infer truncation based on circuit structure
         if truncation is None:
             sa_results = map(sa.type_check, circuits)
-            truncations = list(
-                map(lambda res: _infer_truncation(res, max_fock_level), sa_results)
-            )
+            truncations = [_infer_truncation(res, max_fock_level) for res in sa_results]
             if any(t is None for t in truncations):
                 raise DeviceError(
-                    "Unable to infer truncation for one of the circuits in the batch. Need to specify truncation "
-                    "of qumodes through `device_options`"
+                    "Unable to infer truncation for one of the circuits in the batch. Need to "
+                    "specify truncation of qumodes through `device_options`"
                 )
         else:
             truncations = [truncation] * len(circuits)
@@ -195,7 +199,7 @@ class BosonicQiskitDevice(Device):
 
         return tuple(
             simulate(tape, truncation, hbar=hbar, fast_transpilation=fast_transpilation)  # ty:ignore[invalid-argument-type]
-            for tape, truncation in zip(circuits, truncations)
+            for tape, truncation in zip(circuits, truncations, strict=True)
         )
 
     def setup_execution_config(
@@ -203,6 +207,7 @@ class BosonicQiskitDevice(Device):
         config: ExecutionConfig | None = None,
         circuit: QuantumScript | None = None,
     ) -> ExecutionConfig:
+        r"""Prepares the execution config, possibly for a specific circuit."""
         config = config or ExecutionConfig()
         updated_values = {}
 
@@ -217,26 +222,22 @@ class BosonicQiskitDevice(Device):
 
         # If there is no truncation at the device level or in this particular config, try to
         # auto-generate one if the circuit is purely qubits
-        if (
-            updated_values["device_options"].get("truncation") is None
-            and circuit is not None
-        ):
+        if updated_values["device_options"].get("truncation") is None and circuit is not None:
             max_fock_level = updated_values["device_options"].get(
                 "max_fock_level", self._max_fock_level
             )
             res = sa.type_check(circuit)
             if (truncation := _infer_truncation(res, max_fock_level)) is None:
-                raise DeviceError(
-                    "Need to specify truncation of qumodes through `device_options`"
-                )
+                raise DeviceError("Need to specify truncation of qumodes through `device_options`")
             updated_values["device_options"]["truncation"] = truncation
 
         return replace(config, **updated_values)
 
     def preprocess_transforms(
-        self, execution_config: ExecutionConfig | None = None
+        self,
+        execution_config: ExecutionConfig | None = None,  # noqa: ARG002
     ) -> TransformProgram:
-        execution_config = execution_config or ExecutionConfig()
+        r"""Creates the preprocessing pipeline for circuits."""
         transform_program = TransformProgram()
 
         # Check that all wires aren't abstract
@@ -272,8 +273,8 @@ def _infer_truncation(
     if sa_result.qumodes and max_fock_level is None:
         return None
 
-    qumodes = {w: max_fock_level for w in sa_result.qumodes}
-    qubits = {w: 2 for w in sa_result.qubits}
+    qumodes = dict.fromkeys(sa_result.qumodes, max_fock_level)
+    qubits = dict.fromkeys(sa_result.qubits, 2)
 
     truncation = FockTruncation.all_fock_space(sa_result.wire_order, qumodes | qubits)  # ty:ignore[invalid-argument-type]
     return truncation

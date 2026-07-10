@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Construct fock matrix representations of operators and quantum functions"""
+
 import functools
 from collections.abc import Callable, Mapping, Sequence
 from functools import partial
-from typing import Any, cast
+from typing import Any, cast, overload
 
 import pennylane as qp
 from pennylane.exceptions import TransformError
@@ -13,7 +15,6 @@ from pennylane.tape.qscript import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn, TensorLike
 from pennylane.wires import Wires, WiresLike
 from pennylane.workflow.qnode import QNode
-from typing_extensions import overload
 
 import hybridlane as hl
 
@@ -183,9 +184,7 @@ def fock_matrix(
                     f"we have no way of knowing what dimension wires {missing_wires} should be"
                 )
 
-            return hl.math.expand_matrix(
-                mat, op.wires, wire_order=wire_order, wire_dims=wire_dims
-            )
+            return hl.math.expand_matrix(mat, op.wires, wire_order=wire_order, wire_dims=wire_dims)
 
 
 @partial(qp.transform, is_informative=True)
@@ -199,7 +198,7 @@ def _fock_matrix_transform(
     wire_dims = _validate_wire_dims(tape, wire_dims or {})
 
     # Now we use similar logic to qp.matrix, performing matmul reduction over the tape operations
-    wires = kwargs.get("device_wires", None) or tape.wires
+    wires = kwargs.get("device_wires") or tape.wires
     wire_order = Wires(wire_order or wires)
 
     def matmul(u: TensorLike, op: Operator, like=None):
@@ -217,9 +216,7 @@ def _fock_matrix_transform(
     return (tape,), postprocessing_fn
 
 
-def _validate_wire_dims(
-    tape: QuantumScript, wire_dims: Mapping[Any, int]
-) -> dict[Any, int]:
+def _validate_wire_dims(tape: QuantumScript, wire_dims: Mapping[Any, int]) -> dict[Any, int]:
     wire_dims = dict(wire_dims)
 
     res = hl.type_check(tape)
@@ -233,9 +230,7 @@ def _validate_wire_dims(
 
         # Validate that the provided wire_dims are consistent with the type check results
         else:
-            expected_dim = (
-                2 if wire_type == hl.Qubit() else cast(hl.Qudit, wire_type).dim
-            )
+            expected_dim = 2 if wire_type == hl.Qubit() else cast(hl.Qudit, wire_type).dim
             if (found_dim := wire_dims.setdefault(wire, expected_dim)) != expected_dim:
                 raise TransformError(
                     f"Wire {wire} is of type {wire_type} but has dimension "

@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: D107, D102
+r"""Hybrid CV-DV operations acting on a single qumode"""
+
 import math
+from typing import ClassVar
 
 import pennylane as qp
 from pennylane.decomposition.resources import adjoint_resource_rep
@@ -55,7 +59,7 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
            [0.    +0.j    , 0.    +0.j    , 1.    -0.j    , 0.    -0.j    ],
            [0.    +0.j    , 0.    +0.j    , 0.    -0.j    , 0.9689+0.2474j]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -66,7 +70,7 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0,)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(self, theta: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(theta, wires=wires, id=id)
@@ -81,18 +85,14 @@ class ConditionalRotation(HybridOperation, FockRepresentation):
     def simplify(self):
         theta = self.data[0] % (4 * math.pi)  # ty:ignore[unsupported-operator]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify CR when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify CR when ``theta`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(self.wires)
 
         return ConditionalRotation(theta, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CR", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "CR", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -157,7 +157,7 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
 
         :py:class:`~hybridlane.ops.Displacement`
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -168,7 +168,7 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -196,9 +196,7 @@ class ConditionalDisplacement(HybridOperation, FockRepresentation):
         return ConditionalDisplacement(a, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CD", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "CD", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -299,7 +297,7 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -327,17 +325,13 @@ class ConditionalXDisplacement(HybridOperation, FockRepresentation):
         return ConditionalXDisplacement(a, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "xCD", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "xCD", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         cd = CD.compute_fock_matrix(wire_dims, a, phi)
-        dims = {i: dim for i, dim in enumerate(wire_dims)}
-        h = hl.math.expand_matrix(
-            qp.H.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
-        )
+        dims = dict(enumerate(wire_dims))
+        h = hl.math.expand_matrix(qp.H.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1))
         return h @ cd @ h  # ty:ignore[unsupported-operator]
 
 
@@ -410,7 +404,7 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -438,17 +432,13 @@ class ConditionalYDisplacement(HybridOperation, FockRepresentation):
         return ConditionalYDisplacement(a, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "yCD", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "yCD", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         xcd = XCD.compute_fock_matrix(wire_dims, a, phi)
-        dims = {i: dim for i, dim in enumerate(wire_dims)}
-        s = hl.math.expand_matrix(
-            qp.S.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1)
-        )
+        dims = dict(enumerate(wire_dims))
+        s = hl.math.expand_matrix(qp.S.compute_matrix(), (0,), wire_dims=dims, wire_order=(0, 1))
         return s @ xcd @ hl.math.conj(hl.math.transpose(s))  # ty:ignore[unsupported-operator]
 
 
@@ -542,7 +532,7 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
 
         :class:`~hybridlane.ops.Squeezing`
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -553,11 +543,9 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
-    def __init__(
-        self, z: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None
-    ):
+    def __init__(self, z: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(z, phi, wires=wires, id=id)
 
     def pow(self, n: int | float):  # ty:ignore[invalid-method-override]
@@ -577,9 +565,7 @@ class ConditionalSqueezing(HybridOperation, FockRepresentation):
         return ConditionalSqueezing(z, theta, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "CS", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "CS", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], z, theta) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -651,7 +637,7 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
         to act on just a single Fock state :math:`\ket{n}`. To match the vectorized version,
         apply multiple SQR gates in series with the appropriate angles and Fock states.
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -662,7 +648,7 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -691,9 +677,7 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
         phi = phi % (2 * math.pi)  # ty:ignore[unsupported-operator]
         n = self.hyperparameters["n"]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify SQR when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify SQR when ``theta`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(self.wires)
 
@@ -702,7 +686,10 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     def pow(self, z: int | float):
         return [
             SelectiveQubitRotation(
-                self.data[0] * z, self.data[1], self.hyperparameters["n"], self.wires  # ty:ignore[unsupported-operator]
+                self.data[0] * z,  # ty:ignore[unsupported-operator]
+                self.data[1],
+                self.hyperparameters["n"],
+                self.wires,
             )
         ]
 
@@ -722,8 +709,7 @@ class SelectiveQubitRotation(HybridOperation, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi, n) -> TensorLike:  # ty:ignore[invalid-method-override]
         def r(theta, phi):
             sigma = (
-                hl.math.cos(phi) * qp.X.compute_matrix()
-                + hl.math.sin(phi) * qp.Y.compute_matrix()
+                hl.math.cos(phi) * qp.X.compute_matrix() + hl.math.sin(phi) * qp.Y.compute_matrix()
             )
             return hl.math.expm(-1j * theta / 2 * sigma)
 
@@ -794,7 +780,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
 
         :py:class:`~hybridlane.AntiJaynesCummings`
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -805,7 +791,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -820,9 +806,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
         theta = self.data[0]
         phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify JC when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify JC when ``theta`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(self.wires)
 
@@ -835,9 +819,7 @@ class JaynesCummings(HybridOperation, FockRepresentation):
         return JaynesCummings(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "JC", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "JC", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -919,7 +901,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
 
         :py:class:`~hybridlane.JaynesCummings`
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -930,7 +912,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -945,9 +927,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
         theta = self.data[0]
         phi = self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
 
-        theta = concrete_or_error(
-            None, theta, "Cannot simplify AJC when ``theta`` is a tracer"
-        )
+        theta = concrete_or_error(None, theta, "Cannot simplify AJC when ``theta`` is a tracer")
         if can_replace(theta, 0):
             return qp.Identity(self.wires)
 
@@ -960,9 +940,7 @@ class AntiJaynesCummings(HybridOperation, FockRepresentation):
         return AntiJaynesCummings(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "AJC", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "AJC", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], theta, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -1033,7 +1011,7 @@ class Rabi(HybridOperation, FockRepresentation):
            [0.    +0.j    , 0.    -0.4794j, 0.8776+0.j    , 0.    +0.j    ],
            [0.    -0.4794j, 0.    +0.j    , 0.    +0.j    , 0.8776+0.j    ]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -1044,11 +1022,9 @@ class Rabi(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
-    def __init__(
-        self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None
-    ):
+    def __init__(self, r: TensorLike, phi: TensorLike, wires: WiresLike, id: str | None = None):
         super().__init__(r, phi, wires=wires, id=id)
 
     def simplify(self):
@@ -1068,9 +1044,7 @@ class Rabi(HybridOperation, FockRepresentation):
         return Rabi(-self.data[0], self.data[1], self.wires)  # ty:ignore[unsupported-operator]
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "RB", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "RB", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], r, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
@@ -1132,7 +1106,7 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
            [ 0.9689+0.j, -0.2474+0.j,  0.    +0.j,  0.    +0.j],
            [ 0.2474+0.j,  0.9689+0.j,  0.    +0.j,  0.    +0.j]])
 
-    References
+    References:
     ----------
 
     .. footbibliography::
@@ -1143,7 +1117,7 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
     num_qumodes = 1
     ndim_params = (0, 0)
 
-    resource_keys = set()
+    resource_keys: ClassVar = set()
 
     def __init__(
         self,
@@ -1171,13 +1145,11 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
         return EchoedConditionalDisplacement(a, phi, self.wires)
 
     def label(self, decimals=None, base_label=None, cache=None):
-        return super().label(
-            decimals=decimals, base_label=base_label or "ECD", cache=cache
-        )
+        return super().label(decimals=decimals, base_label=base_label or "ECD", cache=cache)
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
-        dims = {i: d for i, d in enumerate(wire_dims)}
+        dims = dict(enumerate(wire_dims))
         cd = CD.compute_fock_matrix(wire_dims, a / 2, phi)
         x = qp.X.compute_matrix()
         x = hl.math.asarray(x, like=a)

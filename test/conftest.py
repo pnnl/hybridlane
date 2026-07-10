@@ -32,7 +32,7 @@ def disable_graph_decomp():
     qp.decomposition.enable_graph()
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config, items):  # noqa: ARG001
     for item in items:
         # Check if this is a parametrized test with 'like' parameter
         if hasattr(item, "callspec") and "like" in item.callspec.params:
@@ -69,7 +69,6 @@ def pytest_collection_modifyitems(config, items):
 
 def pytest_generate_tests(metafunc):
     # Hook to parametrize tests over deep learning interfaces
-    if metafunc.definition.get_closest_marker("all_interfaces"):
-        if "like" in metafunc.fixturenames:
-            like_values = ["numpy", "jax"]
-            metafunc.parametrize("like", like_values)
+    if metafunc.definition.get_closest_marker("all_interfaces") and "like" in metafunc.fixturenames:
+        like_values = ["numpy", "jax"]
+        metafunc.parametrize("like", like_values)

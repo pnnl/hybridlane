@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: BSD-2-Clause
 target-version = "py311"
 line-length = 100
+extend-exclude = ["examples/**.ipynb", "docs"]
 
 [lint]
-extend-select = [
-  "UP",  # pyupgrade
-  "D",   # pydocstyle
+select = [
+    "ARG", "UP", "B", "C4", "D", "E", "F", "I", "SIM", "NPY", "N", "W", "RUF"
 ]
+ignore = ["D105", "D415"]
+
 
 [lint.per-file-ignores]
 # Ignore `D` rules everywhere except for the `src/` directory.

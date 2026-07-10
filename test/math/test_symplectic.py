@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: N806
 import math
 
 import jax
@@ -26,9 +27,7 @@ def _make_rotation_expected(theta):
 @pytest.mark.unit
 class TestRotation:
     @pytest.mark.all_interfaces
-    @pytest.mark.parametrize(
-        "theta", [0.0, math.pi / 6, math.pi / 4, math.pi / 2, math.pi, 1.234]
-    )
+    @pytest.mark.parametrize("theta", [0.0, math.pi / 6, math.pi / 4, math.pi / 2, math.pi, 1.234])
     def test_values(self, theta, like):
         theta = hl.math.asarray(theta, like=like)
         for include_constant in [True, False]:
@@ -40,7 +39,7 @@ class TestRotation:
                 M = hl.math.block_diag([np.array([[1.0]]), M])
 
             expected = _make_rotation_expected(theta)
-            assert M == pytest.approx(expected, abs=1e-12)
+            assert pytest.approx(expected, abs=1e-12) == M
 
     @pytest.mark.jax
     def test_jit(self):
@@ -72,7 +71,7 @@ class TestSymplecticForm:
     def test_antisymmetric(self):
         for n in [1, 2, 3]:
             omega = symplectic_form(n)
-            assert omega.T == pytest.approx(-omega, abs=1e-12)  # ty:ignore[unresolved-attribute, unsupported-operator]
+            assert pytest.approx(-omega, abs=1e-12) == omega.T  # ty:ignore[unresolved-attribute, unsupported-operator]
 
     def test_shape(self):
         for n in [1, 2, 3]:
@@ -98,20 +97,20 @@ class TestIsSymplectic:
             assert is_symplectic(rotation(theta))
 
     def test_not_symplectic(self, like):
+        rng = np.random.default_rng()
         for n in range(2, 10):
             for _ in range(5):
-                mat = np.random.rand(n, n)
+                mat = rng.random((n, n))
                 mat = hl.math.asarray(mat, like=like)
-                assert not is_symplectic(
-                    mat
-                )  # really unlikely a random matrix is symplectic
+                assert not is_symplectic(mat)  # really unlikely a random matrix is symplectic
 
     def test_batched(self, like):
+        rng = np.random.default_rng()
         for n in (2, 3):
             for batch_size in (3, 5):
-                mats = np.random.rand(batch_size, n, n)
+                mats = rng.random((batch_size, n, n))
                 mats[-1] = rotation(
-                    np.random.rand(), include_constant=n % 2 == 1
+                    rng.random(), include_constant=n % 2 == 1
                 )  # make one symplectic
 
                 mats = hl.math.asarray(mats, like=like)
@@ -176,8 +175,8 @@ class TestFockPhaseSpaceConversion:
     @pytest.mark.jax
     def test_to_fock_space_jit(self):
         @jax.jit
-        def f(M):
-            return to_fock_space(M)
+        def f(m):
+            return to_fock_space(m)
 
         p = jnp.array([0.5])
         M = hl.Rotation._heisenberg_rep(p)
@@ -186,8 +185,8 @@ class TestFockPhaseSpaceConversion:
     @pytest.mark.jax
     def test_to_phase_space_jit(self):
         @jax.jit
-        def f(M):
-            return to_phase_space(M)
+        def f(m):
+            return to_phase_space(m)
 
         p = jnp.array([0.3, 0.4])
         M = self._displacement_fock(*p, like="jax")

@@ -100,8 +100,9 @@ Output with ``strict=True``:
 
 import functools
 import textwrap
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 import pennylane as qp
 from pennylane.io.to_openqasm import OPENQASM_GATES
@@ -109,6 +110,7 @@ from pennylane.measurements import MeasurementProcess
 from pennylane.operation import Operator
 from pennylane.tape import QuantumScript
 from pennylane.wires import Wires
+from pennylane.workflow.construct_tape import construct_tape
 
 from .. import ops
 from ..transforms import from_pennylane
@@ -121,7 +123,7 @@ def to_openqasm(
     precision: int | None = None,
     strict: bool = False,
     indent: int = 4,
-    level: str | None = "user",
+    level: str | int | slice = "user",
 ) -> Callable[[Any], str]:
     r"""Converts a circuit to an OpenQASM 3.0 program
 
@@ -162,12 +164,14 @@ def to_openqasm(
 
         indent: Number of spaces to indent the program by
 
+        level: The level of the tape to construct. This is passed to
+            :func:`~pennylane.workflow.construct_tape`.
+
     Returns:
         A string containing the program in OpenQASM 3.0
 
     Example:
-
-        >>> @qp.qnode(qp.device("bosonicqiskit.hybrid", max_fock_level=8))
+        >>> @qp.qnode(qp.device("default.hybrid", fock_level=8))
         ... def circuit():
         ...     qp.H(0)
         ...     hl.ConditionalDisplacement(0.5, 0, [0, 1])
@@ -192,11 +196,10 @@ def to_openqasm(
         cv_r(1.5707963267948966) m[0];
         float c0 = measure_x m[0];
     """
-    from pennylane.workflow import construct_tape
 
     @wraps(qnode)
     def wrapper(*args, **kwargs) -> str:
-        tape = construct_tape(qnode, level="user")(*args, **kwargs)
+        tape = construct_tape(qnode, level=level)(*args, **kwargs)
         (tape,), _ = from_pennylane(tape)  # compatibility with pl gates
         return tape_to_openqasm(
             tape,
@@ -242,14 +245,14 @@ all_gates = OPENQASM_GATES | cv_stdgates
 
 
 # These are our special extensions to OpenQASM
-class Keywords:
+class Keywords:  # noqa: D101
     CvStdLib = "cvstdgates.inc"
     QumodeDef = "qumode"
     MeasureQuadX = "measure_x"
     MeasureN = "measure_n"
 
 
-def get_header():
+def _get_header():
     return textwrap.dedent(f"""
         OPENQASM 3.0;
         include "stdgates.inc";
@@ -260,7 +263,7 @@ def get_header():
 # We leave the calibration bodies {} empty because they should be opaque definitions.
 # In principle, these could be hardware pulse definitions. The lack of bit width on the
 # float/uint types means they are left to machine precision
-def get_cv_calibration_definition():
+def _get_cv_calibration_definition():
     return textwrap.dedent(f"""
         // Position measurement x
         defcal {Keywords.MeasureQuadX} m -> float {{}}
@@ -279,6 +282,21 @@ def tape_to_openqasm(
     strict: bool = False,
     indent: int = 4,
 ):
+    r"""Converts a tape to an OpenQASM 3.0 program
+
+    Args:
+        tape: The tape to be converted to OpenQASM
+
+        rotations: Include diagonalizing gates for an observable prior to measurement.
+            This applies both to qubit observables and qumode observables.
+
+        precision: An optional number of decimal places to use when recording the angle
+            parameters of each gate
+
+        strict: Forces the output to be strictly compliant with the OpenQASM 3.0 parser.
+
+        indent: Number of spaces to indent the program by
+    """
     # Preprocessing
     tape = tape.map_to_standard_wires()
     [tape], _ = qp.transforms.convert_to_numpy_parameters(tape)
@@ -288,10 +306,10 @@ def tape_to_openqasm(
         w: f"m[{i}]" for i, w in enumerate(res.qumodes)
     }
 
-    qasm_str = get_header() + "\n"
+    qasm_str = _get_header() + "\n"
 
     if strict:
-        qasm_str += "\n" + get_cv_calibration_definition() + "\n"
+        qasm_str += "\n" + _get_cv_calibration_definition() + "\n"
 
     qasm_str += "\n"
 
@@ -314,11 +332,7 @@ def tape_to_openqasm(
         qasm_str += " " * indent + "reset m;\n"
 
     for op in tape.operations:
-        qasm_str += (
-            " " * indent
-            + format_gate_as_qasm(op, wire_to_str, precision=precision)
-            + "\n"
-        )
+        qasm_str += " " * indent + format_gate_as_qasm(op, wire_to_str, precision=precision) + "\n"
 
     qasm_str += "}\n"
 
@@ -329,9 +343,7 @@ def tape_to_openqasm(
         found = False
         for group in measurement_groups:
             # If we find a non-overlapping measurement group, add this to it
-            overlapping = Wires.shared_wires(
-                [mp.wires, Wires.all_wires([m.wires for m in group])]
-            )
+            overlapping = Wires.shared_wires([mp.wires, Wires.all_wires([m.wires for m in group])])
             if not overlapping:
                 group.append(mp)
                 found = True
@@ -350,9 +362,7 @@ def tape_to_openqasm(
         if rotations:
             for mp in group:
                 for op in mp.diagonalizing_gates():
-                    qasm_str += (
-                        format_gate_as_qasm(op, wire_to_str, precision=precision) + "\n"
-                    )
+                    qasm_str += format_gate_as_qasm(op, wire_to_str, precision=precision) + "\n"
 
         # Now measure, determining the appropriate measure function for each process
         for mp in group:
@@ -385,13 +395,9 @@ def tape_to_openqasm(
                         raise ValueError("Unsupported basis", basis)
 
                     if strict:
-                        qasm_str += (
-                            f"{result_type} {cvar} = {func}({wire_to_str[qumode]});\n"
-                        )
+                        qasm_str += f"{result_type} {cvar} = {func}({wire_to_str[qumode]});\n"
                     else:
-                        qasm_str += (
-                            f"{result_type} {cvar} = {func} {wire_to_str[qumode]};\n"
-                        )
+                        qasm_str += f"{result_type} {cvar} = {func} {wire_to_str[qumode]};\n"
 
         qasm_str += "\n"
 
@@ -402,15 +408,29 @@ def tape_to_openqasm(
 def format_gate_as_qasm(
     op: Operator, wire_to_str: dict[Any, str], precision: int | None = None
 ) -> str:
+    r"""Formats a gate as an OpenQASM 3.0 statement
+
+    This function can be used to register new gate types that aren't included in the standard
+    library of hybrid CV-DV operations.
+
+    Args:
+        op: The gate to be formatted
+
+        wire_to_str: A dictionary mapping wires to their string representation in the OpenQASM
+            program
+
+        precision: An optional number of decimal places to use when recording the angle
+            parameters of each gate
+    """
     if (gate_name := all_gates.get(op.name)) is None:
         raise ValueError(f"Unsupported gate {op.name}")
 
     if precision:
-        params = list(map(lambda p: f"{p:.{precision}f}", op.parameters))
+        params = [f"{p:.{precision}f}" for p in op.parameters]
     else:
         params = list(map(str, op.parameters))
 
-    wires = list(map(lambda w: wire_to_str[w], op.wires))
+    wires = [wire_to_str[w] for w in op.wires]
     param_str = "(" + ", ".join(params) + ")" if params else ""
     wire_str = ", ".join(wires)
     gate_str = f"{gate_name}{param_str} {wire_str};"
@@ -426,14 +446,14 @@ def _(
     gate_name = all_gates.get(op.name)
 
     if precision:
-        params = list(map(lambda p: f"{p:.{precision}f}", op.parameters))
+        params = [f"{p:.{precision}f}" for p in op.parameters]
     else:
         params = list(map(str, op.parameters))
 
     fock_level = op.hyperparameters["n"]
     params.append(f"{fock_level:d}")
 
-    wires = list(map(lambda w: wire_to_str[w], op.wires))
+    wires = [wire_to_str[w] for w in op.wires]
     param_str = "(" + ", ".join(params) + ")" if params else ""
     wire_str = ", ".join(wires)
     gate_str = f"{gate_name}{param_str} {wire_str};"

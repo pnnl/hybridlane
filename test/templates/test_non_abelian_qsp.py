@@ -16,18 +16,16 @@ from hybridlane.templates.non_abelian_qsp import GKPState, SqueezedCatState
 def cat_state_probs(alpha, ns, odd: bool):
     alpha_sq = np.abs(alpha) ** 2  # ty:ignore[unresolved-attribute]
     log_factorial = gammaln(ns + 1)
-    log_P_coh = -alpha_sq + (ns * np.log(alpha_sq)) - log_factorial  # ty:ignore[unresolved-attribute]
+    log_p_coh = -alpha_sq + (ns * np.log(alpha_sq)) - log_factorial  # ty:ignore[unresolved-attribute]
     log_norm = np.log(2) - np.log(1 + np.exp(-2 * alpha_sq))  # ty:ignore[unresolved-attribute]
-    log_Pn = log_norm + log_P_coh
-    log_Pn[ns % 2 != int(odd)] = -np.inf  # ty:ignore[unresolved-attribute]
-    return np.exp(log_Pn)  # ty:ignore[unresolved-attribute]
+    log_pn = log_norm + log_p_coh
+    log_pn[ns % 2 != int(odd)] = -np.inf  # ty:ignore[unresolved-attribute]
+    return np.exp(log_pn)  # ty:ignore[unresolved-attribute]
 
 
 class TestSqueezedCatState:
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "alpha,parity", list(itertools.product([3, 4, 5, 6], ("even", "odd")))
-    )
+    @pytest.mark.parametrize("alpha,parity", list(itertools.product([3, 4, 5, 6], ("even", "odd"))))
     def test_parity(self, alpha, parity):
         fock_level = 128
         dev = qp.device("default.hybrid", fock_level=fock_level)

@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Hybrid CV-DV operations"""
+
 from .non_parametric_ops import CP, ConditionalParity
 from .parametric_ops_multi_qumode import (
     CBS,
@@ -34,18 +36,14 @@ from .parametric_ops_single_qumode import (
 )
 
 __all__ = [
-    "CP",
-    "ConditionalParity",
-    "CBS",
-    "CSUM",
-    "CTMS",
-    "ConditionalBeamsplitter",
-    "ConditionalTwoModeSqueezing",
-    "ConditionalTwoModeSum",
     "AJC",
+    "CBS",
     "CD",
+    "CP",
     "CR",
     "CS",
+    "CSUM",
+    "CTMS",
     "ECD",
     "JC",
     "SQR",
@@ -53,9 +51,13 @@ __all__ = [
     "YCD",
     "AntiJaynesCummings",
     "Blue",
+    "ConditionalBeamsplitter",
     "ConditionalDisplacement",
+    "ConditionalParity",
     "ConditionalRotation",
     "ConditionalSqueezing",
+    "ConditionalTwoModeSqueezing",
+    "ConditionalTwoModeSum",
     "ConditionalXDisplacement",
     "ConditionalYDisplacement",
     "EchoedConditionalDisplacement",

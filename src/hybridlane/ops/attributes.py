@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Custom operator attributes"""
+
 from pennylane.ops.qubit import attributes
 from pennylane.ops.qubit.attributes import Attribute
 

@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Patches and related functionality to support resource reps of custom symbolic operators."""
+
 from typing import Any
 from unittest.mock import patch
 
@@ -14,6 +16,16 @@ _qp_resource_rep = qp.resource_rep
 
 
 def resource_rep(op_type: type[Operator], **params) -> CompressedResourceOp:
+    r"""Replacement of ``pennylane.resource_rep`` that handles qubit-conditioned operators.
+
+    Args:
+        op_type: The operator class to construct a resource representation for
+
+        params: The resource parameters of the operator (``op.resource_params``)
+
+    Returns:
+        The resource representation of the operator
+    """
     if issubclass(op_type, hl.ops.QubitConditioned):
         base_rep = resource_rep(params["base_class"], **params["base_params"])
         params["base_class"] = base_rep.op_type
@@ -23,28 +35,25 @@ def resource_rep(op_type: type[Operator], **params) -> CompressedResourceOp:
 
 
 _ = patch("pennylane.decomposition.resources.resource_rep", resource_rep).start()
-_ = patch(
-    "pennylane.decomposition.decomposition_graph.resource_rep", resource_rep
-).start()
-_ = patch(
-    "pennylane.decomposition.symbolic_decomposition.resource_rep", resource_rep
-).start()
+_ = patch("pennylane.decomposition.decomposition_graph.resource_rep", resource_rep).start()
+_ = patch("pennylane.decomposition.symbolic_decomposition.resource_rep", resource_rep).start()
 
 
 def qubit_conditioned_resource_rep(
     base_class: type[Operator], base_params: dict[str, Any], num_control_wires: int
-):
-    """Return a resource representation of a qubit-conditioned operator.
+) -> CompressedResourceOp:
+    """Returns a resource representation of a qubit-conditioned operator.
 
     Args:
         base_class: The base operator class.
+
         base_params: The parameters of the base operator.
+
         num_control_wires: The number of control wires.
 
     Returns:
         Operator: The resource representation of the qubit-conditioned operator.
     """
-
     # Flatten any nested parity-conditioned operators
     if base_class is hl.ops.QubitConditioned:
         num_control_wires += base_params["num_control_wires"]
@@ -87,6 +96,7 @@ def qubit_conditioned_resource_rep(
 
 
 def custom_qubit_controlled_op_to_base():
+    r"""Returns a mapping of custom qubit-conditioned operations to their unconditioned versions."""
     return {
         hl.ConditionalDisplacement: hl.Displacement,
         hl.ConditionalSqueezing: hl.Squeezing,
@@ -105,9 +115,7 @@ _old_fn = CompressedResourceOp.name.fget
 
 def _cro_name_fget(self: CompressedResourceOp):
     if self.op_type in (hl.ops.QubitConditioned,):
-        base_rep = qp.resource_rep(
-            self.params["base_class"], **self.params["base_params"]
-        )
+        base_rep = qp.resource_rep(self.params["base_class"], **self.params["base_params"])
         return f"qCond({base_rep.name})"
 
     return _old_fn(self)

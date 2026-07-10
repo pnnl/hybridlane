@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Implementation of finite-shot measurements in Fock space"""
+
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
@@ -12,9 +14,8 @@ from pennylane.ops.op_math.sum import Sum
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
-from hybridlane.devices.default_hybrid.apply_operation import apply_operation
-from hybridlane.devices.default_hybrid.measure import diagonalize, flatten_state
-from hybridlane.measurements import (
+from ... import math
+from ...measurements import (
     BasisMap,
     ComputationalBasis,
     ExpectationMP,
@@ -23,8 +24,8 @@ from hybridlane.measurements import (
     SampleMP,
     SampleResult,
 )
-
-from ... import math
+from .apply_operation import apply_operation
+from .measure import diagonalize, flatten_state
 
 if TYPE_CHECKING:
     from jax import Array
@@ -38,9 +39,9 @@ def measure_with_shots(
     rng: Any | None = None,
     prng_key: "Array | None" = None,
     wire_map: dict | None = None,
-    mid_measurements: dict | None = None,
+    mid_measurements: dict | None = None,  # noqa: ARG001
 ) -> list[TensorLike]:
-
+    r"""Perform finite-shot measurements on a given state."""
     results = []
     for mp in measurements:
         match mp:
@@ -74,6 +75,7 @@ def measure_with_diagonalizing_gates(
     prng_key: "Array | None" = None,
     wire_map: dict | None = None,
 ) -> list[TensorLike]:
+    r"""Perform a measurement by diagonalizing the state in the basis of the measurement."""
     num_wires = math.ndim(state) - is_state_batched
     wire_order = Wires(range(num_wires))
 
@@ -85,7 +87,7 @@ def measure_with_diagonalizing_gates(
     basis_states = sample_state(state, shots, is_state_batched, mp.wires, rng, prng_key)
     data = {
         w: cast(TensorLike, arr)
-        for w, arr in zip(mp.wires, math.unstack(basis_states, axis=-1))
+        for w, arr in zip(mp.wires, math.unstack(basis_states, axis=-1), strict=True)
     }
     result = SampleResult.from_basis_states(data)
     result = mp.process_samples(result, wire_order)
@@ -97,10 +99,7 @@ def measure_with_diagonalizing_gates(
             rev_wire_map = {v: k for k, v in wire_map.items()}
             new_data = {rev_wire_map.get(w, w): arr for w, arr in result.data.items()}
             new_schema = BasisMap(
-                {
-                    rev_wire_map.get(w, w): result.bases.get_basis(w)
-                    for w in result.bases.wires
-                }
+                {rev_wire_map.get(w, w): result.bases.get_basis(w) for w in result.bases.wires}
             )
             result = SampleResult(bases=new_schema, data=new_data)
 
@@ -114,8 +113,9 @@ def measure_hamiltonian(
     is_state_batched: bool,
     rng: Any | None = None,
     prng_key: "Array | None" = None,
-    wire_map: dict | None = None,
+    wire_map: dict | None = None,  # noqa: ARG001
 ) -> list[TensorLike]:
+    r"""Measure a Hamiltonian observable."""
     obs = mp.obs
     assert isinstance(obs, (Sum, LinearCombination))
 
@@ -126,7 +126,7 @@ def measure_hamiltonian(
         * measure_with_diagonalizing_gates(
             ExpectationMP(obs=op), state, shots, is_state_batched, rng, prng_key
         )[0]
-        for c, op in zip(coeffs, terms)
+        for c, op in zip(coeffs, terms, strict=True)
     ]
 
     return [math.sum(expvals)]
@@ -156,18 +156,14 @@ def sample_state(
 
     flat_state = flatten_state(state, is_state_batched)
     with qp.QueuingManager.stop_recording():
-        probs = ProbabilityMP(bases=schema).process_state(
-            flat_state, wire_order, wire_dims
-        )
+        probs = ProbabilityMP(bases=schema).process_state(flat_state, wire_order, wire_dims)
 
     # Add an artificial batch dimension of 1 that we'll take out later
     if not is_state_batched:
         probs = math.reshape(probs, (1, -1))
 
     if math.get_interface(state) == "jax" or prng_key is not None:
-        indices = _sample_indices_jax(
-            probs, shots, probs_shape, prng_key=prng_key, seed=rng
-        )
+        indices = _sample_indices_jax(probs, shots, probs_shape, prng_key=prng_key, seed=rng)
     else:
         indices = _sample_indices_numpy(probs, shots, probs_shape, rng)
 

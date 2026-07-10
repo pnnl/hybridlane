@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+# ruff: noqa: N806
 import math
 
 import jax
@@ -112,9 +113,7 @@ class TestDisplacement:
         d_on_vacuum = d_mat[:, 0]  # D|0>  # ty:ignore[invalid-argument-type, not-subscriptable]
 
         n = hl.math.arange(dim)
-        expected = (
-            hl.math.exp(-(abs(alpha) ** 2) / 2) * alpha**n / hl.math.sqrt(factorial(n))
-        )
+        expected = hl.math.exp(-(abs(alpha) ** 2) / 2) * alpha**n / hl.math.sqrt(factorial(n))
         assert d_on_vacuum == pytest.approx(expected, abs=1e-8)
 
     def test_fock_matrix_unitary(self):
@@ -137,9 +136,7 @@ class TestDisplacement:
 
         n = jnp.arange(dim)
         expected = (
-            hl.math.exp(-(abs(alpha) ** 2) / 2)
-            * alpha**n
-            / hl.math.sqrt(jnp.array(factorial(n)))
+            hl.math.exp(-(abs(alpha) ** 2) / 2) * alpha**n / hl.math.sqrt(jnp.array(factorial(n)))
         )
         assert hl.math.get_interface(d_on_vacuum) == "jax"
         assert d_on_vacuum == pytest.approx(expected, abs=1e-6)
@@ -161,7 +158,7 @@ class TestDisplacement:
         def f(x):
             op = hl.D(*x, wires=0)
             mat = op.fock_matrix(dims)
-            state = mat[:, 0]  # extract coherent state  # ty:ignore[invalid-argument-type, not-subscriptable]
+            state = mat[:, 0]  # ty:ignore[invalid-argument-type, not-subscriptable]
             x = hl.X(0).fock_matrix(dims)
             x = hl.math.asarray(x, like=state)
             return hl.math.expectation_value(x, state).real
@@ -197,7 +194,7 @@ class TestDisplacement:
                 [math.sqrt(2) * math.sin(0.3) * 0.5, 0, 1],
             ]
         )
-        assert M == pytest.approx(expected, abs=1e-6)
+        assert pytest.approx(expected, abs=1e-6) == M
 
     @pytest.mark.jax
     def test_heisenberg_rep_jit(self):
@@ -294,7 +291,7 @@ class TestRotation:
         assert hl.math.get_dtype_name(M) == "float64"
 
         expected = hl.math.symplectic.rotation(theta)
-        assert M == pytest.approx(expected, abs=1e-6)
+        assert pytest.approx(expected, abs=1e-6) == M
 
     @pytest.mark.jax
     def test_heisenberg_rep_jit(self):

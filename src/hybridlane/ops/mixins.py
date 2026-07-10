@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
+r"""Mixins for hybrid CV-DV gates and observables"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -17,15 +19,15 @@ class Spectral:
     r"""Mixin for observables that have an infinite number of eigenvalues (spectrum)
 
     Instead of enumerating all eigenvalues like normal Pennylane observables (because that is no
-    longer possible), this mixin provides a general framework for observables to define their spectrum,
-    a function :math:`f: \mathcal{B} \rightarrow \mathbb{R}` from basis states to eigenvalues.
+    longer possible), this mixin provides a general framework for observables to define their
+    spectrum, a function :math:`f: \mathcal{B} \rightarrow \mathbb{R}` from basis states to
+    eigenvalues.
     """
 
     @property
     def natural_basis(self) -> hl.wires.ComputationalBasis:
-        raise NotImplementedError(
-            "Observable did not define its best basis to measure in"
-        )
+        r"""The most 'natural' basis for an observable to be measured in"""
+        raise NotImplementedError("Observable did not define its best basis to measure in")
 
     # todo: decide whether we should have dv spectrums too
 
@@ -41,8 +43,8 @@ class Spectral:
         where :math:`x \in \mathbb{R}`.
 
         Args:
-            basis_states: A set of tensors, in order of the wires, representing position basis states. Each tensor
-                has shape ``(*batch_dim)``
+            basis_states: A set of tensors, in order of the wires, representing position basis
+                states. Each tensor has shape ``(*batch_dim)``
 
         Returns:
             The eigenvalue for each basis state sample, with shape ``(*batch_dim)``
@@ -63,8 +65,8 @@ class Spectral:
         where :math:`n \in \mathbb{N}_0`.
 
         Args:
-            basis_states: A set of tensors, in order of the wires, representing Fock basis states. Each tensor
-                has shape ``(*batch_dim)``
+            basis_states: A set of tensors, in order of the wires, representing Fock basis states.
+                Each tensor has shape ``(*batch_dim)``
 
         Returns:
             The eigenvalue for each basis state sample, with shape ``(*batch_dim)``
@@ -96,7 +98,6 @@ class Hybrid:
         Returns:
             A dict mapping wires to their corresponding types
         """
-
         if (self.num_qumodes is None) == (self.type_signature is None):
             raise ValueError(
                 "Gate is improperly defined. It must specify either num_qumodes or type_signature."
@@ -108,11 +109,9 @@ class Hybrid:
         type_signature = self.type_signature
         if self.num_qumodes is not None:
             qubits = len(self.wires) - self.num_qumodes  # ty:ignore[unresolved-attribute]
-            type_signature = [hl.wires.Qubit()] * qubits + [
-                hl.wires.Qumode()
-            ] * self.num_qumodes
+            type_signature = [hl.wires.Qubit()] * qubits + [hl.wires.Qumode()] * self.num_qumodes
 
-        return {w: s for w, s in zip(self.wires, type_signature)}  # ty:ignore[invalid-argument-type, not-iterable, unresolved-attribute]
+        return dict(zip(self.wires, type_signature, strict=True))  # ty:ignore[invalid-argument-type, unresolved-attribute, no-matching-overload]
 
 
 class HybridOperation(Hybrid, Operation):
@@ -124,9 +123,9 @@ class FockRepresentation:
 
     @staticmethod
     def compute_fock_matrix(
-        wire_dims: tuple[int, ...],  # pyright: ignore[reportUnusedParameter]
-        *params: TensorLike,  # pyright: ignore[reportUnusedParameter]
-        **hyperparams: TensorLike,  # pyright: ignore[reportUnusedParameter]
+        wire_dims: tuple[int, ...],  # noqa: ARG004
+        *params: TensorLike,  # noqa: ARG004
+        **hyperparams: TensorLike,  # noqa: ARG004
     ) -> TensorLike:
         r"""Computes the Fock matrix representation of the gate
 
@@ -266,14 +265,19 @@ class FockRepresentation:
                [0.    +0.j    , 0.    +0.j    , 0.9699-0.2435j]],      dtype=complex128, weak_type=True)
 
         Developers of new gates should prefer to implement ``compute_fock_matrix``.
-        """
+        """  # noqa: E501
         canonical_wire_dims = tuple(wire_dims[w] for w in self.wires)  # ty:ignore[unresolved-attribute]
         matrix = self.compute_fock_matrix(
-            canonical_wire_dims, *self.parameters, **self.hyperparameters  # ty:ignore[unresolved-attribute]
+            canonical_wire_dims,
+            *self.parameters,  # ty:ignore[unresolved-attribute]
+            **self.hyperparameters,  # ty:ignore[unresolved-attribute]
         )
         if wire_order is None or self.wires == Wires(wire_order):  # ty:ignore[unresolved-attribute]
             return matrix
 
         return hl.math.expand_matrix(
-            matrix, self.wires, wire_order=wire_order, wire_dims=wire_dims  # ty:ignore[unresolved-attribute]
+            matrix,
+            self.wires,  # ty:ignore[unresolved-attribute]
+            wire_order=wire_order,
+            wire_dims=wire_dims,
         )

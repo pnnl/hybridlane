@@ -100,7 +100,8 @@ class TestSampleMP:
         mp = SampleMP(obs=obs)
 
         schema = BasisMap({Wires(0): ComputationalBasis.Position})
-        result = SampleResult({0: np.random.randn(5)}, bases=schema)
+        rng = np.random.default_rng()
+        result = SampleResult({0: rng.standard_normal(5)}, bases=schema)
 
         with pytest.raises(ValueError, match="This observable is not diagonal"):
             mp._sample_observable(obs, result)
@@ -110,9 +111,7 @@ class TestSampleMP:
         """Test _sample_observable with a regular PennyLane operator."""
         obs = qp.PauliX(0)
         mp = SampleMP(obs=obs)
-        samples = SampleResult.from_basis_states(
-            {0: hl.math.array([[1], [0]], like=like)}
-        )
+        samples = SampleResult.from_basis_states({0: hl.math.array([[1], [0]], like=like)})
 
         with patch.object(
             OldSampleMP,
