@@ -495,7 +495,7 @@ class DefaultHybrid(Device):
         if config.mcm_config.mcm_method == "one-shot":  # ty:ignore[unresolved-attribute]
             pipeline.add_transform(
                 dynamic_one_shot,
-                postselect_mode=config.mcm_config.postselect_mode,  # ty:ignore[unresolved-attribute]
+                postselect_mode=config.mcm_config.postselect_mode,
             )
 
         if config.gradient_method == "backprop":

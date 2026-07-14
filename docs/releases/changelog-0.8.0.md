@@ -243,6 +243,8 @@
 
 - Drops dependency on `pydantic` (#84)
 
+- Improved CI testing and linting (#86) (#87)
+
 ### Contributors
 
 This release contains contributions from:
