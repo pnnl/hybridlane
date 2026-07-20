@@ -1140,7 +1140,8 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
 
         a = concrete_or_error(None, a, "Cannot simplify ECD when ``a`` is a tracer")
         if can_replace(a, 0):
-            return qp.Identity(self.wires)
+            # Because ECD(a) = X CD(a/2), ECD(0) = X
+            return qp.X(self.wires[0])
 
         return EchoedConditionalDisplacement(a, phi, self.wires)
 

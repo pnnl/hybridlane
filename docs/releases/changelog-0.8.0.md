@@ -231,6 +231,8 @@
 
 - The `simplify()` method of the JC and AJC gates is no longer periodic in theta (#74)
 
+- The `simplify()` method of the ECD gate now simplifies to `qp.X` when alpha is 0 (#89)
+
 ### Miscellaneous
 
 - Added a `justfile` to facilitate running common developer tasks (#42)
