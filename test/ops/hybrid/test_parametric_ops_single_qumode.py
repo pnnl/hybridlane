@@ -898,7 +898,7 @@ class TestEchoedConditionalDisplacement:
     def test_simplify(self):
         op = hl.EchoedConditionalDisplacement(0, 0.123, wires=[0, 1])
         simplified_op = op.simplify()
-        assert isinstance(simplified_op, qp.Identity)
+        assert simplified_op == qp.X(0)
 
     def test_label(self):
         op = hl.EchoedConditionalDisplacement(0.5, 0, wires=[0, 1])
