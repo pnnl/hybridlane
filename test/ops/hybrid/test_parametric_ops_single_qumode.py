@@ -970,26 +970,20 @@ class TestEchoedConditionalDisplacement:
     def test_cd_decomp(self):
         tape = QuantumScript([hl.ECD(0.4, 0.123, wires=[0, 1])])
         [new_tape], _ = qp.decompose(tape, gate_set={hl.CD, qp.X})
-        expected_tape = QuantumScript([
-            hl.CD(0.2, 0.123, wires=(0, 1)),
-            qp.X(0)
-        ])
+        expected_tape = QuantumScript([hl.CD(0.2, 0.123, wires=(0, 1)), qp.X(0)])
         check_tapes_approx(new_tape, expected_tape)
 
     def test_adjoint_decomp(self):
         tape = QuantumScript([qp.adjoint(hl.ECD(0.4, 0.123, wires=[0, 1]))])
         [new_tape], _ = qp.decompose(tape, gate_set={hl.ECD})
-        expected_tape = QuantumScript([
-            hl.ECD(0.4, 0.123, wires=(0, 1))
-        ])
+        expected_tape = QuantumScript([hl.ECD(0.4, 0.123, wires=(0, 1))])
         check_tapes_approx(new_tape, expected_tape)
 
     def test_pow_involutory_decomp(self):
-        tape = QuantumScript([
-            qp.pow(hl.ECD(0.4, 0.123, wires=[0, 1]), 2)
-        ])
+        tape = QuantumScript([qp.pow(hl.ECD(0.4, 0.123, wires=[0, 1]), 2)])
         [new_tape], _ = qp.decompose(tape)
         assert new_tape.operations == []
+
 
 def check_tapes_approx(tape1, tape2):
     """Check if two tapes are approximately equal."""

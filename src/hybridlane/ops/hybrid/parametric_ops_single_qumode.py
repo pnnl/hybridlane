@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # ruff: noqa: D107, D102
 r"""Hybrid CV-DV operations acting on a single qumode"""
+
 import math
 from typing import ClassVar
 
@@ -1159,7 +1160,7 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
         d = hl.D.compute_fock_matrix(wire_dims[1:], a / 2, phi)
-        proj = hl.math.array([[0, 0], [1, 0]], like=a) # |1><0|
+        proj = hl.math.array([[0, 0], [1, 0]], like=a)  # |1><0|
         mat = hl.math.kron(proj, d)
         return mat + hl.math.dag(mat)
 
