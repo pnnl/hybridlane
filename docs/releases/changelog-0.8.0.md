@@ -231,7 +231,7 @@
 
 - The `simplify()` method of the JC and AJC gates is no longer periodic in theta (#74)
 
-- The `simplify()` method of the ECD gate now simplifies to `qp.X` when alpha is 0 (#89)
+- Updated the algebraic properties of the ECD gate to be self-adjoint (#89) (#90)
 
 ### Miscellaneous
 
