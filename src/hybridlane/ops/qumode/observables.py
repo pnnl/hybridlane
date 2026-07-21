@@ -29,6 +29,12 @@ class QuadX(qp.QuadX, Spectral, FockRepresentation):
 
         \hat{x} \ket{x} = x \ket{x}.
 
+    In terms of the ladder operators, in standard units the position operator is
+
+    .. math::
+
+        \hat{x} = \frac{1}{\sqrt{2}} (a + \ad).
+
     **Details**:
 
     * Number of wires: 1
@@ -65,8 +71,8 @@ class QuadX(qp.QuadX, Spectral, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         # Standard units
         lam = 1 / math.sqrt(2)
-        a = hl.CreationOp.compute_fock_matrix(wire_dims)
-        ad = hl.AnnihilationOp.compute_fock_matrix(wire_dims)
+        ad = hl.CreationOp.compute_fock_matrix(wire_dims)
+        a = hl.AnnihilationOp.compute_fock_matrix(wire_dims)
         return lam * (a + ad)
 
 
@@ -89,6 +95,12 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
 
         \hat{p} \ket{p} = p \ket{p}.
 
+    In terms of the ladder operators, in standard units the momentum operator is
+
+    .. math::
+
+        \hat{p} = \frac{-i}{\sqrt{2}} (a - \ad).
+
     **Details**:
 
     * Number of wires: 1
@@ -99,11 +111,11 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
     It has a representation in the Fock basis defined in standard units with :math:`\hbar = 1`
 
     >>> P.compute_fock_matrix((5,))
-    array([[0.+0.j    , 0.+0.7071j, 0.+0.j    , 0.+0.j    , 0.+0.j    ],
-           [0.-0.7071j, 0.+0.j    , 0.+1.j    , 0.+0.j    , 0.+0.j    ],
-           [0.+0.j    , 0.-1.j    , 0.+0.j    , 0.+1.2247j, 0.+0.j    ],
-           [0.+0.j    , 0.+0.j    , 0.-1.2247j, 0.+0.j    , 0.+1.4142j],
-           [0.+0.j    , 0.+0.j    , 0.+0.j    , 0.-1.4142j, 0.+0.j    ]])
+    array([[0.+0.j    , 0.-0.7071j, 0.+0.j    , 0.+0.j    , 0.+0.j    ],
+           [0.+0.7071j, 0.+0.j    , 0.-1.j    , 0.+0.j    , 0.+0.j    ],
+           [0.+0.j    , 0.+1.j    , 0.+0.j    , 0.-1.2247j, 0.+0.j    ],
+           [0.+0.j    , 0.+0.j    , 0.+1.2247j, 0.+0.j    , 0.-1.4142j],
+           [0.+0.j    , 0.+0.j    , 0.+0.j    , 0.+1.4142j, 0.+0.j    ]])
     """
 
     @property
@@ -130,8 +142,8 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
     def compute_fock_matrix(wire_dims: tuple[int, ...]) -> np.ndarray:  # ty:ignore[invalid-method-override]
         # Standard units
         lam = 1 / math.sqrt(2)
-        a = hl.CreationOp.compute_fock_matrix(wire_dims)
-        ad = hl.AnnihilationOp.compute_fock_matrix(wire_dims)
+        ad = hl.CreationOp.compute_fock_matrix(wire_dims)
+        a = hl.AnnihilationOp.compute_fock_matrix(wire_dims)
         return lam * -1j * (a - ad)
 
 
@@ -165,9 +177,9 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
     Its representation in the Fock basis defined in standard units with :math:`\hbar = 1` is
 
     >>> QuadOperator.compute_fock_matrix((3,), np.pi / 4)
-    array([[0.    +0.j    , 0.5   +0.5j   , 0.    +0.j    ],
-           [0.5   -0.5j   , 0.    +0.j    , 0.7071+0.7071j],
-           [0.    +0.j    , 0.7071-0.7071j, 0.    +0.j    ]])
+    array([[0.    +0.j    , 0.5   -0.5j   , 0.    +0.j    ],
+           [0.5   +0.5j   , 0.    +0.j    , 0.7071-0.7071j],
+           [0.    +0.j    , 0.7071+0.7071j, 0.    +0.j    ]])
     """
 
     @property
@@ -180,7 +192,7 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
         wires: Wires | Iterable[Hashable] | Hashable,
         **hyperparams: dict[str, Any],  # noqa: ARG004
     ) -> list[Operator]:
-        return [Rotation(params[0], wires)]
+        return [Rotation(-params[0], wires)]  # ty:ignore[unsupported-operator]
 
     @staticmethod
     def compute_decomposition(
@@ -188,7 +200,7 @@ class QuadOperator(qp.QuadOperator, Spectral, FockRepresentation):
         wires: Wires | Iterable[Hashable] | Hashable | None = None,
         **hyperparameters: dict[str, Any],  # noqa: ARG004
     ) -> list[Operator]:
-        return [Rotation(params[0], wires=wires), QuadX(wires)]
+        return [Rotation(-params[0], wires=wires), QuadX(wires)]  # ty:ignore[unsupported-operator]
 
     def __repr__(self):
         inner = ", ".join(map(str, self.wires))
