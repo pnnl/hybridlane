@@ -4,6 +4,7 @@ import math
 
 import pennylane as qp
 import pytest
+from pennylane.tape.qscript import QuantumScript
 
 import hybridlane as hl
 
@@ -887,50 +888,58 @@ class TestEchoedConditionalDisplacement:
 
     def test_adjoint(self):
         op = hl.EchoedConditionalDisplacement(0.5, 0, wires=[0, 1])
-        adj_op = op.adjoint()[0]
-        assert adj_op.parameters == [-0.5, 0]
+        adj_op = op.adjoint()
+        assert adj_op.parameters == [0.5, 0]
 
     def test_pow(self):
         op = hl.EchoedConditionalDisplacement(0.5, 0.123, wires=[0, 1])
         pow_op = op.pow(4)[0]
-        assert pow_op.parameters == [2, 0.123]
+        assert pow_op == qp.Identity(pow_op.wires)
+
+        pow_op = op.pow(3)[0]
+        assert isinstance(pow_op, hl.EchoedConditionalDisplacement)
+        assert pow_op.parameters == [0.5, 0.123]
 
     def test_simplify(self):
         op = hl.EchoedConditionalDisplacement(0, 0.123, wires=[0, 1])
         simplified_op = op.simplify()
         assert simplified_op == qp.X(0)
 
+        op = hl.ECD(0.456, 0.123 + 2 * math.pi, wires=[0, 1])
+        simplified_op = op.simplify()
+        assert simplified_op.parameters == pytest.approx((0.456, 0.123))
+
     def test_label(self):
         op = hl.EchoedConditionalDisplacement(0.5, 0, wires=[0, 1])
         assert op.label() == "ECD"
 
-    def test_fock_matrix_zero(self):
+    @pytest.mark.all_interfaces
+    def test_fock_matrix_zero(self, like):
         # CD(0) = I, so ECD(0) = X @ I = X ⊗ I_{qumode}.
-        op = hl.EchoedConditionalDisplacement(0.0, 0.0, wires=[0, 1])
+        params = hl.math.zeros(2, like=like)
+        op = hl.EchoedConditionalDisplacement(*params, wires=[0, 1])
         dim = 4
         matrix = op.fock_matrix({0: 2, 1: dim})
         # X ⊗ I_{dim}
         x_mat = qp.X.compute_matrix()
-        eye_dim = hl.math.eye(dim)
+        eye_dim = hl.math.eye(dim, like=like)
         expected = hl.math.kron(x_mat, eye_dim)
         assert matrix == pytest.approx(expected, abs=1e-6)
 
-    def test_fock_matrix_unitary(self):
-        op = hl.EchoedConditionalDisplacement(0.3, 0.5, wires=[0, 1])
+    @pytest.mark.all_interfaces
+    def test_fock_matrix_unitary(self, like):
+        params = hl.math.asarray([0.3, 0.5], like=like)
+        op = hl.EchoedConditionalDisplacement(*params, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 6})
-        eye = hl.math.eye(12)
+        eye = hl.math.eye(12, like=like)
         assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
 
-    @pytest.mark.jax
-    def test_fock_matrix_jax(self):
-        import jax.numpy as jnp
-
-        a = jnp.array(0.3)
-        phi = jnp.array(0.5)
-        op = hl.EchoedConditionalDisplacement(a, phi, wires=[0, 1])  # ty:ignore[invalid-argument-type]
+    @pytest.mark.all_interfaces
+    def test_fock_matrix_involutory(self, like):
+        params = hl.math.asarray([0.3, 0.5], like=like)
+        op = hl.EchoedConditionalDisplacement(*params, wires=[0, 1])
         matrix = op.fock_matrix({0: 2, 1: 6})
-        eye = hl.math.eye(12, like="jax")
-        assert matrix @ hl.math.dag(matrix) == pytest.approx(eye, abs=1e-6)
+        assert hl.math.dag(matrix) == pytest.approx(matrix, abs=1e-6)
 
     @pytest.mark.jax
     def test_fock_matrix_jit(self):
@@ -957,3 +966,35 @@ class TestEchoedConditionalDisplacement:
         grad_fn = hl.math.jacobian(f)
         grad = grad_fn(x)
         assert not jnp.any(jnp.isnan(grad))
+
+    def test_cd_decomp(self):
+        tape = QuantumScript([hl.ECD(0.4, 0.123, wires=[0, 1])])
+        [new_tape], _ = qp.decompose(tape, gate_set={hl.CD, qp.X})
+        expected_tape = QuantumScript([
+            hl.CD(0.2, 0.123, wires=(0, 1)),
+            qp.X(0)
+        ])
+        check_tapes_approx(new_tape, expected_tape)
+
+    def test_adjoint_decomp(self):
+        tape = QuantumScript([qp.adjoint(hl.ECD(0.4, 0.123, wires=[0, 1]))])
+        [new_tape], _ = qp.decompose(tape, gate_set={hl.ECD})
+        expected_tape = QuantumScript([
+            hl.ECD(0.4, 0.123, wires=(0, 1))
+        ])
+        check_tapes_approx(new_tape, expected_tape)
+
+    def test_pow_involutory_decomp(self):
+        tape = QuantumScript([
+            qp.pow(hl.ECD(0.4, 0.123, wires=[0, 1]), 2)
+        ])
+        [new_tape], _ = qp.decompose(tape)
+        assert new_tape.operations == []
+
+def check_tapes_approx(tape1, tape2):
+    """Check if two tapes are approximately equal."""
+    for op1, op2 in zip(tape1.operations, tape2.operations, strict=True):
+        assert type(op1) is type(op2)
+        assert op1.wires == op2.wires
+        for p1, p2 in zip(op1.parameters, op2.parameters, strict=True):
+            assert hl.math.allclose(p1, p2)

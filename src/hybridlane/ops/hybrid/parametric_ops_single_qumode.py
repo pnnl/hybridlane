@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # ruff: noqa: D107, D102
 r"""Hybrid CV-DV operations acting on a single qumode"""
-
 import math
 from typing import ClassVar
 
@@ -10,8 +9,11 @@ import pennylane as qp
 from pennylane.decomposition.resources import adjoint_resource_rep
 from pennylane.decomposition.symbolic_decomposition import (
     adjoint_rotation,
+    pow_involutory_no_reconstructor,
     pow_rotation,
+    self_adjoint,
 )
+from pennylane.operation import Operator
 from pennylane.typing import TensorLike
 from pennylane.wires import WiresLike
 
@@ -1086,7 +1088,8 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
 
     .. math::
 
-        ECD(\alpha) = X~CD(\alpha/2)
+        ECD(\alpha) &= D(\alpha/2)\ket{1}\bra{0} + D(-\alpha/2)\ket{0}\bra{1} \\
+                    &= X~CD(\alpha/2)
 
     where :math:`CD(\alpha)` is the :py:class:`~.ConditionalDisplacement` gate
     (p. S9 of :footcite:p:`eickbusch2022fast`).
@@ -1128,12 +1131,17 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
     ):
         super().__init__(a, phi, wires=wires, id=id)
 
-    def pow(self, z: int | float):
-        a, phi = self.data
-        return [EchoedConditionalDisplacement(a * z, phi, self.wires)]  # ty:ignore[unsupported-operator]
+    def pow(self, z: int | float) -> list[Operator]:
+        # ECD is involutory
+        z_mod2 = z % 2
+        if abs(z_mod2) < 1e-10:
+            return [qp.Identity(self.wires)]
+
+        return super().pow(z_mod2)
 
     def adjoint(self):
-        return [EchoedConditionalDisplacement(-self.data[0], self.data[1], self.wires)]  # ty:ignore[unsupported-operator]
+        # self-adjoint
+        return EchoedConditionalDisplacement(*self.data, wires=self.wires)
 
     def simplify(self):
         a, phi = self.data[0], self.data[1] % (2 * math.pi)  # ty:ignore[unsupported-operator]
@@ -1150,12 +1158,10 @@ class EchoedConditionalDisplacement(HybridOperation, FockRepresentation):
 
     @staticmethod
     def compute_fock_matrix(wire_dims: tuple[int, ...], a, phi) -> TensorLike:  # ty:ignore[invalid-method-override]
-        dims = dict(enumerate(wire_dims))
-        cd = CD.compute_fock_matrix(wire_dims, a / 2, phi)
-        x = qp.X.compute_matrix()
-        x = hl.math.asarray(x, like=a)
-        x = hl.math.expand_matrix(x, (0,), wire_dims=dims, wire_order=(0, 1))
-        return x @ cd
+        d = hl.D.compute_fock_matrix(wire_dims[1:], a / 2, phi)
+        proj = hl.math.array([[0, 0], [1, 0]], like=a) # |1><0|
+        mat = hl.math.kron(proj, d)
+        return mat + hl.math.dag(mat)
 
 
 @qp.register_resources({ConditionalDisplacement: 1, qp.X: 1})
@@ -1164,14 +1170,9 @@ def _ecd_decomp(a, phi, wires, **_):
     qp.X(wires[0])
 
 
-@qp.register_resources({EchoedConditionalDisplacement: 1})
-def _pow_ecd(a, phi, wires, z, **_):
-    EchoedConditionalDisplacement(z * a, phi, wires=wires)
-
-
 qp.add_decomps(EchoedConditionalDisplacement, _ecd_decomp)
-qp.add_decomps("Adjoint(EchoedConditionalDisplacement)", adjoint_rotation)
-qp.add_decomps("Pow(EchoedConditionalDisplacement)", _pow_ecd)
+qp.add_decomps("Adjoint(EchoedConditionalDisplacement)", self_adjoint)
+qp.add_decomps("Pow(EchoedConditionalDisplacement)", pow_involutory_no_reconstructor)
 
 ECD = EchoedConditionalDisplacement
 r"""Echoed-conditional displacement (ECD) gate
