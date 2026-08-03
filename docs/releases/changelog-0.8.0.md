@@ -7,12 +7,12 @@
 - A new simulator device called `default.hybrid` that is compatible with NumPy and JAX is now available. `default.hybrid` supports `jax.jit` compilation for faster execution and is differentiable. It should be fully compatible with all existing simulations run on `bosonicqiskit.hybrid` and is compatible with many more classes of circuits such as qubit-only circuits and qutrit-based circuits. (#62) (#65) (#66)
 
     Consider the logical cat state readout circuit from [Putterman et al., Nature 638](https://www.nature.com/articles/s41586-025-08642-7)
-    
+
     ```python
     import numpy as np
     import pennylane as qp
     import hybridlane as hl
-    
+
     dev = qp.device("default.hybrid", fock_level=32)
 
     @qp.qnode(dev)
@@ -22,7 +22,7 @@
         qp.H(1)
         hl.SQR(np.pi, np.pi / 2, 0, wires=[1, 0])
         qp.H(1)
-        
+
         return hl.expval(qp.Z(1))
     ```
 
@@ -30,33 +30,33 @@
     >>> circuit(2.0)
     np.float64(-0.0003354626279027384)
     ```
-    
+
     The device is compatible with `@jax.jit` and automatic differentiation. Let's define an ansatz of SNAP and Displacement gates, followed by a loss function that calculates the infidelity between our prepared state and the logical binomial code state |0L>
-    
+
     ```python
     import pennylane as qp
     import hybridlane as hl
-    
+
     import jax
     import optax
 
     jax.config.update("jax_enable_x64", True)
-    
+
     fock_level = 20
     dev = qp.device("default.hybrid", fock_level=fock_level)
-    
+
     @qp.qnode(dev, interface="jax", diff_method="backprop")
     def circuit(params):
         @qp.for_loop(0, 5)
         def loop_body(i):
             hl.D(params[i, 0], params[i, 1], wires=0)
-    
+
             for j in range(8):
                 hl.SNAP(params[i, 2 + j], j, wires=0)
-    
+
         loop_body()
         return hl.state()
-    
+
     # Target state is the binomial codeword |0_L> = (|0> + |4>)/sqrt(2)
     codeword = hl.math.concatenate(
         [
@@ -64,7 +64,7 @@
             hl.math.zeros(fock_level - 5, like="jax"),
         ]
     )
-    
+
     @jax.jit
     def loss(params):
         state = circuit(params)
@@ -79,14 +79,14 @@
     starting_loss = loss(params)
     optimizer = optax.adam(learning_rate=0.01)
     opt_state = optimizer.init(params)
-    
+
     @jax.jit
     def train_step(params, opt_state):
         loss_value, grads = jax.value_and_grad(loss)(params)
         updates, opt_state = optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
         return params, opt_state
-    
+
     for _ in range(100):
         params, opt_state = train_step(params, opt_state)
     ```
@@ -147,7 +147,7 @@
             0.54030231-0.84147098j]])
     ```
 
-  See also the `hl.fock_matrix` function, which does the analogous operation to `qp.matrix`, and can construct the matrix for entire circuits.
+    See also the `hl.fock_matrix` function, which does the analogous operation to `qp.matrix`, and can construct the matrix for entire circuits.
 
 - The symplectic representations (`_heisenberg_rep`) of the Gaussian operations have also been updated (#71)
 
@@ -232,6 +232,8 @@
 - The `simplify()` method of the JC and AJC gates is no longer periodic in theta (#74)
 
 - Updated the algebraic properties of the ECD gate to be self-adjoint (#89) (#90)
+
+- Updated the operators that can be fused with `merge_rotations` (#95)
 
 ### Miscellaneous
 
