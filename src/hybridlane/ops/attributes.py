@@ -22,8 +22,6 @@ diagonal_in_fock_basis = Attribute(
 diagonal_in_position_basis = Attribute(
     [
         "QuadX",
-        "TwoModeSum",
-        "ConditionalTwoModeSum",
         "CubicPhase",
         "Identity",
     ]
