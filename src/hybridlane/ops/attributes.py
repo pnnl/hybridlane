@@ -23,26 +23,22 @@ diagonal_in_position_basis = Attribute(
     [
         "QuadX",
         "TwoModeSum",
+        "ConditionalTwoModeSum",
+        "CubicPhase",
         "Identity",
     ]
 )
 
+# Gates that can be composed by element-wise adding the parameters of each gate
+#   - SNAP gate merging depends on the hyperparameter `n` and therefore can't be included
+#   - Many gates can only be fused if their phase parameters are equal (BS, D, S, etc)
 attributes.composable_rotations.update(
     [
-        "Displacement",
-        "Squeezing",
-        "TwoModeSqueezing",
-        "Beamsplitter",
         "Rotation",
-        "SelectiveQubitRotation",
-        "SelectiveNumberArbitraryPhase",
+        "Kerr",
+        "CubicPhase",
         "TwoModeSum",
         "ConditionalRotation",
-        "JaynesCummings",
-        "AntiJaynesCummings",
-        "ConditionalSqueezing",
-        "ConditionalDisplacement",
-        "ConditionalBeamsplitter",
         "ConditionalTwoModeSum",
     ]
 )
