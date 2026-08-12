@@ -235,6 +235,8 @@
 
 - Updated the operators that can be fused with `merge_rotations` (#95)
 
+- Fixes diagonalization of `hl.P` (#97)
+
 ### Miscellaneous
 
 - Added a `justfile` to facilitate running common developer tasks (#42)
