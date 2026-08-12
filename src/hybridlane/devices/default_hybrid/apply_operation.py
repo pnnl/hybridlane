@@ -15,6 +15,7 @@ from pennylane.exceptions import AdjointUndefinedError
 from pennylane.operation import Operator
 from pennylane.ops import Conditional, MidMeasure
 from pennylane.ops.op_math.adjoint import Adjoint
+from pennylane.ops.op_math.controlled import Controlled
 from pennylane.typing import TensorLike
 from pennylane.wires import Wires
 
@@ -114,6 +115,31 @@ def apply_conditional(
 
     elif val:
         return true_fn(state)
+
+    return state
+
+
+@apply_operation.register
+def apply_qubit_controlled(
+    op: Controlled, state: TensorLike, is_state_batched: bool = False, **kwargs
+):
+    r"""Applies a qubit-controlled op"""
+    idx = [slice(None)] * math.ndim(state)
+    for i, v in zip(op.control_wires, op.control_values, strict=True):
+        idx[i + is_state_batched] = int(v)
+
+    idx = tuple(idx)
+    subket = cast(TensorLike, state[idx])  # ty: ignore[not-subscriptable, invalid-argument-type]
+    data, (wires, hparams) = op.base._flatten()  # ty: ignore[not-iterable]
+    new_wires = Wires([w - sum(1 for c in op.control_wires if c < w) for w in wires])
+    base_op = type(op.base)._unflatten(data, (new_wires, hparams))
+
+    subket = apply_operation(base_op, subket, is_state_batched=is_state_batched, **kwargs)
+    state = math.cast_like(state, subket)
+    if math.get_interface(state) == "jax":
+        state = state.at[idx].set(subket)
+    else:
+        state[idx] = subket  # type: ignore[not-subscriptable, index]
 
     return state
 

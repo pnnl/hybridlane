@@ -54,15 +54,16 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "jax>=0.10.1",
+    "jax<0.11",
     "matplotlib>=3.10.9",
     "openqasm3[parser]>=1.0.1",
     "optax>=0.2.8",
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
-    "ruff>=0.12.0",
+    "reuse>=6.2.0",
+    "ruff>=0.16.3",
     "sybil[pytest]>=9.3.0",
-    "ty>=0.0.39",
+    "ty==0.0.71",
 ]
 docs = [
     "furo>=2024.8.6",

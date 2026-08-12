@@ -142,6 +142,20 @@ class TestAnalyticCircuits:
         assert n1 == pytest.approx(0)
         assert n2 == pytest.approx(0)
 
+    def test_unsymmetric_displacement(self, like):
+        dev = qp.device("default.hybrid", fock_level=16)
+
+        @qp.qnode(dev, interface=like)
+        def circuit(a):
+            qp.H(0)
+            qp.ctrl(hl.D, control=[0])(a, 0, wires=1)
+            return hl.expval(qp.Z(0) @ hl.X(1))
+
+        alpha = hl.math.array(1.0, like=like)
+        expval = circuit(alpha)
+        assert hl.math.get_interface(expval) == like
+        assert expval == pytest.approx(-alpha * np.sqrt(2) / 2)
+
     def test_qutrit_hadamard_state(self, like):
         dev = qp.device("default.hybrid", fock_level=4)
 

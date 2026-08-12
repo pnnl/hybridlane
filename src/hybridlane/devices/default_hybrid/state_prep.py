@@ -16,9 +16,8 @@ from pennylane.typing import TensorLike
 from pennylane.wires import Wires, WiresLike
 
 import hybridlane as hl
+from hybridlane import math
 from hybridlane.devices.default_hybrid.measure import flatten_state
-
-from ... import math
 
 cv_state_prep_ops = {
     qp.CatState,
@@ -253,7 +252,7 @@ def fock_state(n: TensorLike, dim: int) -> TensorLike:
 
     states = []
     for ni in n:
-        state = math.zeros(dim)
+        state = math.zeros(dim, dtype=complex)
         state[ni] = 1
         states.append(state)
 

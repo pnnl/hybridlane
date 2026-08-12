@@ -582,5 +582,5 @@ def sampled_measurement(
             bitstrings = qiskit_samples.slice_bits(index)
             basis_states[wire] = bitstrings.array.reshape(shots).astype(int)
 
-    sample_result = SampleResult.from_basis_states(basis_states)
+    sample_result = SampleResult.from_basis_states(basis_states)  # ty: ignore[invalid-argument-type]
     return sample_result

@@ -27,7 +27,7 @@ try:
     from .mpldrawer import HybridMPLDrawer
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
     has_mpl = False
-    HybridMPLDrawer = object  # ty:ignore[invalid-assignment]
+    HybridMPLDrawer = object
 
 default_qumode_color = "mediumseagreen"
 default_qubit_color = "darkorchid"
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 @_add_operation_to_drawer.register
 def _(op: ops.CD, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode)
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)  # ty: ignore[unresolved-attribute]
 
     new_op = ops.Displacement(*op.parameters, wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -52,7 +52,7 @@ def _(op: ops.CD, drawer: HybridMPLDrawer, layer: int, _config):
 @_add_operation_to_drawer.register
 def _(op: ops.CP, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode)
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)  # ty: ignore[unresolved-attribute]
 
     new_op = ops.Fourier(wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -61,7 +61,7 @@ def _(op: ops.CP, drawer: HybridMPLDrawer, layer: int, _config):
 @_add_operation_to_drawer.register
 def _(op: ops.CR, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode)
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)  # ty: ignore[unresolved-attribute]
 
     new_op = ops.Rotation(*op.parameters, wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -70,7 +70,7 @@ def _(op: ops.CR, drawer: HybridMPLDrawer, layer: int, _config):
 @_add_operation_to_drawer.register
 def _(op: ops.CS, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, qumode = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumode)
+    drawer.z_conditional(layer, [qubit], wires_target=qumode)  # ty: ignore[unresolved-attribute]
 
     new_op = ops.Squeezing(*op.parameters, wires=qumode)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -79,7 +79,7 @@ def _(op: ops.CS, drawer: HybridMPLDrawer, layer: int, _config):
 @_add_operation_to_drawer.register
 def _(op: ops.CBS, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, *qumodes = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumodes)
+    drawer.z_conditional(layer, [qubit], wires_target=qumodes)  # ty: ignore[unresolved-attribute]
 
     new_op = ops.Beamsplitter(*op.parameters, wires=qumodes)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -88,7 +88,7 @@ def _(op: ops.CBS, drawer: HybridMPLDrawer, layer: int, _config):
 @_add_operation_to_drawer.register
 def _(op: ops.CTMS, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, *qumodes = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumodes)
+    drawer.z_conditional(layer, [qubit], wires_target=qumodes)  # ty: ignore[unresolved-attribute]
 
     new_op = ops.TwoModeSqueezing(*op.parameters, wires=qumodes)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -97,7 +97,7 @@ def _(op: ops.CTMS, drawer: HybridMPLDrawer, layer: int, _config):
 @_add_operation_to_drawer.register
 def _(op: ops.CSUM, drawer: HybridMPLDrawer, layer: int, _config):
     qubit, *qumodes = op.wires.tolist()
-    drawer.z_conditional(layer, [qubit], wires_target=qumodes)
+    drawer.z_conditional(layer, [qubit], wires_target=qumodes)  # ty: ignore[unresolved-attribute]
 
     new_op = ops.TwoModeSum(*op.parameters, wires=qumodes)
     _add_operation_to_drawer(new_op, drawer, layer, _config)
@@ -105,7 +105,7 @@ def _(op: ops.CSUM, drawer: HybridMPLDrawer, layer: int, _config):
 
 @_add_operation_to_drawer.register
 def _(op: ops.ModeSwap, drawer: HybridMPLDrawer, layer: int, _config):
-    drawer.SWAP(layer, op.wires.tolist())
+    drawer.SWAP(layer, op.wires.tolist())  # ty: ignore[unresolved-attribute]
 
 
 def _draw_icons(
@@ -122,7 +122,7 @@ def _draw_icons(
     wire_colors = _get_default_colors(wire_map, type_res) | (wire_icon_colors or {})
     colors = [wire_colors[w] for w in wire_map]
 
-    drawer.wire_icons(icons, colors)
+    drawer.wire_icons(icons, colors)  # ty: ignore[unresolved-attribute]
 
 
 def tape_mpl(  # noqa: D417
@@ -183,7 +183,7 @@ def tape_mpl(  # noqa: D417
             # Now draw the icons if desired
             if show_wire_types:
                 wire_icon_colors = kwargs.get("wire_icon_colors")
-                for drawer in HybridMPLDrawer._instances:
+                for drawer in HybridMPLDrawer._instances:  # ty: ignore[unresolved-attribute]
                     _draw_icons(
                         drawer,
                         tape,
@@ -195,7 +195,7 @@ def tape_mpl(  # noqa: D417
             return result
 
     finally:
-        HybridMPLDrawer._instances.clear()
+        HybridMPLDrawer._instances.clear()  # ty: ignore[unresolved-attribute]
 
 
 def _get_default_colors(

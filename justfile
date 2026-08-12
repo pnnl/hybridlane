@@ -35,7 +35,7 @@ codecov:
 
 lint:
     @uv sync --all-extras
-    @uvx ruff check src test
-    @uvx ruff format
-    @uvx ty check
-    @uvx reuse lint
+    @uv run ruff check
+    @uv run ruff format
+    @uv run ty check
+    @uv run reuse lint
