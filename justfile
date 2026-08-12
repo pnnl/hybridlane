@@ -32,3 +32,10 @@ codecov-core:
 codecov:
     @uv sync --all-extras --locked && uv pip install torch --torch-backend=cpu
     @uv run pytest --cov=hybridlane --cov-report=html --cov-report=term-missing
+
+lint:
+    @uv sync --all-extras
+    @uvx ruff check src test
+    @uvx ruff format
+    @uvx ty check
+    @uvx reuse lint

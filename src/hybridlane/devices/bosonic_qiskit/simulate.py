@@ -232,7 +232,7 @@ def get_sparse_observable_matrix(obs: Operator, *cutoffs: int, hbar: float) -> c
             return np.cos(phi) * get_x(cutoffs[0]) + np.sin(phi) * get_p(cutoffs[0])
 
         case hl.FockStateProjector(parameters=(fock_states,)):
-            mats = [cvops.get_projector(n, c) for n, c in zip(fock_states, cutoffs, strict=True)]  # ty:ignore[invalid-argument-type, not-iterable]
+            mats = [cvops.get_projector(n, c) for n, c in zip(fock_states, cutoffs, strict=True)]  # ty:ignore[invalid-argument-type]
             return functools.reduce(sp.kron, mats).asformat("csc")
 
         case _:

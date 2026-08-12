@@ -125,7 +125,7 @@ def fock_matrix(
         input = op
         match op:
             case Sequence():
-                input = QuantumScript(op)  # ty:ignore[invalid-argument-type]
+                input = QuantumScript(op)
 
             case QuantumScript():
                 if wire_order is None and len(op.wires) != 1:

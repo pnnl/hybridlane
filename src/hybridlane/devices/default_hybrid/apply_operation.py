@@ -417,7 +417,7 @@ def apply_diag_operation(
     axis = cast(int, op_wires[0] + is_state_batched)
 
     slices = []
-    for d, s in zip(diag, math.unstack(state, axis=axis), strict=True):  # ty:ignore[invalid-argument-type, not-iterable]
+    for d, s in zip(diag, math.unstack(state, axis=axis), strict=True):  # ty:ignore[invalid-argument-type]
         slices.append(math.multiply(s, d))
 
     return math.stack(slices, axis=axis)

@@ -111,7 +111,7 @@ class Hybrid:
             qubits = len(self.wires) - self.num_qumodes  # ty:ignore[unresolved-attribute]
             type_signature = [hl.wires.Qubit()] * qubits + [hl.wires.Qumode()] * self.num_qumodes
 
-        return dict(zip(self.wires, type_signature, strict=True))  # ty:ignore[invalid-argument-type, unresolved-attribute, no-matching-overload]
+        return dict(zip(self.wires, type_signature, strict=True))  # ty:ignore[invalid-argument-type, unresolved-attribute]
 
 
 class HybridOperation(Hybrid, Operation):

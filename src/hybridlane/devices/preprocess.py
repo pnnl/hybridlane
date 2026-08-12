@@ -60,19 +60,18 @@ def fill_wire_dims(
     truncations are set by the device and not the circuit definition, so this pass inserts the
     dimensions into the measurements after the circuit has been constructed.
     """
-    wire_dims = wire_dims or {}
-    wire_dims = dict(wire_dims)
+    wire_dims = dict(wire_dims or {})
 
     # First type check the circuit and fill any missing qumode dimensions
     res = sa.type_check(tape)
     for wire, type_ in res.wire_types.items():
         match type_:
             case Qubit():
-                wire_dims.setdefault(wire, 2)
+                wire_dims.setdefault(wire, 2)  # ty:ignore[no-matching-overload]
             case Qumode():
-                wire_dims.setdefault(wire, default_qumode_dim)
+                wire_dims.setdefault(wire, default_qumode_dim)  # ty:ignore[no-matching-overload]
             case Qudit(d):
-                wire_dims.setdefault(wire, d)
+                wire_dims.setdefault(wire, d)  # ty:ignore[no-matching-overload]
 
     new_measurements = []
     for mp in tape.measurements:

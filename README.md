@@ -73,6 +73,7 @@ import hybridlane as hl
 # Create a simulator with a custom Fock truncation
 dev = qp.device("default.hybrid", fock_level=8)
 
+
 # Define a hybrid circuit with familiar PennyLane syntax
 @qp.qnode(dev)
 def circuit(n):
@@ -83,6 +84,7 @@ def circuit(n):
 
     # Mix qubit and qumode observables
     return hl.expval(hl.N("m") @ qp.Z(0))
+
 
 # Execute the circuit
 expval = circuit(5)
