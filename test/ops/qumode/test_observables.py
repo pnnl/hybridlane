@@ -56,10 +56,10 @@ class TestQuadP:
         assert op.wires == qp.wires.Wires(0)
 
     def test_diagonalizing_gates(self):
-        op = hl.QuadP(wires=0)
+        op = hl.P(0)
         gates = op.diagonalizing_gates()
-        assert len(gates) == 1
-        assert isinstance(gates[0], hl.Rotation)
+        decomp = op.decomposition()
+        assert [*gates, hl.X(0)] == decomp
 
     def test_natural_basis(self):
         op = hl.QuadP(wires=0)
@@ -68,10 +68,15 @@ class TestQuadP:
     def test_decomposition(self):
         op = hl.QuadP(wires=0)
         decomp = op.decomposition()
-        assert len(decomp) == 2
-        assert isinstance(decomp[0], hl.Rotation)
-        assert decomp[0].parameters[0] == pytest.approx(-math.pi / 2)
-        assert isinstance(decomp[1], hl.QuadX)
+        assert decomp == [hl.R(-math.pi / 2, 0), hl.X(0)]
+
+        # Check numerically
+        dim = 16
+        mat = op.fock_matrix({0: dim})
+        r = decomp[0].fock_matrix({0: dim})  # ty: ignore[unresolved-attribute]
+        x = hl.X.compute_fock_matrix((dim,))
+        actual = hl.math.dag(r) @ mat @ r
+        assert actual == pytest.approx(x)
 
     def test_fock_matrix(self):
         op = hl.P(wires=0)
@@ -98,8 +103,8 @@ class TestQuadOperator:
     def test_diagonalizing_gates(self):
         op = hl.QuadOperator(0.5, wires=0)
         gates = op.diagonalizing_gates()
-        assert len(gates) == 1
-        assert isinstance(gates[0], hl.Rotation)
+        decomp = op.decomposition()
+        assert [*gates, hl.X(0)] == decomp
 
     def test_natural_basis(self):
         op = hl.QuadOperator(0.5, wires=0)

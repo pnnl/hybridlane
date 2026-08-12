@@ -7,6 +7,7 @@ import pennylane as qp
 import pytest
 
 import hybridlane as hl
+from hybridlane.io.openqasm import format_gate_as_qasm
 
 
 def evaluate_openqasm_compliance(s: str):
@@ -15,12 +16,11 @@ def evaluate_openqasm_compliance(s: str):
     parse(s)  # errors if there's syntax mistake
 
 
-@pytest.mark.bq
 @pytest.mark.integration
 class TestCircuits:
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_nondiagonal_measurement(self, strict):
-        dev = qp.device("bosonicqiskit.hybrid")
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @qp.qnode(dev)
         def circuit(n):
@@ -54,7 +54,7 @@ class TestCircuits:
 
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_noncommuting_measurements(self, strict):
-        dev = qp.device("bosonicqiskit.hybrid")
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @qp.qnode(dev)
         def circuit(n):
@@ -94,7 +94,7 @@ class TestCircuits:
 
     @pytest.mark.parametrize("strict", (True, False))
     def test_with_pennylane_gate(self, strict):
-        dev = qp.device("bosonicqiskit.hybrid")
+        dev = qp.device("default.hybrid", fock_level=8)
 
         @qp.qnode(dev)
         def circuit():
@@ -117,7 +117,7 @@ class TestCircuits:
         assert len(p.findall(qasm)) == 1
 
         assert "bit[1] c1;" in qasm
-        assert "cv_r(1.57080) m[0];" in qasm
+        assert "cv_r(-1.57080) m[0];" in qasm
 
         if strict:
             evaluate_openqasm_compliance(qasm)
@@ -127,3 +127,30 @@ class TestCircuits:
 
             assert "float c0 = measure_x m[0];" in qasm
             assert "c1[0] = measure q[0];" in qasm
+
+
+@pytest.mark.unit
+def test_registering_custom_op():
+    @format_gate_as_qasm.register
+    def _(op: hl.ECD, wire_to_str, precision):
+        if precision:
+            params = [f"{p:.{precision}f}" for p in op.parameters]
+        else:
+            params = [str(p) for p in op.parameters]
+
+        wires = [wire_to_str[w] for w in op.wires]
+        param_str = "(" + ", ".join(params) + ")" if params else ""
+        wire_str = ", ".join(wires)
+        gate_str = f"cv_ecd{param_str} {wire_str};"
+        return gate_str
+
+    dev = qp.device("default.hybrid", fock_level=8)
+
+    @qp.qnode(dev)
+    def f(r):
+        qp.X(0)
+        hl.ECD(r, 0, wires=(0, 1))
+        return hl.expval(hl.N(1))
+
+    qasm = hl.to_openqasm(f)(0.5)
+    assert "cv_ecd(0.5, 0) q[0], m[0];" in qasm

@@ -124,7 +124,7 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
 
     @staticmethod
     def compute_diagonalizing_gates(wires: WiresLike) -> list[Operator]:  # ty:ignore[invalid-method-override]
-        return [Rotation(math.pi / 2, wires=wires)]  # rotate p -> x
+        return QuadOperator.compute_diagonalizing_gates(math.pi / 2, wires=wires)
 
     @staticmethod
     def compute_decomposition(
@@ -132,7 +132,7 @@ class QuadP(qp.QuadP, Spectral, FockRepresentation):
         wires: Wires | Iterable[Hashable] | Hashable | None = None,
         **hyperparameters: dict[str, Any],  # noqa: ARG004
     ) -> list[Operator]:
-        return [Rotation(-math.pi / 2, wires=wires), QuadX(wires)]
+        return QuadOperator.compute_decomposition(math.pi / 2, wires=wires)
 
     def __repr__(self):
         inner = ", ".join(map(str, self.wires))
