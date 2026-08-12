@@ -16,10 +16,10 @@ jobs:
             - uses: actions/checkout@v4
             - uses: astral-sh/setup-uv@v8.3.2
             - run: uv sync --all-extras --locked
-            - run: uvx ruff check --output-format github src test
-            - run: uvx ruff format --check --output-format github src test
-            - run: uvx ty check --output-format github src test
-            - run: uvx reuse lint
+            - run: uv run ruff check --output-format github
+            - run: uv run ruff format --check --output-format github
+            - run: uv run ty check --output-format github
+            - run: uv run reuse lint
 
     pytest-core:
         runs-on: ubuntu-latest
@@ -60,11 +60,40 @@ jobs:
             - run: uv sync --all-extras --locked
             - run: uv run pytest -m "bq or qscout or docs"
 
+    discover-notebooks:
+        runs-on: ubuntu-latest
+        outputs:
+            notebooks: ${{ steps.find.outputs.notebooks }}
+        steps:
+            - uses: actions/checkout@v4
+            - id: find
+              run: |
+                  notebooks=$(find examples/demos -maxdepth 1 -name "*.py" | sort | jq -R . | jq -sc .)
+                  echo "notebooks=$notebooks" >> "$GITHUB_OUTPUT"
+
+    demo-notebooks:
+        needs: discover-notebooks
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                notebook: ${{ fromJson(needs.discover-notebooks.outputs.notebooks) }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: astral-sh/setup-uv@v8.3.2
+              with:
+                  python-version: "3.13"
+                  enable-cache: true
+            - run: uv sync --all-extras --locked
+            - run: uv run marimo run --headless ${{ matrix.notebook }}
+
     pytest:
         name: Pytest
         needs:
             - pytest-core
             - pytest-extras
+            - discover-notebooks
+            - demo-notebooks
         if: always()
         runs-on: ubuntu-latest
         steps:

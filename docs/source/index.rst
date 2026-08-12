@@ -1,3 +1,6 @@
+.. SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
+.. SPDX-License-Identifier: BSD-2-Clause
+
 .. |PyPI - Version| image:: https://img.shields.io/pypi/v/hybridlane?logo=pypi
    :target: https://pypi.org/project/hybridlane/
 .. |Docs| image:: https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/docs.yml?branch=main&logo=githubpages&label=docs
@@ -12,7 +15,7 @@
 |PyPI - Version| |Docs| |PyPI Downloads| |Build Status| |License|
 
 .. image:: _static/draw_mpl/qpe_circuit.png
-   :alt: hybridlane logo
+   :alt: hybridlane banner
    :width: 700px
    :align: center
 
@@ -23,36 +26,21 @@ hybridlane
 
 ----
 
-✨ Why hybridlane?
---------------------
-
-As quantum computing explores beyond traditional qubit-only models, `hybridlane` offers a powerful and intuitive framework for researchers and developers to:
-
-*   **Design complex hybrid circuits effortlessly:** Seamlessly integrate qubits and qumodes in the same circuit.
-*   **Describe large-scale circuits:** Define hybrid gate semantics independently of simulation, enabling fast description of wide and deep circuits with minimal memory.
-*   **Leverage the PennyLane ecosystem:** Integrate with PennyLane's extensive tools for transformations, resource estimation, and device support.
-
-----
-
 🚀 Features
-----------------
+------------
 
-*   **📃 Hybrid Gate Semantics:** Precise, platform-independent definitions for hybrid gates, enabling rapid construction of large-scale quantum circuits.
+*   **⚛️ Heterogeneous quantum circuits:** Mix qubits and qumodes in the same circuit, and use our symbolic hybrid gate library to scalably build quantum algorithms.
 
-*   **⚛️ Native Qumode Support:** Qumodes are treated as a fundamental wire type, with automatic type inference that simplifies circuit construction and enhances readability.
+*   **🤝 PennyLane compatibility:** Utilize existing PennyLane gates, write compilation passes as transforms, build custom hybrid backends for hardware, and perform resource estimation across mixed-variable systems.
 
-*   **🤝 PennyLane Compatibility:** A familiar interface for PennyLane users. Utilize existing PennyLane gates, build custom hybrid devices, write compilation passes, and perform resource estimation across mixed-variable systems.
+*   **💻 Classical simulation:** Dispatch to our Jax-compatible simulator for accelerated CPU and GPU simulation and take gradients using automatic differentiation, or use `Bosonic Qiskit <https://github.com/C2QA/bosonic-qiskit>`_.
 
-*   **💻 Classical Simulation:** Dispatch to our Jax-compatible simulator and take gradients using automatic differentiation, or use `Bosonic Qiskit <https://github.com/C2QA/bosonic-qiskit>`_.
-
-*   **💾 OpenQASM-based IR:** An intermediate representation based on an extended OpenQASM, promoting interoperability and enabling advanced circuit manipulations.
+*   **💾 OpenQASM-based IR:** Leverage our intermediate representation extending OpenQASM to reduce the effort of building new hybrid backends and to facilitate interoperability with other quantum software.
 
 ----
 
 ⚙️ Installation
-------------------
-
-`hybridlane` is currently in **early preview**. We welcome your feedback on our `GitHub Issues <https://github.com/pnnl/hybridlane/issues>`_ page to help us improve.
+----------------
 
 Install the package from PyPI:
 
@@ -60,20 +48,16 @@ Install the package from PyPI:
 
     pip install hybridlane
 
-**Available Extras:**
+For more details on installation and optional dependencies, see the `installation guide <guides/getting-started.html>`_.
 
-*   ``[all]``: Installs all extra dependencies.
+.. warning::
 
-*   ``[bq]``: Installs support for the ``bosonicqiskit.hybrid`` simulation device.
-
-*   ``[qscout]``: Installs support for the ``sandiaqscout.hybrid`` compilation device.
-
-For detailed instructions, see the `Getting Started Guide <https://pnnl.github.io/hybridlane/getting-started.html>`_ in our documentation.
+    ``hybridlane`` is currently in active development and may experience breaking changes -- consider using version pinning. We welcome your feedback on our `GitHub Issues <https://github.com/pnnl/hybridlane/issues>`_ page to help us improve the software.
 
 ----
 
 ⚡ Quick Start
------------------
+--------------
 
 .. code-block:: python
 
@@ -104,79 +88,81 @@ For detailed instructions, see the `Getting Started Guide <https://pnnl.github.i
     print(res.wire_types)
     # OrderedDict({0: Qubit(), 'm': Qumode()})
 
-For more examples, explore our `Documentation <https://pnnl.github.io/hybridlane/>`_.
+For more examples, explore the `documentation <https://pnnl.github.io/hybridlane/>`_.
 
 ----
 
 🗺️ Roadmap
--------------
+-----------
 
-`hybridlane` is under active development. Here are some of our future goals:
+``hybridlane`` is under active development. Here are some of our future goals:
 
 *   **Broader measurement support:** Including mid-circuit measurements and broader measurement capabilities.
 *   **Algorithms and transformations:** Implementing popular algorithms and circuit transformations from research papers, including dynamic qumode allocation.
 *   **Symbolic Hamiltonians:** Introducing support for symbolic bosonic Hamiltonians.
-*   **Noisy simulation:** Supporting noisy simulations with Bosonic Qiskit.
-*   **Pulse-level gates:** Allowing pulse-level gates and simulating them in Dynamiqs.
-*   **Catalyst/QJIT support:** Integrating with PennyLane's `qjit` capabilities by developing a custom MLIR dialect.
+*   **Noisy simulation:** Supporting noisy quantum simulations, possibly with Dynamiqs.
+*   **Catalyst/QJIT support:** Integrating with PennyLane's ``qjit`` capabilities by developing a custom MLIR dialect.
 *   **Community-driven features:** Incorporating features requested by the community during usage.
 
 ----
 
-📚 Documentation
----------------------
-
-For comprehensive information on `hybridlane`'s API, tutorials, and technical background, please visit our official `Documentation <https://pnnl.github.io/hybridlane/>`_.
-
-----
-
-❓ Support
--------------
-
-For questions, bug reports, or feature requests, please open an issue on our `GitHub Issues page <https://github.com/pnnl/hybridlane/issues>`_.
-
-----
-
 Citing hybridlane
--------------------
+-----------------
 
-If you find ``hybridlane`` useful in your research, please cite our paper:
+If you find ``hybridlane`` useful in your research, you can cite our paper:
 
 .. code-block::
 
     @misc{furches2026hybridlane,
-        title={Hybridlane: A Software Development Kit for Hybrid Continuous-Discrete Variable Quantum Computing},
-        author={Jim Furches and Timothy J. Stavenger and Carlos Ortiz Marrero},
-        year={2026},
-        eprint={2603.10919},
-        archivePrefix={arXiv},
-        primaryClass={quant-ph},
-        url={https://arxiv.org/abs/2603.10919},
+          title={Hybridlane: A Software Development Kit for Hybrid Continuous-Discrete Variable Quantum Computing},
+          author={Jim Furches and Timothy J. Stavenger and Carlos Ortiz Marrero},
+          year={2026},
+          eprint={2603.10919},
+          archivePrefix={arXiv},
+          primaryClass={quant-ph},
+          url={https://arxiv.org/abs/2603.10919},
     }
 
 ----
 
 📜 License
--------------
+----------
 
 This project is licensed under the BSD 2-Clause License - see the `LICENSE.txt <LICENSE.txt>`_ file for details.
 
 ----
 
 🙏 Acknowledgements
-----------------------
+--------------------
 
 This project was supported by the U.S. Department of Energy, Office of Science, Advanced Scientific Computing Research program under contract number DE-FOA-0003265.
 
 .. toctree::
     :maxdepth: 2
-    :caption: Using Hybridlane
     :hidden:
 
-    introduction
-    getting-started
-    type-checking
-    exporting-circuits
+    Getting started <guides/getting-started>
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Concepts
+    :hidden:
+
+    Introduction <guides/introduction>
+    Type checking <guides/type-checking>
+    Exporting to OpenQASM <guides/exporting-circuits>
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Demos
+    :titlesonly:
+    :hidden:
+
+    demos/01-first-program
+    demos/02-measurements
+    demos/03-gate-decompositions
+    demos/04-cross-platform-programming
+    demos/05-state-and-unitary-synthesis
 
 .. toctree::
     :maxdepth: 1
@@ -186,9 +172,10 @@ This project was supported by the U.S. Department of Energy, Office of Science, 
     hl <_autoapi/hybridlane/index>
     hl.devices <_autoapi/hybridlane/devices/index>
     hl.io <_autoapi/hybridlane/io/index>
+    hl.math <_autoapi/hybridlane/math/index>
     hl.measurements <_autoapi/hybridlane/measurements/index>
     hl.ops <_autoapi/hybridlane/ops/index>
-    hl.sa <_autoapi/hybridlane/sa/index>
     hl.templates <_autoapi/hybridlane/templates/index>
     hl.transforms <_autoapi/hybridlane/transforms/index>
+    hl.wires <_autoapi/hybridlane/wires/index>
 ..    _autoapi/hybridlane/util/index

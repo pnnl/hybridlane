@@ -143,7 +143,7 @@ def to_openqasm(
     .. note::
         Qubit measurements are assumed to be performed in the computational basis, while
         qumode measurements are determined from the
-        :class:`~hybridlane.sa.base.BasisMap` of each measurement. If sampling an
+        :class:`~hybridlane.wires.BasisMap` of each measurement. If sampling an
         observable, this function can provide the gates necessary to diagonalize
         each observable by setting ``rotations=True``. Only wires that are actually
         measured will have measurement statements. Finally, non-overlapping

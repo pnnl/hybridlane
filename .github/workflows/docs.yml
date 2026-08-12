@@ -36,7 +36,8 @@ jobs:
             - uses: astral-sh/setup-uv@v8.3.2
               with:
                   enable-cache: true
-            - run: uv sync --all-extras --locked --no-default-groups --group docs
+            - run: uv sync --all-extras --locked
+            - run: uv run python docs/scripts/build_demos.py
             - run: cd docs && uv run make html
             - run: touch docs/_build/html/.nojekyll
             - uses: actions/upload-pages-artifact@v3

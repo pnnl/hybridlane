@@ -27,13 +27,13 @@ extensions = [
     "sphinxcontrib.bibtex",  # Use of biblatex for references
     "sphinx.ext.autosummary",  # For generating summary tables of API elements
     "sphinx.ext.mathjax",  # For rendering math in HTML using MathJax/KaTeX
-    # "sphinx_math_dollar",  # For inline math using $...$
     "sphinx.ext.viewcode",  # Link to the source code on GitHub/local
     "sphinx.ext.intersphinx",  # For linking to documentation of other projects
     "sphinx.ext.todo",  # For todo notes in documentation
     "sphinx.ext.extlinks",  # For defining short aliases for external links
     "sphinx.ext.githubpages",  # If deploying to GitHub Pages
     "sphinx_copybutton",  # Copy button for code blocks
+    "myst_parser",
 ]
 
 # Configure autosummary to generate stubs
@@ -87,10 +87,6 @@ bibtex_bibfiles = ["refs.bib"]
 html_theme = "furo"
 html_static_path = ["_static"]
 
-# Sphinx Math Dollar configuration for $...$ inline math
-# math_dollar_inline = True
-# math_dollar_display = True
-
 # Configure MathJax for HTML output
 mathjax3_config = {
     "tex": {
@@ -100,3 +96,6 @@ mathjax3_config = {
         }
     }
 }
+
+myst_enable_extensions = ["dollarmath"]
+myst_title_to_header = True

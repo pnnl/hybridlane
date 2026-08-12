@@ -2,4 +2,4 @@
 # SPDX-License-Identifier: BSD-2-Clause
 [src]
 include = ["src", "test", "examples"]
-exclude = ["examples/**/*.ipynb"]
+exclude = ["examples/**/*.ipynb", "examples/demos"]

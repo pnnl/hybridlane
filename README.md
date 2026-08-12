@@ -4,6 +4,14 @@ SPDX-License-Identifier: BSD-2-Clause
 -->
 
 <p align="center">
+    <img src="./docs/source/_static/draw_mpl/qpe_circuit.png" alt="hybridlane banner" width="80%">
+</p>
+
+<h1 align="center">hybridlane</h1>
+
+**hybridlane** is a Python library for designing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the [PennyLane](https://pennylane.ai/) ecosystem. It provides a frontend for expressing hybrid quantum algorithms, implementing the concepts from the paper Y. Liu _et al_, 2026 ([PRX Quantum 7, 010201](https://doi.org/10.1103/4rf7-9tfx)).
+
+<p align="center">
   <a href="https://pypi.org/project/hybridlane/"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/hybridlane?logo=pypi"></a>
   <a href="https://pnnl.github.io/hybridlane/"><img alt="Docs" src="https://img.shields.io/github/actions/workflow/status/pnnl/hybridlane/docs.yml?branch=main&logo=githubpages&label=docs"></a>
   <a href="https://pepy.tech/projects/hybridlane"><img alt="PyPI Downloads" src="https://static.pepy.tech/personalized-badge/hybridlane?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads"></a>
@@ -11,55 +19,30 @@ SPDX-License-Identifier: BSD-2-Clause
   <a href="LICENSE.txt"><img alt="License" src="https://img.shields.io/github/license/pnnl/hybridlane"></a>
 </p>
 
-<p align="center">
-    <img src="./docs/source/_static/draw_mpl/qpe_circuit.png" alt="hybridlane banner" width="80%">
-</p>
-
-<h1 align="center">hybridlane</h1>
-
-**hybridlane** is a Python library for designing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the [PennyLane](https://pennylane.ai/) ecosystem. It provides a frontend for expressing hybrid quantum algorithms, implementing the concepts from the paper Y. Liu *et al*, 2026 ([PRX Quantum 7, 010201](https://doi.org/10.1103/4rf7-9tfx)).
-
----
-
-## ✨ Why hybridlane?
-
-As quantum computing explores beyond traditional qubit-only models, `hybridlane` offers a powerful and intuitive framework for researchers and developers to:
-
-*   **Design complex hybrid circuits effortlessly:** Seamlessly integrate qubits and qumodes in the same circuit.
-*   **Describe large-scale circuits:** Define hybrid gate semantics independently of simulation, enabling fast description of wide and deep circuits with minimal memory.
-*   **Leverage the PennyLane ecosystem:** Integrate with PennyLane's extensive tools for transformations, resource estimation, and device support.
-
----
-
 ## 🚀 Features
 
-*   **📃 Hybrid Gate Semantics:** Precise, platform-independent definitions for hybrid gates, enabling rapid construction of large-scale quantum circuits.
+- **⚛️ Heterogeneous quantum circuits:** Mix qubits and qumodes in the same circuit, and use our symbolic hybrid gate library to scalably build quantum algorithms.
 
-*   **⚛️ Native Qumode Support:** Qumodes are treated as a fundamental wire type, with automatic type inference that simplifies circuit construction and enhances readability.
+- **🤝 PennyLane compatibility:** Utilize existing PennyLane gates, write compilation passes as transforms, build custom hybrid backends for hardware, and perform resource estimation across mixed-variable systems.
 
-*   **🤝 PennyLane Compatibility:** A familiar interface for PennyLane users. Utilize existing PennyLane gates, build custom hybrid devices, write compilation passes, and perform resource estimation across mixed-variable systems.
+- **💻 Classical simulation:** Dispatch to our Jax-compatible simulator for accelerated CPU and GPU simulation and take gradients using automatic differentiation, or use [Bosonic Qiskit](https://github.com/C2QA/bosonic-qiskit).
 
-*   **💻 Classical Simulation:** Dispatch to our Jax-compatible simulator and take gradients using automatic differentiation, or use [Bosonic Qiskit](https://github.com/C2QA/bosonic-qiskit).
-
-*   **💾 OpenQASM-based IR:** An intermediate representation based on an extended OpenQASM, promoting interoperability and enabling advanced circuit manipulations.
+- **💾 OpenQASM-based IR:** Leverage our intermediate representation extending OpenQASM to reduce the effort of building new hybrid backends and to facilitate interoperability with other quantum software.
 
 ---
 
 ## ⚙️ Installation
 
-`hybridlane` is currently in **early preview**. We welcome your feedback on our [GitHub Issues](https://github.com/pnnl/hybridlane/issues) page to help us improve.
-
 Install the package from PyPI:
+
 ```bash
 pip install hybridlane
 ```
 
-**Available Extras:**
-*   `[all]`: Installs all extra dependencies.
-*   `[bq]`: Installs support for the `bosonicqiskit.hybrid` simulation device.
-*   `[qscout]`: Installs support for the `sandiaqscout.hybrid` compilation device.
+For more details on installation and optional dependencies, see the [installation guide](https://pnnl.github.io/hybridlane/getting-started.html).
 
-For detailed instructions, see the [Getting Started Guide](https://pnnl.github.io/hybridlane/getting-started.html) in our documentation.
+> [!WARNING]
+> `hybridlane` is currently in active development and may experience breaking changes -- consider using version pinning. We welcome your feedback on our [GitHub Issues](https://github.com/pnnl/hybridlane/issues) page to help us improve the software.
 
 ---
 
@@ -96,7 +79,7 @@ print(res.wire_types)
 # OrderedDict({0: Qubit(), 'm': Qumode()})
 ```
 
-For more examples, explore our [Documentation](https://pnnl.github.io/hybridlane/).
+For more examples, explore the [documentation](https://pnnl.github.io/hybridlane/).
 
 ---
 
@@ -104,41 +87,28 @@ For more examples, explore our [Documentation](https://pnnl.github.io/hybridlane
 
 `hybridlane` is under active development. Here are some of our future goals:
 
-*   **Broader measurement support:** Including mid-circuit measurements and broader measurement capabilities.
-*   **Algorithms and transformations:** Implementing popular algorithms and circuit transformations from research papers, including dynamic qumode allocation.
-*   **Symbolic Hamiltonians:** Introducing support for symbolic bosonic Hamiltonians.
-*   **Noisy simulation:** Supporting noisy simulations with Bosonic Qiskit.
-*   **Pulse-level gates:** Allowing pulse-level gates and simulating them in Dynamiqs.
-*   **Catalyst/QJIT support:** Integrating with PennyLane's `qjit` capabilities by developing a custom MLIR dialect.
-*   **Community-driven features:** Incorporating features requested by the community during usage.
-
----
-
-## 📚 Documentation
-
-For comprehensive information on `hybridlane`'s API, tutorials, and technical background, please visit our official [Documentation](https://pnnl.github.io/hybridlane/).
-
----
-
-## ❓ Support
-
-For questions, bug reports, or feature requests, please open an issue on our [GitHub Issues page](https://github.com/pnnl/hybridlane/issues).
+- **Broader measurement support:** Including mid-circuit measurements and broader measurement capabilities.
+- **Algorithms and transformations:** Implementing popular algorithms and circuit transformations from research papers, including dynamic qumode allocation.
+- **Symbolic Hamiltonians:** Introducing support for symbolic bosonic Hamiltonians.
+- **Noisy simulation:** Supporting noisy quantum simulations, possibly with Dynamiqs.
+- **Catalyst/QJIT support:** Integrating with PennyLane's `qjit` capabilities by developing a custom MLIR dialect.
+- **Community-driven features:** Incorporating features requested by the community during usage.
 
 ---
 
 ## Citing hybridlane
 
-If you find `hybridlane` useful in your research, please cite our paper:
+If you find `hybridlane` useful in your research, you can cite our paper:
 
 ```
 @misc{furches2026hybridlane,
-      title={Hybridlane: A Software Development Kit for Hybrid Continuous-Discrete Variable Quantum Computing}, 
+      title={Hybridlane: A Software Development Kit for Hybrid Continuous-Discrete Variable Quantum Computing},
       author={Jim Furches and Timothy J. Stavenger and Carlos Ortiz Marrero},
       year={2026},
       eprint={2603.10919},
       archivePrefix={arXiv},
       primaryClass={quant-ph},
-      url={https://arxiv.org/abs/2603.10919}, 
+      url={https://arxiv.org/abs/2603.10919},
 }
 ```
 

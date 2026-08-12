@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 target-version = "py311"
 line-length = 100
-extend-exclude = ["examples/**.ipynb", "docs"]
+extend-exclude = ["examples/**.ipynb", "docs", "examples/demos"]
 
 [lint]
 select = [
