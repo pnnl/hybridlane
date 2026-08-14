@@ -84,7 +84,7 @@ jobs:
               with:
                   python-version: "3.13"
                   enable-cache: true
-            - run: uv sync --all-extras --locked
+            - run: uv sync --all-extras --all-groups --locked
             - run: uv run marimo run --headless ${{ matrix.notebook }}
 
     pytest:
