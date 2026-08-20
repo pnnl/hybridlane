@@ -4,5 +4,12 @@ r"""Resuable algorithm templates"""
 
 from .fock_state import FockState
 from .non_abelian_qsp import GKPState, SqueezedCatState
+from .state_transfer import StateTransferCVtoDV, StateTransferDVtoCV
 
-__all__ = ["FockState", "GKPState", "SqueezedCatState"]
+__all__ = [
+    "FockState",
+    "GKPState",
+    "SqueezedCatState",
+    "StateTransferCVtoDV",
+    "StateTransferDVtoCV",
+]
