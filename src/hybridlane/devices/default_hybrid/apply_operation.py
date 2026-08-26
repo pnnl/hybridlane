@@ -481,7 +481,7 @@ def apply_qcond(
     n = cast(int, math.ndim(s0) - is_state_batched)
     state_shape = cast(tuple[int, ...], math.shape(s0))[-n:]
     wire_dims = dict(enumerate(state_shape))
-    mat = new_op.fock_matrix(wire_dims)
+    mat = new_op.fock_matrix(wire_dims)  # ty: ignore[unresolved-attribute]
 
     s0 = apply_operation_einsum(mat, s0, new_op.wires, is_state_batched)
     s1 = apply_operation_einsum(math.dag(mat), s1, new_op.wires, is_state_batched)
