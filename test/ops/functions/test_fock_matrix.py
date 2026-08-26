@@ -59,6 +59,39 @@ def test_wire_dims_with_operator():
 
 
 @pytest.mark.unit
+def test_controlled_dv_operator():
+    op = qp.CNOT((0, 1))
+    assert hl.fock_matrix(op) == pytest.approx(op.matrix())
+
+
+@pytest.mark.unit
+@pytest.mark.all_interfaces
+def test_controlled_cv_operator(like):
+    with pytest.raises(ValueError, match="`wire_dims` must be specified for the fock_matrix"):
+        hl.fock_matrix(qp.ctrl(hl.D(0.5, 0, 0), control=(1,)))
+
+    dim = 8
+    for c in range(2):
+        params = hl.math.array([0.5, 0], like=like)
+        op = qp.ctrl(hl.D(*params, wires=1), control=[0], control_values=[c])
+        mat = hl.fock_matrix(op, wire_dims={0: 2, 1: dim})
+        assert hl.math.get_interface(mat) == like
+
+        mat = hl.math.reshape(mat, (2, dim, 2, dim))
+        id = hl.math.eye(dim, like=like)
+
+        for i in range(2):
+            for j in range(2):
+                submat = mat[i, :, j, :]
+                if i == j == c:
+                    assert submat == pytest.approx(op.base.fock_matrix({1: dim}))  # ty: ignore[unresolved-attribute]
+                elif i == j:
+                    assert submat == pytest.approx(id)
+                else:
+                    assert submat == pytest.approx(0)
+
+
+@pytest.mark.unit
 def test_pauli_word():
     op = PauliWord({"a": "X", 2: "Y", 3: "Z"})
     assert hl.fock_matrix(op, wire_order=("a", 2, 3)) == pytest.approx(

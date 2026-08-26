@@ -8,7 +8,7 @@ extend-exclude = ["examples/**.ipynb", "docs", "examples/demos"]
 select = [
     "ARG", "UP", "B", "C4", "D", "E", "F", "I", "SIM", "NPY", "N", "W", "RUF"
 ]
-ignore = ["D105", "D415"]
+ignore = ["D105", "D412", "D415"]
 
 
 [lint.per-file-ignores]
