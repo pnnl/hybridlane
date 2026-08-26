@@ -4,12 +4,13 @@ r"""Construct fock matrix representations of operators and quantum functions"""
 
 import functools
 from collections.abc import Callable, Mapping, Sequence
-from functools import partial
+from functools import partial, singledispatch
 from typing import Any, cast, overload
 
 import pennylane as qp
 from pennylane.exceptions import TransformError
 from pennylane.operation import Operator
+from pennylane.ops.op_math.controlled import Controlled
 from pennylane.pauli.pauli_arithmetic import PauliSentence, PauliWord
 from pennylane.tape.qscript import QuantumScript, QuantumScriptBatch
 from pennylane.typing import PostprocessingFn, TensorLike
@@ -159,32 +160,7 @@ def fock_matrix(
             "The provided `wire_order` does not contain all the wires of the operator."
         )
 
-    match op:
-        case FockRepresentation():
-            if wire_dims is None:
-                raise ValueError(
-                    "`wire_dims` must be specified for the fock_matrix "
-                    "when applied to operators with a CV component"
-                )
-
-            return op.fock_matrix(wire_order=wire_order, wire_dims=wire_dims)
-
-        case _:
-            # We need to subtract all the non-qubit wires from this operator then manually
-            # expand the matrix back out, otherwise PennyLane will default to dimension 2
-            # for all the wires and that might be incorrect
-            mat = qp.matrix(op, wire_order=op.wires)
-
-            if wire_order is None:
-                return mat
-
-            if wire_dims is None and (missing_wires := Wires(wire_order) - op.wires):
-                raise ValueError(
-                    "`wire_dims` must be specified with wire_order when applied to operators. "
-                    f"we have no way of knowing what dimension wires {missing_wires} should be"
-                )
-
-            return hl.math.expand_matrix(mat, op.wires, wire_order=wire_order, wire_dims=wire_dims)
+    return _fock_matrix_op(op, wire_order=wire_order, wire_dims=wire_dims)
 
 
 @partial(qp.transform, is_informative=True)
@@ -238,3 +214,80 @@ def _validate_wire_dims(tape: QuantumScript, wire_dims: Mapping[Any, int]) -> di
                 )
 
     return wire_dims
+
+
+@singledispatch
+def _fock_matrix_op(
+    op: Operator,
+    wire_order: WiresLike | None = None,
+    wire_dims: Mapping[Any, int] | None = None,
+) -> TensorLike:
+    # We need to subtract all the non-qubit wires from wire_order then manually
+    # expand the matrix back out, otherwise PennyLane will default to dimension 2
+    # for all the wires and that might be incorrect
+    mat = qp.matrix(op, wire_order=op.wires)
+
+    if wire_order is None:
+        return mat
+
+    if wire_dims is None and (missing_wires := Wires(wire_order) - op.wires):
+        raise ValueError(
+            "`wire_dims` must be specified with wire_order when applied to operators. "
+            f"we have no way of knowing what dimension wires {missing_wires} should be"
+        )
+
+    return hl.math.expand_matrix(mat, op.wires, wire_order=wire_order, wire_dims=wire_dims)
+
+
+@_fock_matrix_op.register
+def _(
+    op: FockRepresentation,
+    wire_order: WiresLike | None = None,
+    wire_dims: Mapping[Any, int] | None = None,
+) -> TensorLike:
+    if wire_dims is None:
+        raise ValueError(
+            "`wire_dims` must be specified for the fock_matrix "
+            "when applied to operators with a CV component"
+        )
+
+    return op.fock_matrix(wire_order=wire_order, wire_dims=wire_dims)
+
+
+@_fock_matrix_op.register
+def _(
+    op: Controlled,
+    wire_order: WiresLike | None = None,
+    wire_dims: Mapping[Any, int] | None = None,
+) -> TensorLike:
+    # Fall back to the qp.matrix logic above
+    if op.base.has_matrix:
+        method = _fock_matrix_op.dispatch(Operator)
+        return method(op, wire_order=wire_order, wire_dims=wire_dims)
+
+    if wire_dims is None:
+        raise ValueError(
+            "`wire_dims` must be specified for the fock_matrix "
+            "when applied to operators with a CV component"
+        )
+
+    like = hl.math.get_deep_interface(op.base.parameters)
+    dim = int(qp.math.prod([wire_dims[w] for w in op.wires]))
+
+    # Total system identity
+    identity = hl.math.eye(dim, like=like)
+
+    # Projector onto control state and the matrix representing base
+    pc = qp.Projector(op.control_values, wires=op.control_wires).matrix()
+    mat = _fock_matrix_op(op.base, wire_order=op.base.wires, wire_dims=wire_dims)
+    id = hl.math.eye(mat.shape[0], like=like)  # ty: ignore[unresolved-attribute]
+
+    # (I - P) x I + P x U -> I + P x (U - I)
+    new_mat = identity + hl.math.kron(pc, mat - id)
+
+    if wire_order is None:
+        return new_mat
+
+    return hl.math.expand_matrix(
+        new_mat, wires=op.wires, wire_dims=wire_dims, wire_order=wire_order
+    )

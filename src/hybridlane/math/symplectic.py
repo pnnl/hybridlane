@@ -130,6 +130,7 @@ def symplectic_form(n_modes: int, like: str | None = None) -> TensorLike:
         The :math:`2n \times 2n` symplectic form matrix.
 
     Examples:
+
     >>> symplectic_form(1)
     array([[ 0.,  1.],
            [-1.,  0.]])
@@ -176,6 +177,7 @@ def is_symplectic(S: TensorLike, rtol=1e-5, atol=1e-8) -> bool:  # noqa: N803
             ``False`` otherwise.
 
     Examples:
+
     >>> is_symplectic(np.eye(3))
     np.True_
 
@@ -262,6 +264,7 @@ def to_phase_space(S: TensorLike):  # noqa: N803
         The equivalent real-valued symplectic matrix in the phase-space basis.
 
     Examples:
+
     >>> S = hl.D(0.5, 0, wires=0).heisenberg_tr((0,))
     >>> S
     array([[1.    , 0.    , 0.    ],
