@@ -12,19 +12,46 @@
 .. |License| image:: https://img.shields.io/github/license/pnnl/hybridlane
    :target: LICENSE.txt
 
-|PyPI - Version| |Docs| |PyPI Downloads| |Build Status| |License|
-
 .. image:: _static/draw_mpl/qpe_circuit.png
    :alt: hybridlane banner
    :width: 700px
    :align: center
 
-hybridlane
-==========
+.. raw:: html
+
+    <style>
+        .badges {
+            width: 50%;
+            display: flex;
+            gap: 0.5rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+    </style>
+
+.. raw:: html
+
+    <h1 class="text-center">hybridlane</h1>
+
+.. rst-class:: text-center
 
 **hybridlane** is a Python library for designing and manipulating **hybrid continuous-variable (CV) and discrete-variable (DV) quantum circuits** within the `PennyLane <https://pennylane.ai/>`_ ecosystem. It provides a frontend for expressing hybrid quantum algorithms, implementing the concepts from the paper Y. Liu *et al*, 2026 (`PRX Quantum 7, 010201 <https://doi.org/10.1103/4rf7-9tfx>`_).
 
+.. rst-class:: badges
+
+|PyPI - Version| |Docs| |PyPI Downloads| |Build Status| |License|
+
 ----
+
+..  rst-class:: text-left
 
 🚀 Features
 ------------
