@@ -18,7 +18,13 @@ from hybridlane.measurements import (
     # probs, # fixme: uncomment when probs is supported
 )
 from hybridlane.ops import *  # noqa: F403
-from hybridlane.templates import FockState, GKPState, SqueezedCatState
+from hybridlane.templates import (
+    FockState,
+    GKPState,
+    SqueezedCatState,
+    StateTransferCVtoDV,
+    StateTransferDVtoCV,
+)
 from hybridlane.transforms import from_pennylane
 from hybridlane.wires import (
     Qubit,
