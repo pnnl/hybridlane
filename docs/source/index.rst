@@ -190,6 +190,7 @@ This project was supported by the U.S. Department of Energy, Office of Science, 
     demos/03-gate-decompositions
     demos/04-cross-platform-programming
     demos/05-state-and-unitary-synthesis
+    demos/06-state-transfer
 
 .. toctree::
     :maxdepth: 1

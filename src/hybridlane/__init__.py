@@ -23,7 +23,6 @@ from hybridlane.templates import (
     GKPState,
     SqueezedCatState,
     StateTransferCVtoDV,
-    StateTransferDVtoCV,
 )
 from hybridlane.transforms import from_pennylane
 from hybridlane.wires import (

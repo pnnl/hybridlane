@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: 2025 Battelle Memorial Institute
 # SPDX-License-Identifier: BSD-2-Clause
-r"""Tests for StateTransferCVtoDV and StateTransferDVtoCV.
+r"""Tests for StateTransferCVtoDV and its adjoint.
 
 CV->DV samples the qumode position wavefunction on the qubit register,
 P(s) ~ |psi(q_s)|^2 * 2*lmbda with q_s = lmbda(2s - (2^n - 1)).
 
-DV->CV is the adjoint and returns the register to |0...0> while the qumode
-takes up the state, provided the qumode starts squeezed. Success is measured
-by the population of |0...0> and the purity of the qumode.
+The D/A direction is ``qp.adjoint`` of the same template: it returns the
+register to |0...0> while the qumode takes up the state, provided the qumode
+starts squeezed. Success is measured by the population of |0...0> and the
+purity of the qumode.
 
 References:
     J. Hastrup, K. Park, J. B. Brask, R. Filip and U. L. Andersen, "Universal
@@ -25,12 +26,14 @@ from collections import Counter
 import numpy as np
 import pennylane as qp
 import pytest
+from pennylane.decomposition.resources import adjoint_resource_rep
 from pennylane.wires import Wires
 
 import hybridlane as hl
 from hybridlane.ops import ConditionalDisplacement
-from hybridlane.templates import StateTransferCVtoDV, StateTransferDVtoCV
+from hybridlane.templates import StateTransferCVtoDV
 from hybridlane.templates.non_abelian_qsp import SqueezedCatState
+from hybridlane.templates.state_transfer import _state_transfer_resources
 from hybridlane.wires import BasisMap, ComputationalBasis
 
 
@@ -57,17 +60,22 @@ def sample_probs(result, qubit_keys, shots):
     return np.array([counts.get(format(i, f"0{n}b"), 0) / shots for i in range(2**n)])
 
 
-# Run DV->CV and report (population of |0...0>, purity of the qumode)
+# Resource reps are keyed by type, except that Adjoint(S) carries its own
+def resource_rep_of(op):
+    return adjoint_resource_rep(qp.S) if op.name == "Adjoint(S)" else type(op)
+
+
+# Run the D/A direction and report (population of |0...0>, purity of the qumode)
 def transfer_diagnostics(n, lmbda, squeezing, fock, amps):
     qubits = list(range(n))
-    dev = qp.device("bosonicqiskit.hybrid", max_fock_level=fock)
+    dev = qp.device("default.hybrid", fock_level=fock)
 
     @qp.qnode(dev)
     def circuit(a):
         qp.StatePrep(a, wires=qubits)
         if squeezing:
             hl.Squeezing(squeezing, 0.0, n)
-        StateTransferDVtoCV(n, lmbda, wires=[*qubits, n])
+        qp.adjoint(StateTransferCVtoDV(n, lmbda, wires=[*qubits, n]))
         return hl.state()
 
     a = np.asarray(amps, dtype=complex)
@@ -86,7 +94,26 @@ class TestStateTransferCVtoDV:
     @pytest.mark.parametrize("n", [2, 3, 4])
     def test_resource_params(self, n):
         op = StateTransferCVtoDV(n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"])
-        assert op.resource_params == {}
+        assert op.resource_params == {"n_qubits": n}
+
+    # n_qubits changes the structure of the operator, so it is a hyperparameter
+    # and lmbda is the only trainable parameter
+    @pytest.mark.unit
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_n_qubits_is_a_hyperparameter(self, n):
+        op = StateTransferCVtoDV(n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"])
+        assert op.hyperparameters["n_qubits"] == n
+        assert len(op.data) == 1
+        assert qp.math.allclose(op.data[0], 0.29)
+
+    # The registered resources must agree with what the decomposition emits, for
+    # every n -- the gate count scales with the register size
+    @pytest.mark.unit
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_registered_resources_match_decomposition(self, n):
+        op = StateTransferCVtoDV(n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"])
+        actual = Counter(resource_rep_of(o) for o in op.decomposition())
+        assert dict(actual) == _state_transfer_resources(n)
 
     @pytest.mark.unit
     @pytest.mark.parametrize("n", [2, 3, 4])
@@ -98,22 +125,19 @@ class TestStateTransferCVtoDV:
         assert isinstance(sig[n], hl.wires.Qumode)
 
     @pytest.mark.unit
-    def test_labels(self):
+    def test_label(self):
         wires = ["q0", "q1", "q2", "q3", "m"]
         assert StateTransferCVtoDV(4, 0.29, wires=wires).label() == "CV→DV"
-        assert StateTransferDVtoCV(4, 0.29, wires=wires).label() == "DV→CV"
 
     # One CD per V_j and per W_j, j = 1..n
     @pytest.mark.unit
     @pytest.mark.parametrize("n", [1, 2, 3, 4])
     def test_cd_gate_count(self, n):
-        ops = StateTransferCVtoDV.compute_decomposition(
-            n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"]
-        )
+        op = StateTransferCVtoDV(n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"])
+        ops = op.decomposition()
         assert sum(isinstance(o, ConditionalDisplacement) for o in ops) == 2 * n
 
     @pytest.mark.integration
-    @pytest.mark.bq
     @pytest.mark.parametrize(
         ("name", "psi", "threshold"),
         [
@@ -124,7 +148,7 @@ class TestStateTransferCVtoDV:
     def test_readout_fidelity(self, name, psi, threshold):
         n, lmbda, shots = 4, 0.29, 4096
         qubits = [f"q{i}" for i in range(n)]
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=64)
+        dev = qp.device("default.hybrid", fock_level=64)
 
         @qp.set_shots(shots)
         @qp.qnode(dev)
@@ -143,12 +167,10 @@ class TestStateTransferCVtoDV:
 
     # State prep and transfer are both approximate, so the threshold is looser
     @pytest.mark.integration
-    @pytest.mark.bq
-    @pytest.mark.slow
     def test_readout_fidelity_cat(self):
         alpha, n, lmbda, shots = 2, 4, 0.29, 4096
         qubits = [f"q{i}" for i in range(n)]
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=128)
+        dev = qp.device("default.hybrid", fock_level=128)
 
         @qp.set_shots(shots)
         @qp.qnode(dev)
@@ -166,11 +188,34 @@ class TestStateTransferCVtoDV:
         fid = fidelity(sample_probs(circuit(), qubits, shots), ideal)
         assert fid >= 0.90, f"cat fidelity F={fid:.4f} below 0.90"
 
+    # The template is device independent, so keep one readout on Bosonic Qiskit
+    @pytest.mark.integration
+    @pytest.mark.bq
+    def test_readout_fidelity_on_bosonic_qiskit(self):
+        n, lmbda, shots = 4, 0.29, 4096
+        qubits = [f"q{i}" for i in range(n)]
+        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=64)
+
+        @qp.set_shots(shots)
+        @qp.qnode(dev)
+        def circuit():
+            hl.Displacement(0.0, 0.0, "m")
+            StateTransferCVtoDV(n, lmbda, wires=[*qubits, "m"])
+            schema = BasisMap({Wires(w): ComputationalBasis.Discrete for w in qubits})
+            return hl.sample(schema=schema)
+
+        q_s = sampling_grid(n, lmbda)
+        ideal = normalized(np.pi ** (-0.25) * np.exp(-(q_s**2) / 2))
+        fid = fidelity(sample_probs(circuit(), qubits, shots), ideal)
+        assert fid >= 0.95, f"vacuum fidelity F={fid:.4f} below 0.95"
+
 
 @pytest.mark.usefixtures("enable_graph_decomp")
-class TestStateTransferDVtoCV:
-    """hl.state only round-trips integer wire labels 0..k-1 on Bosonic Qiskit,
-    so the qubits are 0..n-1 and the qumode is n.
+class TestStateTransferAdjoint:
+    """The D/A direction, qp.adjoint(StateTransferCVtoDV).
+
+    hl.state only round-trips integer wire labels 0..k-1, so the qubits are
+    0..n-1 and the qumode is n.
     """
 
     N = 4
@@ -184,66 +229,30 @@ class TestStateTransferDVtoCV:
     def _wires(self):
         return [*range(self.N), self.N]
 
-    @pytest.mark.unit
-    @pytest.mark.parametrize("n", [2, 3, 4])
-    def test_resource_params(self, n):
-        op = StateTransferDVtoCV(n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"])
-        assert op.resource_params == {}
-
-    @pytest.mark.unit
-    @pytest.mark.parametrize("n", [2, 3, 4])
-    def test_type_signature(self, n):
-        op = StateTransferDVtoCV(n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"])
-        sig = op.type_signature
-        assert len(sig) == n + 1
-        assert all(isinstance(s, hl.wires.Qubit) for s in sig[:n])
-        assert isinstance(sig[n], hl.wires.Qumode)
-
     # Inverting reorders gates but must not change the hardware cost
     @pytest.mark.unit
     @pytest.mark.parametrize("n", [1, 2, 3, 4])
     def test_cd_gate_count(self, n):
-        ops = StateTransferDVtoCV.compute_decomposition(
-            n, 0.29, wires=[f"q{i}" for i in range(n)] + ["m"]
-        )
-        assert sum(isinstance(o, ConditionalDisplacement) for o in ops) == 2 * n
-
-    # CD(a, phi)^dag = CD(a, phi + pi)
-    @pytest.mark.unit
-    @pytest.mark.parametrize("n", [2, 3, 4])
-    def test_cd_phases_are_inverted(self, n):
         wires = [f"q{i}" for i in range(n)] + ["m"]
-        fwd = StateTransferCVtoDV.compute_decomposition(n, 0.29, wires=wires)
-        inv = StateTransferDVtoCV.compute_decomposition(n, 0.29, wires=wires)
-        assert len(fwd) == len(inv)
-
-        fwd_cds = [o for o in fwd if isinstance(o, ConditionalDisplacement)]
-        inv_cds = [o for o in reversed(inv) if isinstance(o, ConditionalDisplacement)]
-        assert len(fwd_cds) == len(inv_cds) == 2 * n
-
-        for f_op, i_op in zip(fwd_cds, inv_cds, strict=True):
-            assert i_op.wires == f_op.wires
-            a_f, phi_f = np.asarray(f_op.parameters[:2], dtype=float)
-            a_i, phi_i = np.asarray(i_op.parameters[:2], dtype=float)
-            assert np.isclose(a_i, a_f)
-            offset = (phi_i - phi_f) % (2 * np.pi)
-            assert np.isclose(offset, np.pi), f"CD phase offset {offset:.6f}, expected pi"
+        adj = qp.adjoint(StateTransferCVtoDV(n, 0.29, wires=wires))
+        bases = [getattr(o, "base", o) for o in adj.decomposition()]
+        cds = [o for o in bases if isinstance(o, ConditionalDisplacement)]
+        assert len(cds) == 2 * n
 
     # |s> maps onto the same grid the forward direction samples, and wire 0 is
     # the most significant bit
     @pytest.mark.integration
-    @pytest.mark.bq
     def test_mean_position_of_basis_states(self):
         n, lmbda = self.N, self.LMBDA
         qubits = list(range(n))
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=self.FOCK)
+        dev = qp.device("default.hybrid", fock_level=self.FOCK)
 
         @qp.qnode(dev)
         def circuit(bits):
             for w, b in zip(qubits, bits, strict=True):
                 if b:
                     qp.X(w)
-            StateTransferDVtoCV(n, lmbda, wires=self._wires)
+            qp.adjoint(StateTransferCVtoDV(n, lmbda, wires=self._wires))
             return hl.expval(hl.QuadX(n))
 
         q_s = sampling_grid(n, lmbda)
@@ -252,38 +261,34 @@ class TestStateTransferDVtoCV:
             assert np.isclose(x, q_s[s], atol=1e-6), f"s={s}: <x>={x:.6f}, want {q_s[s]:.6f}"
 
     # The transfer is deterministic, but only from a squeezed qumode; from the
-    # vacuum a third of the amplitude never returns to |0...0>
+    # vacuum a third of the amplitude never returns to |0...0>.  The squeezed
+    # start is a precondition on the input state, not part of the operation.
     @pytest.mark.integration
-    @pytest.mark.bq
-    @pytest.mark.slow
     def test_transfer_is_unentangling(self):
-        n, lmbda, fock = 3, self.DELTA / 2, 256
+        n, lmbda = 3, self.DELTA / 2
         amps = np.ones(2**n)
 
-        p0, purity = transfer_diagnostics(n, lmbda, self.SQUEEZING, fock, amps)
+        p0, purity = transfer_diagnostics(n, lmbda, self.SQUEEZING, 256, amps)
         assert p0 >= 0.98, f"register returned to |0...0> with only P={p0:.4f}"
         assert purity >= 0.96, f"qumode left mixed, purity={purity:.4f}"
 
-        p0_vacuum, _ = transfer_diagnostics(n, lmbda, 0.0, fock, amps)
+        p0_vacuum, _ = transfer_diagnostics(n, lmbda, 0.0, 256, amps)
         assert p0_vacuum < 0.8, f"vacuum input unexpectedly worked, P={p0_vacuum:.4f}"
 
     # Liu et al. Fig. 4(b) reports 0.858 for |+++> at Delta = sqrt(2), a sinc
     # state approximated by a Gaussian of width e^-1.12, and Fock 128
     @pytest.mark.integration
-    @pytest.mark.bq
-    @pytest.mark.slow
     def test_matches_published_purity(self):
         r = -np.log(np.exp(-1.12) * np.sqrt(2))  # sigma_x = e^-r / sqrt(2)
         _, purity = transfer_diagnostics(3, self.DELTA / 2, r, 128, np.ones(8))
         assert np.isclose(purity, 0.858, atol=0.02), f"|+++> purity {purity:.4f} vs 0.858"
 
-    # Consistency check that the two decompositions are adjoints on device
+    # Consistency check that the two directions are adjoints on device
     @pytest.mark.integration
-    @pytest.mark.bq
     def test_roundtrip_is_identity(self):
         n, lmbda, shots = self.N, self.LMBDA, 512
         qubits = list(range(n))
-        dev = qp.device("bosonicqiskit.hybrid", max_fock_level=self.FOCK)
+        dev = qp.device("default.hybrid", fock_level=self.FOCK)
         schema = BasisMap({Wires(w): ComputationalBasis.Discrete for w in qubits})
 
         @qp.set_shots(shots)
@@ -292,7 +297,7 @@ class TestStateTransferDVtoCV:
             for w, b in zip(qubits, bits, strict=True):
                 if b:
                     qp.X(w)
-            StateTransferDVtoCV(n, lmbda, wires=self._wires)
+            qp.adjoint(StateTransferCVtoDV(n, lmbda, wires=self._wires))
             StateTransferCVtoDV(n, lmbda, wires=self._wires)
             return hl.sample(schema=schema)
 

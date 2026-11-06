@@ -16,9 +16,9 @@ def _(mo):
     mo.md(r"""
     # CV-DV state transfer
 
-    hybridlane provides two templates that move a quantum state between a qumode and a register of qubits, implementing quantum analog-to-digital (`StateTransferCVtoDV`) and digital-to-analog (`StateTransferDVtoCV`) conversion via non-Abelian QSP.
+    hybridlane provides the `StateTransferCVtoDV` template, which moves a quantum state from a qumode onto a register of qubits via non-Abelian QSP -- quantum analog-to-digital conversion. Its adjoint, `qp.adjoint(StateTransferCVtoDV(...))`, runs the digital-to-analog direction.
 
-    Both act on the wires `(q0, q1, ..., q_{n-1}, qumode)`, cost exactly $2n$ conditional displacements, and share a $2^n$-point position grid
+    Both directions act on the wires `(q0, q1, ..., q_{n-1}, qumode)`, cost exactly $2n$ conditional displacements, and share a $2^n$-point position grid
 
     $$q_s = \lambda\left(2s - (2^n - 1)\right), \qquad s = 0, \dots, 2^n - 1,$$
 
@@ -57,7 +57,7 @@ def _(hl, np, qp):
     n_ad, lmbda, shots = 4, 0.29, 4096
     qubits_ad, mode_ad = list(range(n_ad)), n_ad
 
-    dev_ad = qp.device("bosonicqiskit.hybrid", max_fock_level=64)
+    dev_ad = qp.device("default.hybrid", fock_level=64)
 
     @qp.set_shots(shots)
     @qp.qnode(dev_ad)
@@ -88,7 +88,7 @@ def _(mo):
     mo.md(r"""
     ## DV $\to$ CV
 
-    Run backwards, the protocol moves the state off the qubits and into the qumode. It is coherent and deterministic, but requires the qumode to *start* in the sinc state $\ket{0, \Delta}^{\rm sinc} \propto \int dq \, \mathrm{sinc}(\pi q / \Delta) \ket{q}$. That state has infinite energy, so a squeezed vacuum stands in for it.
+    Run backwards -- `qp.adjoint` of the same template -- the protocol moves the state off the qubits and into the qumode. It is coherent and deterministic, but requires the qumode to *start* in the sinc state $\ket{0, \Delta}^{\rm sinc} \propto \int dq \, \mathrm{sinc}(\pi q / \Delta) \ket{q}$. That state has infinite energy, so a squeezed vacuum stands in for it. Preparing it is the caller's job: the template is the transfer unitary and nothing else.
 
     Two numbers report success, both approaching 1: the population of $\ket{0\cdots0}$ left on the register, and the purity of the qumode.
     """)
@@ -100,14 +100,14 @@ def _(hl, mo, np, qp):
     n_da, delta, squeezing, fock_da = 3, 1.2, 2.5, 256
     qubits_da, mode_da = list(range(n_da)), n_da
 
-    dev_da = qp.device("bosonicqiskit.hybrid", max_fock_level=fock_da)
+    dev_da = qp.device("default.hybrid", fock_level=fock_da)
 
     @qp.qnode(dev_da)
     def transfer_to_qumode(amps, r):
         qp.StatePrep(amps, wires=qubits_da)
         if r:
             hl.Squeezing(r, 0.0, mode_da)
-        hl.StateTransferDVtoCV(n_da, delta / 2, wires=[*qubits_da, mode_da])
+        qp.adjoint(hl.StateTransferCVtoDV(n_da, delta / 2, wires=[*qubits_da, mode_da]))
         return hl.state()
 
     def diagnose(amps, r):
